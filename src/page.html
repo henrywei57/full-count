@@ -1,0 +1,436 @@
+<title>Full Count Baseball</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,500;0,600;0,700;0,800;1,700;1,800&family=Barlow:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: full-bleed WebGL ballpark; broadcast graphics pinned to corners, menus float over the live stadium. */
+:root{
+  --night:#050a14;
+  --panel:rgba(7,13,26,.9);
+  --panel-hi:rgba(18,29,50,.95);
+  --chalk:#f2f5fa;
+  --dust:#93a3bb;
+  --gold:#ffc94a;
+  --strike:#ff5a5f;
+  --ball:#3fd38a;
+  --play:#5aa8ff;
+  --line:rgba(255,255,255,.14);
+  --team-a:#1f3b73; --team-a2:#ffffff;
+  --team-h:#8a1c2b; --team-h2:#ffffff;
+  --f-display:'Barlow Condensed','Arial Narrow',Impact,sans-serif;
+  --f-body:'Barlow',system-ui,-apple-system,'Segoe UI',sans-serif;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;background:var(--night);color:var(--chalk);font-family:var(--f-body);overflow:hidden;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
+#c{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none;outline:none}
+#c.aim{cursor:none}
+button{font:inherit;color:inherit}
+.hidden{display:none!important}
+.num{font-variant-numeric:tabular-nums}
+
+/* ---------- Score bug ---------- */
+#hud{position:fixed;inset:0;pointer-events:none;z-index:5}
+#bug{position:absolute;left:16px;top:calc(14px + env(safe-area-inset-top,0px));display:flex;align-items:stretch;height:62px;font-family:var(--f-display);box-shadow:0 8px 24px rgba(0,0,0,.45);border-radius:4px;overflow:hidden}
+.bug-teams{display:flex;flex-direction:column;width:118px}
+.bug-row{flex:1;display:flex;align-items:center;justify-content:space-between;padding:0 10px 0 0;background:var(--panel)}
+.bug-row .bug-abbr{height:100%;display:flex;align-items:center;padding:0 10px;font-weight:800;font-size:19px;letter-spacing:.06em;min-width:66px;border-left:5px solid transparent}
+.bug-row .bug-runs{font-weight:800;font-size:24px;font-variant-numeric:tabular-nums}
+#bugA .bug-abbr{background:var(--team-a);color:var(--team-a2);border-left-color:var(--team-a2)}
+#bugH .bug-abbr{background:var(--team-h);color:var(--team-h2);border-left-color:var(--team-h2)}
+.bug-row.bat .bug-abbr::after{content:"";width:6px;height:6px;margin-left:7px;border-radius:50%;background:var(--gold)}
+.bug-inn{width:46px;background:var(--panel-hi);display:flex;flex-direction:column;align-items:center;justify-content:center;font-weight:700;font-size:24px;line-height:1}
+.bug-inn #bugArrow{font-size:11px;color:var(--gold);height:12px}
+.bug-inn #bugArrow.bot{order:2}
+.bug-diamond{width:62px;background:var(--panel);position:relative}
+.bug-diamond i{position:absolute;width:15px;height:15px;transform:rotate(45deg);border:2px solid rgba(255,255,255,.5);background:transparent;transition:background .2s,border-color .2s}
+.bug-diamond i.on{background:var(--gold);border-color:var(--gold)}
+#bd2{left:23px;top:9px}#bd3{left:9px;top:23px}#bd1{left:37px;top:23px}
+.bug-count{width:78px;background:var(--panel-hi);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px}
+#bugCount{font-weight:800;font-size:26px;line-height:1;font-variant-numeric:tabular-nums}
+.bug-outs{display:flex;gap:6px}
+.bug-outs i{width:10px;height:10px;border-radius:50%;border:2px solid rgba(255,255,255,.55)}
+.bug-outs i.on{background:var(--strike);border-color:var(--strike)}
+#bugPitch{width:62px;background:var(--panel);display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.05}
+#bugPitch b{font-size:22px;font-weight:800;font-variant-numeric:tabular-nums}
+#bugPitch span{font-size:11px;letter-spacing:.12em;color:var(--dust)}
+
+/* ---------- name plates ---------- */
+.plate{position:absolute;bottom:calc(16px + env(safe-area-inset-bottom,0px));width:270px;background:var(--panel);border-radius:4px;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,.45)}
+.plate.left{left:16px}.plate.right{right:16px}
+.plate-head{display:flex;justify-content:space-between;align-items:center;padding:5px 12px;font-family:var(--f-display);font-weight:700;font-size:14px;letter-spacing:.1em;color:var(--team-a2);background:var(--team-a)}
+.plate.right .plate-head{background:var(--team-h);color:var(--team-h2)}
+.plate-name{padding:8px 12px 0;font-family:var(--f-display);font-weight:800;font-size:27px;letter-spacing:.02em;line-height:1;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.plate-line{padding:4px 12px 8px;color:var(--dust);font-size:14px;font-weight:600}
+.ratings{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--line);border-top:1px solid var(--line)}
+.ratings div{background:var(--panel);padding:5px 0 6px;text-align:center}
+.ratings b{display:block;font-family:var(--f-display);font-size:20px;font-weight:700;line-height:1}
+.ratings span{font-size:10px;letter-spacing:.14em;color:var(--dust)}
+.r-hi{color:var(--gold)}.r-lo{color:#d78b8b}
+.stamina{height:4px;background:rgba(255,255,255,.1);margin:0 12px 8px}
+.stamina i{display:block;height:100%;background:var(--ball);transition:width .4s}
+.pitch-list{display:flex;flex-direction:column;border-top:1px solid var(--line)}
+.pitch-row{display:grid;grid-template-columns:26px 1fr 56px;align-items:center;gap:8px;padding:5px 12px;font-size:14px;font-weight:600;border-bottom:1px solid rgba(255,255,255,.05);pointer-events:auto;cursor:pointer}
+.pitch-row .key{font-family:var(--f-display);font-weight:800;font-size:13px;width:22px;height:22px;border-radius:50%;display:grid;place-items:center;color:#081020;background:var(--dust)}
+.pitch-row .mph{text-align:right;color:var(--dust);font-variant-numeric:tabular-nums}
+.pitch-row.sel{background:rgba(255,201,74,.16)}
+.pitch-row.sel .key{background:var(--gold)}
+.pitch-row .pname{display:flex;align-items:center;gap:7px}
+.pitch-row .dot{width:9px;height:9px;border-radius:2px}
+.cpu .pitch-row{cursor:default}
+.cpu .pitch-row .key{display:none}
+.cpu .pitch-row{grid-template-columns:1fr 56px}
+
+/* ---------- call, banners, captions ---------- */
+#call{position:absolute;left:50%;top:21%;transform:translate(-50%,-50%);font-family:var(--f-display);font-weight:800;font-style:italic;font-size:clamp(34px,6vw,64px);letter-spacing:.04em;text-shadow:0 4px 18px rgba(0,0,0,.6);opacity:0;white-space:nowrap}
+#call.show{animation:pop 1.2s ease-out forwards}
+#call.strike{color:var(--strike)}#call.ballc{color:var(--ball)}#call.foul{color:var(--gold)}#call.play{color:var(--play)}#call.out{color:var(--chalk)}
+@keyframes pop{0%{opacity:0;transform:translate(-50%,-50%) scale(1.5)}12%{opacity:1;transform:translate(-50%,-50%) scale(1)}75%{opacity:1}100%{opacity:0;transform:translate(-50%,-60%) scale(1)}}
+#banner{position:absolute;left:0;right:0;top:34%;display:flex;flex-direction:column;align-items:center;opacity:0}
+#banner.show{animation:bannerIn 2.6s cubic-bezier(.2,.8,.2,1) forwards}
+#banner .b-main{font-family:var(--f-display);font-weight:800;font-style:italic;font-size:clamp(46px,9vw,108px);line-height:.9;letter-spacing:.02em;padding:6px 40px 2px;background:linear-gradient(90deg,transparent,var(--panel) 18%,var(--panel) 82%,transparent);color:var(--gold);text-shadow:0 3px 0 rgba(0,0,0,.35)}
+#banner .b-sub{margin-top:6px;font-family:var(--f-display);font-weight:600;font-size:clamp(16px,2.2vw,22px);letter-spacing:.18em;color:var(--chalk);text-transform:uppercase;text-align:center;padding:0 16px}
+#banner.hr .b-main{color:#fff;background:linear-gradient(90deg,transparent,var(--team-a) 15%,var(--team-a) 85%,transparent)}
+@keyframes bannerIn{0%{opacity:0;transform:scaleX(.4)}10%{opacity:1;transform:scaleX(1)}82%{opacity:1}100%{opacity:0}}
+#caption{position:absolute;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);max-width:min(560px,calc(100vw - 600px));min-width:260px;padding:9px 16px;background:var(--panel);border-left:3px solid var(--gold);font-size:15px;font-weight:500;line-height:1.35;opacity:0;transition:opacity .35s}
+#caption.show{opacity:1}
+#pitchInfo{position:absolute;right:16px;top:calc(14px + env(safe-area-inset-top,0px));display:flex;align-items:stretch;height:44px;background:var(--panel);font-family:var(--f-display);border-radius:4px;overflow:hidden;opacity:0;transition:opacity .3s}
+#pitchInfo.show{opacity:1}
+#pitchInfo b{display:grid;place-items:center;padding:0 12px;font-size:28px;font-weight:800;background:var(--panel-hi);font-variant-numeric:tabular-nums}
+#pitchInfo b small{font-size:12px;font-weight:600;color:var(--dust);margin-left:3px}
+#pitchInfo span{display:flex;align-items:center;padding:0 12px;font-size:16px;font-weight:600;letter-spacing:.08em;text-transform:uppercase}
+#topbar{position:absolute;right:16px;top:calc(66px + env(safe-area-inset-top,0px));display:flex;gap:8px;pointer-events:auto}
+#topbar button{width:36px;height:36px;border-radius:50%;border:1px solid var(--line);background:var(--panel);display:grid;place-items:center;cursor:pointer;padding:0}
+#topbar button:hover{background:var(--panel-hi)}
+#topbar svg{width:16px;height:16px;fill:var(--chalk)}
+
+/* ---------- hitting feedback / statcast ---------- */
+#feedback{position:absolute;left:50%;bottom:calc(84px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);width:360px;background:var(--panel);border-radius:4px;padding:10px 14px 12px;opacity:0;transition:opacity .25s}
+#feedback.show{opacity:1}
+.fb-top{display:flex;justify-content:space-between;font-family:var(--f-display);font-weight:700;letter-spacing:.08em;font-size:15px}
+.fb-top em{font-style:normal;color:var(--dust);font-weight:600;margin-right:6px}
+.fb-bar{position:relative;height:10px;margin:8px 0 10px;background:linear-gradient(90deg,#c0392b 0,#e67e22 22%,#f1c40f 36%,#2ecc71 46%,#2ecc71 54%,#f1c40f 64%,#e67e22 78%,#c0392b 100%);border-radius:2px;opacity:.85}
+.fb-bar::before,.fb-bar::after{position:absolute;top:13px;font-size:10px;letter-spacing:.14em;color:var(--dust)}
+.fb-bar::before{content:"EARLY";left:0}.fb-bar::after{content:"LATE";right:0}
+.fb-mark{position:absolute;top:-4px;width:4px;height:18px;margin-left:-2px;background:#fff;box-shadow:0 0 6px #fff;border-radius:2px}
+.fb-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:12px;text-align:center}
+.fb-stats b{display:block;font-family:var(--f-display);font-size:24px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums}
+.fb-stats span{font-size:10px;letter-spacing:.14em;color:var(--dust)}
+#hint{position:absolute;left:50%;top:calc(84px + env(safe-area-inset-top,0px));transform:translateX(-50%);font-size:13px;font-weight:600;letter-spacing:.04em;color:rgba(242,245,250,.8);background:rgba(5,10,20,.55);padding:6px 12px;border-radius:20px;white-space:nowrap;transition:opacity .3s}
+#hint kbd{font-family:var(--f-display);font-weight:700;padding:1px 6px;border-radius:3px;background:rgba(255,255,255,.14);margin:0 2px}
+
+/* ---------- pitch tracker ---------- */
+#tracker{position:absolute;right:16px;top:50%;transform:translateY(-58%);width:150px;background:var(--panel);border-radius:4px;overflow:hidden}
+#tracker .t-head{font-family:var(--f-display);font-weight:700;font-size:13px;letter-spacing:.14em;padding:6px 10px;background:var(--panel-hi);color:var(--dust)}
+#zoneMini{display:block;width:150px;height:170px}
+#trackList{font-size:12px;font-weight:600;padding:2px 8px 8px;display:flex;flex-direction:column;gap:2px}
+#trackList div{display:grid;grid-template-columns:16px 1fr auto;gap:6px;color:var(--dust)}
+#trackList div b{color:var(--chalk)}
+
+/* ---------- pitching meter ---------- */
+#meter{position:absolute;left:calc(50% + 150px);top:50%;transform:translateY(-50%);width:34px;height:250px;display:flex;flex-direction:column;align-items:center;gap:6px}
+.m-track{position:relative;flex:1;width:18px;border-radius:9px;background:rgba(5,10,20,.75);border:2px solid rgba(255,255,255,.5);overflow:hidden}
+.m-fill{position:absolute;left:0;right:0;bottom:0;background:linear-gradient(0deg,#2b6cb0,#5aa8ff 60%,#ffc94a 92%,#ff5a5f)}
+.m-acc{position:absolute;left:-2px;right:-2px;height:3px;background:var(--gold);box-shadow:0 0 6px var(--gold)}
+.m-pow{position:absolute;left:-2px;right:-2px;height:2px;background:#fff}
+.m-cur{position:absolute;left:-4px;right:-4px;height:4px;background:#fff;border-radius:2px;box-shadow:0 0 8px #fff}
+.m-label{font-family:var(--f-display);font-size:12px;font-weight:700;letter-spacing:.14em;color:var(--dust)}
+
+/* ---------- throw prompt ---------- */
+#throwPrompt{position:absolute;left:50%;bottom:calc(150px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);width:200px;height:150px;pointer-events:auto}
+#throwPrompt .tp-title{position:absolute;left:0;right:0;top:56px;text-align:center;font-family:var(--f-display);font-weight:800;letter-spacing:.2em;color:var(--gold);font-size:15px}
+#throwPrompt button{position:absolute;width:64px;height:40px;border-radius:6px;border:1px solid var(--line);background:var(--panel);font-family:var(--f-display);font-weight:700;font-size:15px;cursor:pointer;line-height:1}
+#throwPrompt button small{display:block;font-size:10px;color:var(--dust);letter-spacing:.1em}
+#throwPrompt button:hover{background:var(--panel-hi)}
+.tp2{left:68px;top:0}.tp3{left:0;top:48px}.tp1{right:0;top:48px}.tpH{left:68px;top:100px}
+
+/* ---------- derby ---------- */
+#derbyHud{position:absolute;left:16px;top:calc(14px + env(safe-area-inset-top,0px));display:flex;gap:1px;background:var(--line);border-radius:4px;overflow:hidden;font-family:var(--f-display)}
+#derbyHud div{background:var(--panel);padding:8px 14px;text-align:center;min-width:86px}
+#derbyHud b{display:block;font-size:30px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums}
+#derbyHud span{font-size:11px;letter-spacing:.14em;color:var(--dust)}
+#replayTag{position:absolute;left:50%;top:calc(18px + env(safe-area-inset-top,0px));transform:translateX(-50%);font-family:var(--f-display);font-weight:800;font-style:italic;font-size:22px;letter-spacing:.2em;padding:4px 18px;background:var(--strike);color:#fff;border-radius:3px}
+#hud.replaying .plate,#hud.replaying #tracker,#hud.replaying #caption,#hud.replaying #hint,#hud.replaying #feedback,#hud.replaying #pitchInfo,#hud.replaying #bug,#hud.replaying #derbyHud,#hud.replaying #topbar{display:none}
+.letterbox::before,.letterbox::after{content:"";position:fixed;left:0;right:0;height:9vh;background:#000;z-index:4}
+.letterbox::before{top:0}.letterbox::after{bottom:0}
+
+/* ---------- screens ---------- */
+.screen{position:fixed;inset:0;z-index:10;display:flex;align-items:center;justify-content:center;padding-inline:16px;padding-block:24px;overflow-y:auto}
+#menu{background:radial-gradient(ellipse at 30% 40%,rgba(5,10,20,.35),rgba(5,10,20,.88) 70%)}
+.menu-wrap{width:min(980px,100%);display:grid;grid-template-columns:300px 1fr;gap:28px;align-items:start;margin:auto}
+.brand h1{margin:0;font-family:var(--f-display);font-weight:800;font-style:italic;font-size:clamp(64px,9vw,104px);line-height:.82;letter-spacing:-.01em;text-wrap:balance}
+.brand h1 span{display:block;color:var(--gold)}
+.brand-kicker{font-family:var(--f-display);font-weight:700;letter-spacing:.3em;color:var(--dust);font-size:15px;margin-bottom:8px}
+.brand p{color:var(--dust);font-size:15px;line-height:1.5;max-width:30ch;margin:16px 0 0}
+.modes{display:flex;flex-direction:column;gap:8px;margin-top:22px}
+.modes button{display:flex;justify-content:space-between;align-items:center;text-align:left;padding:13px 16px;border-radius:4px;border:1px solid var(--line);background:var(--panel);cursor:pointer;font-family:var(--f-display);font-weight:700;font-size:21px;letter-spacing:.04em;text-transform:uppercase}
+.modes button small{font-family:var(--f-body);font-size:12px;font-weight:500;color:var(--dust);letter-spacing:0;text-transform:none}
+.modes button.on{background:var(--chalk);color:#081020;border-color:var(--chalk)}
+.modes button.on small{color:#3b4a63}
+.setup{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:20px;display:flex;flex-direction:column;gap:18px;min-width:0}
+.matchup{display:grid;grid-template-columns:1fr auto 1fr;gap:12px;align-items:center}
+.vs{font-family:var(--f-display);font-weight:800;font-style:italic;font-size:26px;color:var(--dust)}
+.team-pick{display:flex;flex-direction:column;align-items:center;gap:8px;min-width:0}
+.tp-label{font-family:var(--f-display);font-weight:700;letter-spacing:.24em;font-size:13px;color:var(--dust)}
+.tp-row{display:flex;align-items:center;gap:8px;width:100%;justify-content:center}
+.arrow{width:34px;height:34px;flex:none;border-radius:50%;border:1px solid var(--line);background:transparent;cursor:pointer;font-size:20px;line-height:1;padding:0}
+.arrow:hover{background:var(--panel-hi)}
+.badge{width:120px;height:120px;border-radius:50%;display:grid;place-items:center;font-family:var(--f-display);font-weight:800;font-style:italic;font-size:42px;letter-spacing:.02em;border:5px solid;box-shadow:inset 0 0 0 4px rgba(0,0,0,.25),0 10px 30px rgba(0,0,0,.4)}
+.team-name{font-family:var(--f-display);font-weight:700;font-size:22px;text-align:center;line-height:1.05;text-transform:uppercase}
+.team-name small{display:block;font-size:13px;letter-spacing:.2em;color:var(--dust);font-weight:600}
+.team-ovr{display:flex;gap:10px;font-size:12px;color:var(--dust);font-weight:600;letter-spacing:.06em}
+.team-ovr b{color:var(--chalk);font-family:var(--f-display);font-size:16px}
+.opts{display:grid;gap:12px}
+.opt{display:grid;grid-template-columns:110px 1fr;align-items:center;gap:12px}
+.opt>span{font-family:var(--f-display);font-weight:700;letter-spacing:.18em;font-size:13px;color:var(--dust)}
+.seg{display:flex;flex-wrap:wrap;gap:6px}
+.seg button{padding:7px 12px;border-radius:3px;border:1px solid var(--line);background:transparent;cursor:pointer;font-weight:600;font-size:14px}
+.seg button.on{background:var(--gold);color:#1a1205;border-color:var(--gold)}
+select{font:inherit;font-weight:600;background:var(--panel-hi);color:var(--chalk);border:1px solid var(--line);border-radius:3px;padding:7px 10px;max-width:100%}
+.cta{padding:14px 22px;border-radius:4px;border:0;background:var(--gold);color:#1a1205;cursor:pointer;font-family:var(--f-display);font-weight:800;font-size:24px;letter-spacing:.1em;font-style:italic}
+.cta:hover{filter:brightness(1.06)}
+.ghost{padding:10px 16px;border-radius:4px;border:1px solid var(--line);background:transparent;cursor:pointer;font-weight:600}
+.ghost:hover{background:var(--panel-hi)}
+.row-actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.row-actions .cta{flex:1}
+button:focus-visible,select:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.modal{background:rgba(3,6,12,.72)}
+.card{width:min(560px,100%);background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:22px;display:flex;flex-direction:column;gap:12px}
+.card h2{margin:0;font-family:var(--f-display);font-weight:800;font-style:italic;font-size:40px;letter-spacing:.02em}
+.card .stack{display:flex;flex-direction:column;gap:8px}
+.card .stack button{text-align:left}
+.controls-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.controls-grid h3{margin:0 0 6px;font-family:var(--f-display);font-weight:700;letter-spacing:.14em;font-size:14px;color:var(--gold)}
+.controls-grid dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:4px 10px;font-size:13px}
+.controls-grid dt{font-family:var(--f-display);font-weight:700;white-space:nowrap}
+.controls-grid dd{margin:0;color:var(--dust)}
+.linescore{width:100%;border-collapse:collapse;font-family:var(--f-display);font-size:18px;font-variant-numeric:tabular-nums}
+.linescore th,.linescore td{padding:6px 4px;text-align:center;border-bottom:1px solid var(--line)}
+.linescore th{font-size:13px;color:var(--dust);letter-spacing:.1em;font-weight:600}
+.linescore td:first-child{text-align:left;font-weight:800;letter-spacing:.06em;padding-left:8px}
+.linescore .rhe{font-weight:800;background:rgba(255,255,255,.05)}
+.ls-wrap{overflow-x:auto}
+.final-sub{color:var(--dust);font-size:15px;line-height:1.5}
+.potg{display:flex;gap:14px;align-items:center;padding:12px;background:var(--panel-hi);border-radius:4px}
+.potg b{font-family:var(--f-display);font-size:22px;text-transform:uppercase}
+.potg span{color:var(--dust);font-size:14px}
+#loading{position:fixed;inset:0;z-index:20;display:grid;place-items:center;background:var(--night);font-family:var(--f-display);font-weight:700;letter-spacing:.3em;color:var(--dust)}
+
+/* ---------- player lock + online ---------- */
+#lockTag{position:absolute;left:50%;top:calc(14px + env(safe-area-inset-top,0px));transform:translateX(-50%);display:flex;align-items:center;gap:10px;padding:6px 14px;background:var(--panel);border:1px solid var(--line);border-radius:4px;font-family:var(--f-display);white-space:nowrap}
+#lockTag span{font-size:12px;font-weight:700;letter-spacing:.18em;color:var(--gold)}
+#lockTag b{font-size:18px;font-weight:800;text-transform:uppercase}
+#lockTag em{font-style:normal;font-size:14px;color:var(--dust)}
+#netPanel{display:flex;flex-direction:column;gap:12px;padding:14px;border:1px solid var(--line);border-radius:6px;background:var(--panel-hi)}
+#netPanel h3{margin:0;font-family:var(--f-display);font-weight:700;letter-spacing:.16em;font-size:14px;color:var(--gold)}
+.net-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.net-row input{flex:1;min-width:0;font:inherit;font-family:var(--f-display);font-weight:800;font-size:22px;letter-spacing:.3em;text-transform:uppercase;padding:8px 12px;border-radius:4px;border:1px solid var(--line);background:var(--night);color:var(--chalk)}
+.net-or{font-size:13px;color:var(--dust)}
+.net-status{font-size:14px;line-height:1.4;color:var(--dust);min-height:1.4em}
+.net-status.good{color:var(--ball)}.net-status.bad{color:var(--strike)}
+.net-code{font-family:var(--f-display);font-weight:800;font-size:40px;letter-spacing:.3em;color:var(--chalk);line-height:1}
+.net-link{font-size:12px;color:var(--dust);word-break:break-all}
+.team-pick.readonly .arrow{visibility:hidden}
+.cta:disabled{opacity:.45;cursor:not-allowed;filter:none}
+#runHelp{position:absolute;left:50%;bottom:calc(150px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);display:flex;gap:8px;pointer-events:auto}
+#runHelp button{padding:8px 12px;border-radius:6px;border:1px solid var(--line);background:var(--panel);font-family:var(--f-display);font-weight:700;font-size:15px;cursor:pointer}
+#runHelp button small{color:var(--dust);font-size:11px;margin-left:4px}
+
+@media (max-width:860px){
+  .menu-wrap{grid-template-columns:1fr}
+  .plate{width:200px}
+  .ratings b{font-size:16px}
+  #tracker{display:none}
+  #caption{max-width:calc(100vw - 32px);bottom:auto;top:calc(124px + env(safe-area-inset-top,0px))}
+  #meter{left:auto;right:24px}
+  #feedback{width:min(360px,calc(100vw - 32px));bottom:calc(210px + env(safe-area-inset-bottom,0px))}
+}
+@media (max-width:560px){
+  #bug{transform:scale(.82);transform-origin:left top}
+  .plate{width:calc(50vw - 24px)}
+  .plate-name{font-size:20px}
+  .pitch-row{font-size:12px;padding:4px 8px}
+  .badge{width:84px;height:84px;font-size:30px}
+  .opt{grid-template-columns:1fr}
+  .controls-grid{grid-template-columns:1fr}
+  #hint{display:none}
+}
+@media (prefers-reduced-motion:reduce){#call.show,#banner.show{animation-duration:.01s}}
+</style>
+
+<canvas id="c" tabindex="0" aria-label="Ballpark"></canvas>
+<div id="loading">LOADING BALLPARK</div>
+
+<div id="hud" class="hidden">
+  <div id="bug">
+    <div class="bug-teams">
+      <div class="bug-row" id="bugA"><span class="bug-abbr">AWY</span><span class="bug-runs">0</span></div>
+      <div class="bug-row" id="bugH"><span class="bug-abbr">HOM</span><span class="bug-runs">0</span></div>
+    </div>
+    <div class="bug-inn"><span id="bugArrow">&#9650;</span><span id="bugInn">1</span></div>
+    <div class="bug-diamond"><i id="bd2"></i><i id="bd3"></i><i id="bd1"></i></div>
+    <div class="bug-count"><span id="bugCount">0-0</span><span class="bug-outs"><i id="bo1"></i><i id="bo2"></i></span></div>
+    <div id="bugPitch"><b id="bugPC">0</b><span>P</span></div>
+  </div>
+  <div id="derbyHud" class="hidden">
+    <div><b id="dHR">0</b><span>HOME RUNS</span></div>
+    <div><b id="dOuts">10</b><span>OUTS LEFT</span></div>
+    <div><b id="dLong">&ndash;</b><span>LONGEST</span></div>
+  </div>
+  <div id="pitchInfo"><b id="piMph">0<small>MPH</small></b><span id="piType">Fastball</span></div>
+  <div id="topbar">
+    <button id="btnMute" title="Sound (M)" aria-label="Toggle sound"><svg viewBox="0 0 24 24"><path id="muteIcon" d="M3 9v6h4l5 5V4L7 9H3zm13.5 3A4.5 4.5 0 0014 8v8a4.5 4.5 0 002.5-4zM14 3.2v2.1a7 7 0 010 13.4v2.1A9 9 0 0014 3.2z"/></svg></button>
+    <button id="btnPause" title="Pause (Esc)" aria-label="Pause"><svg viewBox="0 0 24 24"><path d="M6 5h4v14H6zm8 0h4v14h-4z"/></svg></button>
+  </div>
+  <div id="hint"></div>
+  <div id="call"></div>
+  <div id="banner"><div class="b-main"></div><div class="b-sub"></div></div>
+  <div id="tracker"><div class="t-head">PITCH TRACK</div><canvas id="zoneMini" width="300" height="340"></canvas><div id="trackList"></div></div>
+  <div id="meter" class="hidden"><div class="m-track"><i class="m-fill" id="mFill"></i><i class="m-acc" id="mAcc"></i><i class="m-pow hidden" id="mPow"></i><i class="m-cur" id="mCur"></i></div><span class="m-label">METER</span></div>
+  <div id="feedback">
+    <div class="fb-top"><span><em>TIMING</em><span id="fbTiming">PERFECT</span></span><span><em>CONTACT</em><span id="fbContact">SOLID</span></span></div>
+    <div class="fb-bar"><i class="fb-mark" id="fbMark"></i></div>
+    <div class="fb-stats" id="fbStats"><div><b id="fbEV">&ndash;</b><span>EXIT VELO</span></div><div><b id="fbLA">&ndash;</b><span>LAUNCH</span></div><div><b id="fbDist">&ndash;</b><span>DISTANCE</span></div></div>
+  </div>
+  <div id="throwPrompt" class="hidden">
+    <div class="tp-title">THROW</div>
+    <button class="tp2" data-base="2">2B<small>&uarr; or 2</small></button>
+    <button class="tp3" data-base="3">3B<small>&larr; or 3</small></button>
+    <button class="tp1" data-base="1">1B<small>&rarr; or 1</small></button>
+    <button class="tpH" data-base="4">HOME<small>&darr; or 4</small></button>
+  </div>
+  <div id="batterCard" class="plate left">
+    <div class="plate-head"><span id="bHead">AT BAT</span><span id="bSide">R</span></div>
+    <div class="plate-name" id="bName">&nbsp;</div>
+    <div class="plate-line" id="bLine">&nbsp;</div>
+    <div class="ratings" id="bRat"></div>
+  </div>
+  <div id="pitcherCard" class="plate right">
+    <div class="plate-head"><span id="pHead">PITCHING</span><span id="pHand">RHP</span></div>
+    <div class="plate-name" id="pName">&nbsp;</div>
+    <div class="plate-line" id="pLine">&nbsp;</div>
+    <div class="stamina"><i id="pStam" style="width:100%"></i></div>
+    <div class="pitch-list" id="pitchList"></div>
+  </div>
+  <div id="caption"></div>
+  <div id="replayTag" class="hidden">REPLAY</div>
+  <div id="lockTag" class="hidden"><span>PLAYER LOCK</span><b id="lockName">&nbsp;</b><em id="lockLine"></em></div>
+  <div id="runHelp" class="hidden"><button data-run="go">Advance runners<small>E</small></button><button data-run="back">Go back<small>Q</small></button></div>
+</div>
+
+<div id="menu" class="screen hidden">
+  <div class="menu-wrap">
+    <div>
+      <div class="brand">
+        <div class="brand-kicker">BASEBALL '26</div>
+        <h1>FULL<span>COUNT</span></h1>
+        <p>Broadcast-style 3D baseball. Zone hitting, meter pitching, real ball-flight physics.</p>
+      </div>
+      <div class="modes" id="modes">
+        <button data-mode="exhibition" class="on">Play Ball <small>Exhibition game</small></button>
+        <button data-mode="lock">Player Lock <small>Play as one player</small></button>
+        <button data-mode="online">Online 1v1 <small>Play a friend on another device</small></button>
+        <button data-mode="derby">Home Run Derby <small>10 outs, swing away</small></button>
+        <button data-mode="spectate">CPU vs CPU <small>Sit back and watch</small></button>
+      </div>
+    </div>
+    <div class="setup">
+      <div id="netPanel" class="hidden">
+        <h3>ONLINE 1V1</h3>
+        <div class="net-row" id="netHostRow"><button class="cta" id="btnHost">HOST A GAME</button></div>
+        <div class="net-or" id="netOr">or join your friend's game with their room code</div>
+        <div class="net-row" id="netJoinRow"><input id="joinCode" maxlength="5" placeholder="CODE" autocomplete="off" spellcheck="false" aria-label="Room code"><button class="ghost" id="btnJoin">Join</button></div>
+        <div id="netShare" class="hidden"><div class="net-or">Send your friend this code</div><div class="net-code" id="netCode"></div><div class="net-row"><button class="ghost" id="btnCopyLink">Copy invite link</button><span class="net-link" id="netLink"></span></div></div>
+        <div class="net-status" id="netStatus" role="status"></div>
+      </div>
+      <div class="matchup" id="matchup">
+        <div class="team-pick" id="pickA"></div>
+        <div class="vs" id="vsLabel">VS</div>
+        <div class="team-pick" id="pickH"></div>
+      </div>
+      <div class="opts">
+        <div class="opt" id="optSide"><span>YOU PLAY AS</span><div class="seg" data-key="side"><button data-v="0">Away</button><button data-v="1" class="on">Home</button></div></div>
+        <div class="opt" id="optInn"><span>INNINGS</span><div class="seg" data-key="innings"><button data-v="3" class="on">3</button><button data-v="6">6</button><button data-v="9">9</button></div></div>
+        <div class="opt" id="optDiff"><span>DIFFICULTY</span><div class="seg" data-key="diff"><button data-v="0">Rookie</button><button data-v="1" class="on">Veteran</button><button data-v="2">All-Star</button><button data-v="3">Hall of Fame</button></div></div>
+        <div class="opt hidden" id="optLock"><span>YOUR PLAYER</span><select id="lockPick" aria-label="Player to control"></select></div>
+        <div class="opt hidden" id="optBatter"><span>BATTER</span><select id="derbyBatter" aria-label="Derby batter"></select></div>
+        <div class="opt" id="optThrow"><span>THROWS</span><div class="seg" data-key="manual"><button data-v="1" class="on">Manual</button><button data-v="0">Auto</button></div></div>
+      </div>
+      <div class="row-actions"><button class="cta" id="btnPlay">PLAY BALL</button><button class="ghost" id="btnHow">Controls</button></div>
+    </div>
+  </div>
+</div>
+
+<div id="pause" class="screen modal hidden">
+  <div class="card">
+    <h2>TIMEOUT</h2>
+    <div class="stack">
+      <button class="cta" id="btnResume">RESUME</button>
+      <button class="ghost" id="btnHow2">Controls</button>
+      <button class="ghost" id="btnVoice">Commentary voice: On</button>
+      <button class="ghost" id="btnZone">Strike zone: On</button>
+      <button class="ghost" id="btnPen">Go to the bullpen</button>
+      <button class="ghost" id="btnQuit">Quit to menu</button>
+    </div>
+  </div>
+</div>
+
+<div id="help" class="screen modal hidden">
+  <div class="card">
+    <h2>CONTROLS</h2>
+    <div class="controls-grid">
+      <div><h3>HITTING</h3><dl>
+        <dt>Mouse</dt><dd>Move the PCI over the pitch</dd>
+        <dt>Click / Space / K</dt><dd>Normal swing</dd>
+        <dt>Right-click / L</dt><dd>Power swing (smaller PCI)</dd>
+        <dt>J</dt><dd>Contact swing (bigger PCI)</dd>
+        <dt>B</dt><dd>Bunt</dd>
+      </dl></div>
+      <div><h3>PITCHING</h3><dl>
+        <dt>1&ndash;5</dt><dd>Choose pitch</dd>
+        <dt>Mouse</dt><dd>Aim the location</dd>
+        <dt>Click &times;3</dt><dd>Start meter, set power at the top, stop on the gold line</dd>
+      </dl></div>
+      <div><h3>FIELDING</h3><dl>
+        <dt>WASD / stick</dt><dd>Run your fielder (gold ring). The AI helps until you move.</dd>
+        <dt>Space / RB</dt><dd>Dive</dd>
+        <dt>Q / LB</dt><dd>Switch to the fielder nearest the ball</dd>
+        <dt>&rarr; &uarr; &larr; &darr;</dt><dd>Throw to 1B, 2B, 3B, home (or keys 1&ndash;4)</dd>
+        <dt>Carry the ball</dt><dd>Run onto a bag for a force, or into a runner to tag him</dd>
+      </dl></div>
+      <div><h3>BASERUNNING</h3><dl>
+        <dt>E / RB</dt><dd>Send every runner to the next base</dd>
+        <dt>Q / LB</dt><dd>Send runners back (or stop at the next bag)</dd>
+      </dl></div>
+      <div><h3>GENERAL</h3><dl>
+        <dt>Esc</dt><dd>Pause</dd>
+        <dt>R</dt><dd>Instant replay after a play</dd>
+        <dt>Enter</dt><dd>Skip ahead</dd>
+        <dt>F</dt><dd>Fast-forward (CPU vs CPU)</dd>
+        <dt>Gamepad</dt><dd>Stick aims, A swing, X power, B contact</dd>
+      </dl></div>
+    </div>
+    <button class="cta" id="btnHelpClose">GOT IT</button>
+  </div>
+</div>
+
+<div id="breakCard" class="screen modal hidden">
+  <div class="card">
+    <h2 id="breakTitle">END OF THE 1ST</h2>
+    <div class="ls-wrap"><table class="linescore" id="breakLS"></table></div>
+    <div class="final-sub" id="breakSub"></div>
+  </div>
+</div>
+
+<div id="final" class="screen modal hidden">
+  <div class="card">
+    <h2 id="finalTitle">FINAL</h2>
+    <div class="ls-wrap"><table class="linescore" id="finalLS"></table></div>
+    <div class="potg" id="potg"></div>
+    <div class="final-sub" id="finalSub"></div>
+    <div class="row-actions"><button class="cta" id="btnAgain">PLAY AGAIN</button><button class="ghost" id="btnMenu">Main menu</button></div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"}}</script>
