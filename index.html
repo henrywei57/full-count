@@ -243,6 +243,16 @@ button:focus-visible,select:focus-visible{outline:2px solid var(--gold);outline-
 #runHelp button{padding:8px 12px;border-radius:6px;border:1px solid var(--line);background:var(--panel);font-family:var(--f-display);font-weight:700;font-size:15px;cursor:pointer}
 #runHelp button small{color:var(--dust);font-size:11px;margin-left:4px}
 
+/* ---------- runner map + ABS ---------- */
+#miniMap{position:absolute;left:16px;top:50%;transform:translateY(-50%);width:150px;height:150px;background:var(--panel);border:1px solid var(--line);border-radius:6px}
+#absCard{position:absolute;left:50%;top:46%;transform:translate(-50%,-50%);width:250px;background:var(--panel);border:1px solid var(--line);border-radius:6px;overflow:hidden;text-align:center;box-shadow:0 12px 40px rgba(0,0,0,.5)}
+#absCard .abs-head{font-family:var(--f-display);font-weight:800;letter-spacing:.16em;font-size:15px;padding:8px 10px;background:var(--panel-hi);color:var(--gold)}
+#absCard .abs-sub{font-size:12px;letter-spacing:.12em;color:var(--dust);padding-top:8px}
+#absCanvas{display:block;width:200px;height:220px;margin:4px auto 0}
+.abs-res{font-family:var(--f-display);font-weight:800;font-size:22px;padding:6px 0 12px;letter-spacing:.08em}
+.abs-res.over{color:var(--ball)}.abs-res.stand{color:var(--strike)}
+.bug-abs{font-size:8px;letter-spacing:3px;color:var(--gold);margin:0 6px 0 auto;line-height:1}
+
 @media (max-width:860px){
   .menu-wrap{grid-template-columns:1fr}
   .plate{width:200px}
@@ -254,6 +264,7 @@ button:focus-visible,select:focus-visible{outline:2px solid var(--gold);outline-
 }
 @media (max-width:560px){
   #bug{transform:scale(.82);transform-origin:left top}
+  #miniMap{width:108px;height:108px;top:auto;bottom:calc(178px + env(safe-area-inset-bottom,0px));transform:none}
   .plate{width:calc(50vw - 24px)}
   .plate-name{font-size:20px}
   .pitch-row{font-size:12px;padding:4px 8px}
@@ -271,8 +282,8 @@ button:focus-visible,select:focus-visible{outline:2px solid var(--gold);outline-
 <div id="hud" class="hidden">
   <div id="bug">
     <div class="bug-teams">
-      <div class="bug-row" id="bugA"><span class="bug-abbr">AWY</span><span class="bug-runs">0</span></div>
-      <div class="bug-row" id="bugH"><span class="bug-abbr">HOM</span><span class="bug-runs">0</span></div>
+      <div class="bug-row" id="bugA"><span class="bug-abbr">AWY</span><span class="bug-abs" id="absA" title="ABS challenges left"></span><span class="bug-runs">0</span></div>
+      <div class="bug-row" id="bugH"><span class="bug-abbr">HOM</span><span class="bug-abs" id="absH" title="ABS challenges left"></span><span class="bug-runs">0</span></div>
     </div>
     <div class="bug-inn"><span id="bugArrow">&#9650;</span><span id="bugInn">1</span></div>
     <div class="bug-diamond"><i id="bd2"></i><i id="bd3"></i><i id="bd1"></i></div>
@@ -321,6 +332,8 @@ button:focus-visible,select:focus-visible{outline:2px solid var(--gold);outline-
   </div>
   <div id="caption"></div>
   <div id="replayTag" class="hidden">REPLAY</div>
+  <canvas id="miniMap" class="hidden" width="300" height="300" aria-label="Runner map"></canvas>
+  <div id="absCard" class="hidden"><div class="abs-head">ABS CHALLENGE</div><div class="abs-sub" id="absTeam"></div><canvas id="absCanvas" width="400" height="440"></canvas><div class="abs-res" id="absRes"></div></div>
   <div id="lockTag" class="hidden"><span>PLAYER LOCK</span><b id="lockName">&nbsp;</b><em id="lockLine"></em></div>
   <div id="runHelp" class="hidden"><button data-run="go">Advance runners<small>E</small></button><button data-run="back">Go back<small>Q</small></button></div>
 </div>
@@ -361,6 +374,8 @@ button:focus-visible,select:focus-visible{outline:2px solid var(--gold);outline-
         <div class="opt" id="optDiff"><span>DIFFICULTY</span><div class="seg" data-key="diff"><button data-v="0">Rookie</button><button data-v="1" class="on">Veteran</button><button data-v="2">All-Star</button><button data-v="3">Hall of Fame</button></div></div>
         <div class="opt hidden" id="optLock"><span>YOUR PLAYER</span><select id="lockPick" aria-label="Player to control"></select></div>
         <div class="opt hidden" id="optBatter"><span>BATTER</span><select id="derbyBatter" aria-label="Derby batter"></select></div>
+        <div class="opt" id="optUmp"><span>UMPIRE</span><div class="seg" data-key="ump"><button data-v="0">Human ump (92%)</button><button data-v="1" class="on">ABS challenge</button><button data-v="2">Robot ABS</button></div></div>
+        <div class="opt hidden" id="optView"><span>CAMERA</span><div class="seg" data-key="fpv"><button data-v="1" class="on">First person</button><button data-v="0">Broadcast</button></div></div>
         <div class="opt" id="optThrow"><span>THROWS</span><div class="seg" data-key="manual"><button data-v="1" class="on">Manual</button><button data-v="0">Auto</button></div></div>
       </div>
       <div class="row-actions"><button class="cta" id="btnPlay">PLAY BALL</button><button class="ghost" id="btnHow">Controls</button></div>
@@ -411,6 +426,7 @@ button:focus-visible,select:focus-visible{outline:2px solid var(--gold);outline-
       </dl></div>
       <div><h3>GENERAL</h3><dl>
         <dt>Esc</dt><dd>Pause</dd>
+        <dt>C</dt><dd>ABS challenge a ball/strike call (2 per team, kept if you win)</dd>
         <dt>R</dt><dd>Instant replay after a play</dd>
         <dt>Enter</dt><dd>Skip ahead</dd>
         <dt>F</dt><dd>Fast-forward (CPU vs CPU)</dd>
@@ -1261,7 +1277,7 @@ pitchMark.renderOrder = 24; pitchMark.visible = false; overlay.add(pitchMark);
 const pitchGuide = new THREE.Mesh(new THREE.RingGeometry(0.1, 0.17, 28), new THREE.MeshBasicMaterial({ color: 0xffa94d, transparent: true, opacity: 0.85, depthTest: false }));
 pitchGuide.renderOrder = 24; pitchGuide.visible = false; overlay.add(pitchGuide);
 // fielding helpers: ring under the fielder you control, target where a fly ball lands
-const ctrlRing = new THREE.Mesh(new THREE.RingGeometry(2.0, 2.7, 36), new THREE.MeshBasicMaterial({ color: 0xffc94a, transparent: true, opacity: 0.9, depthWrite: false }));
+const ctrlRing = new THREE.Mesh(new THREE.RingGeometry(7.0, 7.5, 48), new THREE.MeshBasicMaterial({ color: 0xffc94a, transparent: true, opacity: 0.75, depthWrite: false }));
 ctrlRing.rotation.x = -Math.PI / 2; ctrlRing.renderOrder = 3; ctrlRing.visible = false; scene.add(ctrlRing);
 const landMark = new THREE.Mesh(new THREE.RingGeometry(1.4, 2.0, 32), new THREE.MeshBasicMaterial({ color: 0x5aa8ff, transparent: true, opacity: 0.85, depthWrite: false }));
 landMark.rotation.x = -Math.PI / 2; landMark.renderOrder = 3; landMark.visible = false; scene.add(landMark);
@@ -1784,6 +1800,8 @@ function runTime(d, vmax, a, v0 = 0) {
 // effective throw speed: long throws lose speed to arc and the cutoff
 function throwSpeed(f, d) { return f.arm * (d > 150 ? 0.8 : d > 95 ? 0.92 : 0.96); }
 const heading = (r) => (r.rev ? r.base : r.next);
+// the fielder you control fields anything that comes within this many feet
+const HUMAN_REACH = 7.5;
 
 class Fielder {
   constructor(pl, role, model) {
@@ -1892,7 +1910,8 @@ class Play {
     let best = null;
     for (const f of this.F) {
       f.plan = null;
-      if (f.excluded || (f.downUntil && f.downUntil > fromT + 0.4)) continue;
+      // a fielder the human is steering isn't counted on; the AI plays the ball behind him
+      if (f.excluded || (f.downUntil && f.downUntil > fromT + 0.4) || (f === this.uf && this.ufManual)) continue;
       const react = fromT === 0 ? f.react : 0.08;
       const start = f.downUntil > fromT ? f.downUntil : fromT;
       let plan = null, divePlan = null;
@@ -1956,8 +1975,10 @@ class Play {
   setInput(x, z) {
     this.inp.x = x; this.inp.z = z;
     if (!this.hf || !this.uf) return;
+    const was = this.ufManual;
     if (Math.hypot(x, z) > 0.2) { this.ufManual = true; this.lastInput = this.t; }
     else if (this.ufManual && this.t - this.lastInput > 0.9 && this.ball.holder !== this.uf) this.ufManual = false;
+    if (was !== this.ufManual && this.ball.mode === 'flight' && !this.hr && !this.dead) this.replan();
   }
   userSwitch() {
     if (!this.hf || this.hf.lock || this.done) return;
@@ -2060,10 +2081,9 @@ class Play {
       if (t < f.animHold) { f.sync(); continue; }
       if (f === this.uf && this.ufManual && !this.hr && !this.dead) {
         this.manualMove(f, dt); this.tryHumanCatch(f); f.sync();
-        // the ball got past you: hand the play to the next fielder
-        if (b.mode === 'flight' && f.plan && t > f.plan.t + 0.5 && !this.hf.lock) {
-          f.excluded = true; this.replan(); f.excluded = false;
-          if (this.chaser && this.chaser !== f) { this.uf = this.chaser; this.ufManual = false; }
+        // the ball got past you: hand control to the fielder now playing it
+        if (b.mode === 'flight' && !this.hf.lock && this.chaser && this.chaser !== f && this.chaser.plan && Math.hypot(this.chaser.pos.x - b.pos.x, this.chaser.pos.z - b.pos.z) < Math.hypot(f.pos.x - b.pos.x, f.pos.z - b.pos.z) - 15) {
+          this.uf = this.chaser; this.ufManual = false; this.replan();
         }
         continue;
       }
@@ -2134,8 +2154,8 @@ class Play {
     if (this.ball.mode !== 'flight' || this.dead) return;
     const s = this.sample(); if (s.dead || s.hr) return;
     const dist = Math.hypot(s.x - f.pos.x, s.z - f.pos.z);
-    const air = !s.b, okH = air ? s.y <= 9.5 && s.t > 0.12 : s.y <= 3.2;
-    if (!okH || dist > (air ? 4.4 : 3.9)) return;
+    const air = !s.b, okH = air ? s.y <= 11 && s.t > 0.12 : s.y <= 4.5;
+    if (!okH || dist > HUMAN_REACH) return;
     const errP = Math.max(0.003, (air ? 0.006 : 0.013) + (78 - f.fld) * (air ? 0.0003 : 0.0005));
     if (Math.random() < errP) { this.error = true; this.events.push('error'); this.secure(f, false, 1.25, false); return; }
     if (air && f.isOF && Math.hypot(s.x, s.z) > fenceDist(clamp(sprayOf(s.x, s.z), -45, 45)) - 6) this.wallCatch = true;
@@ -2147,9 +2167,9 @@ class Play {
     if (k < 0.4) { const nx = f.pos.x + dv.dx * 14 * dt, nz = f.pos.z + dv.dz * 14 * dt; if (inPoly(nx, nz)) { f.pos.x = nx; f.pos.z = nz; } }
     if (dv.tried || this.ball.mode !== 'flight' || k > 0.55) return;
     const s = this.sample(); if (s.dead || s.hr) return;
-    const air = !s.b, okH = air ? s.y <= 8.5 : s.y <= 2.8;
+    const air = !s.b, okH = air ? s.y <= 11 : s.y <= 4.5;
     const dist = Math.hypot(s.x - f.pos.x, s.z - f.pos.z);
-    if (!okH || dist > (air ? 7.5 : 5.8)) return;
+    if (!okH || dist > HUMAN_REACH + 3.5) return;
     dv.tried = true; this.dove = true;
     const p = (air ? 0.6 : 0.7) + (f.fld - 60) / 200;
     if (Math.random() < p) this.secure(f, air, 0, true);
@@ -2505,6 +2525,7 @@ const G = {
   pci: { x: 0, y: 2.5 }, glove: new V3(0, 2.4, 1.7), rec: [], recOn: false, replay: null, derby: null,
   abEnd: null, contactT: 0, menuAng: 0,
   ctrl: ['cpu', 'cpu'], lock: null, remoteIn: { x: 0, z: 0 }, remoteTake: false, camFocus: null, localPitch: false,
+  ump: 1, challenges: [2, 2], challengeable: null, challenge: null, cpuChallengeAt: 0, fpv: false, lockSide: 1,
 };
 const battingTeam = () => G.teams[G.half];
 const fieldingTeam = () => G.teams[1 - G.half];
@@ -2645,6 +2666,8 @@ function startGame(cfg) {
     G.lock = pick[0] === 'p' ? team.pitchers[0].id : team.lineup[+pick.slice(1)].id;
   }
   settings.manual = cfg.manual == null ? true : !!cfg.manual;
+  G.ump = cfg.ump ?? 1; G.challenges = [2, 2]; G.challengeable = null; G.challenge = null; G.cpuChallengeAt = 0;
+  G.fpv = cfg.mode === 'lock' && cfg.fpv !== 0; G.lockSide = cfg.side ?? 1;
   Object.assign(G, { inning: 1, half: 0, outs: 0, balls: 0, strikes: 0, score: [0, 0], line: [[], []], hits: [0, 0], errs: [0, 0], bases: [null, null, null, null], order: [0, 0], pen: [0, 0], ff: 1, paused: false, replay: null, play: null, abEnd: null });
   G.stats = new Map(); G.pstats = new Map();
   G.pitcher = [G.teams[0].pitchers[0], G.teams[1].pitchers[0]];
@@ -2737,7 +2760,7 @@ function newBatter() {
 // ------------------------------------------------------------- pitching ----
 function enterPrePitch() {
   setPhase('prePitch');
-  G.P = null; G.swing = null; G.cpu = null; G.play = null; G.bb = null; G.call = null; G.remoteTake = false;
+  G.P = null; G.swing = null; G.cpu = null; G.play = null; G.bb = null; G.call = null; G.remoteTake = false; G.challengeable = null;
   placeForPitch();
   ballMesh.visible = false; ballShadow.visible = false; trailReset(); pitchGuide.visible = false;
   hideFeedback();
@@ -2758,7 +2781,7 @@ function prePitchUI() {
   pci.visible = ub; reticle.visible = up; pitchGuide.visible = false;
   pitchMark.visible = pitchMark.visible && ub;
   $('meter').classList.toggle('hidden', !up);
-  $('throwPrompt').classList.add('hidden');
+  $('throwPrompt').classList.add('hidden'); $('runHelp').classList.add('hidden');
   ctrlRing.visible = false; landMark.visible = false;
   if (up) {
     const U = G.pitchUI, n = curPitcher().pitches.length;
@@ -2768,6 +2791,7 @@ function prePitchUI() {
     setHint('<kbd>1</kbd>–<kbd>' + n + '</kbd> pitch &middot; aim with the mouse &middot; <kbd>Click</kbd> to start the meter');
   } else if (ub) setHint('Aim the PCI &middot; <kbd>Click</kbd> swing &middot; <kbd>Right-click</kbd> power &middot; <kbd>J</kbd> contact &middot; <kbd>B</kbd> bunt');
   else if (G.mode === 'online') setHint('Waiting for your opponent&hellip;');
+  else if (G.mode === 'lock' && G.half === 1 - G.lockSide && G.fielders.some((f) => f.pl.id === G.lock)) setHint('You are in the field &middot; get within the gold ring of the ball to field it');
   else setHint(G.mode === 'lock' ? 'Simulating until you are up&hellip;' : '');
   if (up) pitchCam(G.prevCam !== 'pitch'); else if (ub) batCam(G.prevCam !== 'bat'); else cfCam(G.prevCam !== 'cf');
   hudPitcher();
@@ -3048,12 +3072,87 @@ function catchPitch() {
   let call;
   if (swung) call = sw && sw.type === 'bunt' ? 'buntMiss' : 'swinging';
   else if (G.hbp) call = 'hbp';
-  else call = G.isStrike ? 'called' : 'ball';
+  else call = umpCallsStrike() ? 'called' : 'ball';
+  G.preCall = { balls: G.balls, strikes: G.strikes };
   if (sw && sw.calc && sw.calc.miss) fbShow(sw.calc);
   if (G.mode === 'derby') { derbyPitchDone(swung ? 'whiff' : 'take'); return; }
   recordPitch(call === 'ball' ? 'Ball' : call === 'hbp' ? 'HBP' : call === 'called' ? 'Called K' : 'Swinging K');
   G.recOn = false;
   applyCall(call);
+  setupChallenge(call);
+}
+
+// ---------------------------------------------------------- umpire & ABS ----
+const UMP_S = 0.1;
+// distance from the pitch to the edge of the zone in feet: positive inside, negative outside
+function zoneEdgeDist(x, y) {
+  const hw = ZONE.halfW + BALL_R, top = ZONE.top + BALL_R, bot = ZONE.bot - BALL_R;
+  const dx = hw - Math.abs(x), dyt = top - y, dyb = y - bot;
+  if (dx >= 0 && dyt >= 0 && dyb >= 0) return Math.min(dx, dyt, dyb);
+  return -Math.hypot(Math.max(0, -dx), Math.max(0, -dyt, -dyb));
+}
+// a human umpire misses some borderline pitches (about 92% right overall); the robot never does
+function umpCallsStrike() {
+  const truth = G.isStrike;
+  const pMiss = G.ump === 2 ? 0 : 0.5 * Math.exp(-Math.abs(zoneEdgeDist(G.cross.x, G.cross.y)) / UMP_S);
+  const strike = Math.random() < pMiss ? !truth : truth;
+  if (G.umpLog) { G.umpLog.n++; if (strike === truth) G.umpLog.ok++; }
+  return strike;
+}
+// ABS challenge system: the side hurt by a called ball/strike gets a short window to challenge
+function setupChallenge(call) {
+  G.challengeable = null; G.cpuChallengeAt = 0;
+  if (G.ump !== 1 || (call !== 'called' && call !== 'ball') || G.mode === 'derby') return;
+  const side = call === 'called' ? G.half : 1 - G.half;
+  if (G.challenges[side] <= 0) return;
+  G.challengeable = { side, call, truth: G.isStrike ? 'called' : 'ball', x: G.cross.x, y: G.cross.y, pre: { ...G.preCall } };
+  let c = sideCtrl(side);
+  // like MLB, only the batter, pitcher or catcher may challenge; in Player Lock that has to be you
+  if (G.lock && side === G.lockSide) {
+    const catcher = G.fByRole.C && G.fByRole.C.pl;
+    const mine = call === 'called' ? G.batter.id === G.lock : curPitcher().id === G.lock || (catcher && catcher.id === G.lock);
+    if (!mine) c = 'cpu';
+  }
+  G.challengeable.who = c;
+  if (c === 'cpu') {
+    const wrong = (call === 'called') !== G.isStrike;
+    const big = call === 'called' ? G.preCall.strikes === 2 : G.preCall.balls === 3;
+    if (Math.random() < (wrong ? (big ? 0.8 : 0.3) : 0.015)) G.cpuChallengeAt = G.now + 0.7; else G.challengeable = null;
+  } else {
+    G.dur = Math.max(G.dur, 2.8);
+    if (c === 'local') setHint(`<kbd>C</kbd> challenge the call &middot; ${G.challenges[side]} left`);
+  }
+  hudScore();
+}
+function startChallenge(side) {
+  const c = G.challengeable;
+  if (!c || c.side !== side || G.phase !== 'postPitch') return;
+  G.challengeable = null; G.cpuChallengeAt = 0;
+  G.challenge = c;
+  const team = G.teams[side];
+  absShow(team.id, c.x, c.y, c.call === 'called' ? 'STRIKE' : 'BALL');
+  Caster.line(`The ${team.name} challenge the call. Let's go to the ABS.`);
+  setHint('');
+  setPhase('absReview', 1.9);
+  hudScore();
+}
+function revealChallenge() {
+  const ch = G.challenge; G.challenge = null;
+  const overturn = ch.call !== ch.truth, word = ch.truth === 'called' ? 'STRIKE' : 'BALL';
+  absReveal(overturn, word);
+  if (overturn) {
+    G.balls = ch.pre.balls; G.strikes = ch.pre.strikes; G.abEnd = null;
+    const last = G.abPitches[G.abPitches.length - 1];
+    if (last) last.res = ch.truth === 'called' ? 'Called K' : 'Ball';
+    Caster.line(`The call is overturned. That's a ${word.toLowerCase()}.`);
+    applyCall(ch.truth, true);
+    drawTracker();
+  } else {
+    G.challenges[ch.side]--;
+    Caster.line(`The call stands. The ${G.teams[ch.side].name} lose a challenge.`);
+    setPhase('postPitch', 1.4);
+  }
+  hudScore(); hudCount();
 }
 function recordPitch(res) {
   const P = G.P;
@@ -3064,7 +3163,7 @@ function recordPitch(res) {
   drawTracker(); hudPitchInfo(); drawBoards();
   hudPitcher();
 }
-function applyCall(call) {
+function applyCall(call, quiet) {
   const p = curPitcher(), ps = pstat(p), bs = bstat(G.batter), hu = G.umps[0];
   let dur = 1.0;
   if (call === 'ball') {
@@ -3076,20 +3175,21 @@ function applyCall(call) {
     Caster.line(`${lastName(G.batter.name)} is hit by the pitch and takes first.`);
   } else {
     G.strikes++;
-    if (call === 'called') setAnim(hu, 'ump', { callT: 0.12, call: 'strike' });
+    if (call === 'called' && !quiet) setAnim(hu, 'ump', { callT: 0.12, call: 'strike' });
     if (G.strikes >= 3) {
       G.abEnd = call === 'called' ? 'kLook' : 'kSwing';
       hudCall(call === 'called' ? 'STRIKE THREE' : 'STRIKEOUT', 'strike'); dur = 1.9;
-      if (call === 'called') SND.say('Strike three!', { pitch: 0.6, rate: 0.95 });
+      if (call === 'called' && !quiet) SND.say('Strike three!', { pitch: 0.6, rate: 0.95 });
     } else {
       hudCall(call === 'called' ? 'STRIKE' : 'SWINGING STRIKE', 'strike');
-      if (call === 'called') SND.say('Strike!', { pitch: 0.6, rate: 0.95 });
+      if (call === 'called' && !quiet) SND.say('Strike!', { pitch: 0.6, rate: 0.95 });
     }
   }
   hudCount(); drawBoards();
   setPhase('postPitch', G.mode === 'spectate' ? dur * 0.7 : dur);
 }
 function endPostPitch() {
+  G.challengeable = null; G.cpuChallengeAt = 0;
   const k = G.abEnd;
   if (!k) { enterPrePitch(); return; }
   const p = curPitcher(), ps = pstat(p), bs = bstat(G.batter), bi = G.half;
@@ -3427,10 +3527,10 @@ function netClose() {
   try { if (peer) peer.destroy(); } catch (e) { /* ignore */ }
 }
 function netSend(m) { if (NET.open && NET.conn) try { NET.conn.send(m); } catch (e) { /* channel closing */ } }
-function netSendLobby() { if (NET.role === 'host' && NET.open) netSend({ t: 'lobby', away: menu.away, home: menu.home, side: menu.side, innings: menu.innings, diff: menu.diff }); }
+function netSendLobby() { if (NET.role === 'host' && NET.open) netSend({ t: 'lobby', away: menu.away, home: menu.home, side: menu.side, innings: menu.innings, diff: menu.diff, ump: menu.ump }); }
 function hostStartOnline() {
   if (!(NET.role === 'host' && NET.open)) return;
-  const cfg = { mode: 'online', away: menu.away, home: menu.home, side: menu.side, innings: menu.innings, diff: menu.diff, manual: 1 };
+  const cfg = { mode: 'online', away: menu.away, home: menu.home, side: menu.side, innings: menu.innings, diff: menu.diff, manual: 1, ump: menu.ump };
   netSend({ t: 'start', cfg });
   startGame(cfg);
 }
@@ -3458,6 +3558,7 @@ function hostOnMsg(m) {
     case 'pause': togglePause(!!m.v, true); break;
     case 'pen': { const s = 1 - localSide(); if (s === 1 - G.half && G.phase === 'prePitch' && bringReliever(s)) enterPrePitch(); break; }
     case 'again': if (G.phase === 'final') hostRestart(); break;
+    case 'challenge': if (G.challengeable && G.challengeable.who === 'remote') startChallenge(G.challengeable.side); break;
   }
 }
 function hostRestart() { netSend({ t: 'start', cfg: G.cfg }); showScreen(null); startGame(G.cfg); }
@@ -3484,6 +3585,8 @@ function netInstallHooks() {
   { const o = fireworks; fireworks = (...a) => { o(...a); netEv('fw', a); }; }
   { const o = excite; excite = (...a) => { o(...a); netEv('excite', a); }; }
   { const o = updateFeedbackStats; updateFeedbackStats = (d) => { o(d); netEv('fbstats', [d]); }; }
+  { const o = absShow; absShow = (...a) => { o(...a); netEv('absShow', a); }; }
+  { const o = absReveal; absReveal = (...a) => { o(...a); netEv('absReveal', a); }; }
   { const o = hudPitchInfo; hudPitchInfo = (info) => { const i = info || (G.P && { mph: G.P.mph, type: G.P.type }); o(i); netEv('pinfo', [i]); }; }
   { const o = Caster.line.bind(Caster); Caster.line = (...a) => { o(...a); netEv('cast', a); }; }
   for (const k of ['crack', 'pop', 'thud', 'roar', 'charge', 'stretch', 'fanfare', 'say']) { const o = SND[k].bind(SND); SND[k] = (...a) => { o(...a); netEv('snd', [k, ...a]); }; }
@@ -3506,6 +3609,7 @@ function netGS() {
     bases: G.bases.map((p) => (p ? p.id : null)), batter: G.batter ? G.batter.id : null, batSide: G.batSide,
     pitcher: G.pitcher.map((p) => (p ? p.id : null)), stats: [...G.stats], pstats: [...G.pstats],
     abPitches: G.abPitches, lastP: G.lastP || null,
+    chal: G.challenges, ump: G.ump, chk: G.challengeable && G.challengeable.who === 'remote' ? G.challengeable.side : -1,
   };
 }
 function netSnapshot() {
@@ -3567,6 +3671,11 @@ function netApplyGS(s) {
   G.batter = s.batter ? PBYID[s.batter] : null;
   if (G.batter) G.batterModel = getModel(G.batter);
   G.stats = new Map(s.stats); G.pstats = new Map(s.pstats);
+  G.challenges = s.chal || [0, 0]; G.ump = s.ump ?? G.ump;
+  const canChallenge = s.chk >= 0 && s.chk === localSide();
+  if (canChallenge && G.chkSide !== s.chk) setHint(`<kbd>C</kbd> challenge the call &middot; ${G.challenges[s.chk]} left`);
+  else if (!canChallenge && G.chkSide >= 0 && G.chkSide === localSide()) setHint('');
+  G.chkSide = s.chk;
   hudScore(); hudCount(); if (G.batter) hudBatter(); hudPitcher(); drawTracker(); drawBoards();
   const n = G.abPitches.length, last = G.abPitches[n - 1];
   if (n !== NET.lastAbLen) {
@@ -3656,6 +3765,8 @@ function guestEv(f, a) {
     case 'showFeedback': showFeedback(...a); break;
     case 'fbstats': updateFeedbackStats(...a); break;
     case 'pinfo': hudPitchInfo(...a); break;
+    case 'absShow': absShow(...a); break;
+    case 'absReveal': absReveal(...a); break;
   }
 }
 function guestScreen(m) {
@@ -3725,6 +3836,66 @@ function playCam() {
   camTo(_c1, _c2, 48, 2.6, cut);
 }
 
+// ----------------------------------------------------------- first person ----
+// Player Lock can be played through the locked player's eyes. Hitting keeps the
+// strike-zone view (you can't see the plate from the batter's eyes).
+const _eye = new V3(), _look = new V3(), _fwd = new V3();
+let fpvHidden = null, fpvOn = false;
+function fpvActive() { return G.mode === 'lock' && G.fpv && !G.replay && ['prePitch', 'windup', 'pitch', 'postPitch', 'postFoul', 'live', 'postPlay', 'absReview'].includes(G.phase); }
+function lockRole() {
+  if (G.half === 1 - G.lockSide) {
+    const f = G.fielders.find((x) => x.pl.id === G.lock);
+    return f ? { role: 'field', m: f.m, f } : { role: 'dugout' };
+  }
+  const pl = G.play;
+  if (pl && (G.phase === 'live' || G.phase === 'postPlay')) {
+    const r = pl.R.find((x) => x.pl.id === G.lock && (x.state === 'run' || x.state === 'base'));
+    if (r) return { role: 'run', m: r.m, r };
+    if (G.batter && G.batter.id === G.lock && G.phase === 'live') return { role: 'dugout' };
+  }
+  if (G.batter && G.batter.id === G.lock && G.phase !== 'live' && G.phase !== 'postPlay') return { role: 'bat' };
+  const r = (G.baseRunners || []).find((x) => x.pl.id === G.lock);
+  return r ? { role: 'run', m: r.m, r } : { role: 'dugout' };
+}
+function setModelLayer(m, layer) { m.root.traverse((o) => { if (o.isMesh) o.layers.set(layer); }); }
+function fpvHide(m) {
+  if (fpvHidden === m) return;
+  if (fpvHidden) setModelLayer(fpvHidden, 0);
+  fpvHidden = m || null;
+  if (m) setModelLayer(m, 1);
+}
+function fpvCam() {
+  if (!fpvActive()) { fpvHide(null); fpvOn = false; return false; }
+  const L = lockRole();
+  if (L.role === 'bat') { fpvHide(null); fpvOn = false; return false; }
+  let fov = 64;
+  if (L.role === 'dugout') {
+    fpvHide(null);
+    const sgn = G.lockSide === 1 ? 1 : -1;
+    _eye.set(sgn * 106, 2.6, -41); _look.set(0, 3, -48); fov = 55;
+  } else {
+    const m = L.m;
+    fpvHide(m);
+    m.root.updateMatrixWorld(true);
+    m.j.neck.getWorldPosition(_eye); _eye.y += 0.5;
+    const yaw = m.root.rotation.y; _eye.x += Math.sin(yaw) * 0.35; _eye.z += Math.cos(yaw) * 0.35;
+    const pl = G.play, b = ballMesh.position;
+    if ((G.phase === 'live' || G.phase === 'postPlay') && pl) {
+      if (pl.ball.holder && pl.ball.holder.m === m) _look.set(0, 3, -64);
+      else _look.copy(b);
+      if (_look.distanceTo(_eye) < 2.5) _look.set(_eye.x + Math.sin(yaw) * 10, _eye.y - 2, _eye.z + Math.cos(yaw) * 10);
+      fov = 68;
+    } else if (L.role === 'field' && L.f.role === 'P') { _look.set(0, 2.6, 0); fov = userPitches() ? 21 : 45; }
+    else if (L.role === 'field' && L.f.role === 'C') { _look.set(0, 5.5, -58); fov = 48; }
+    else if (L.role === 'field') { _look.set(0, 3.2, 0); fov = 44; if (G.phase === 'pitch') _look.lerp(b, 0.25); }
+    else _look.set(0, 3, 0);
+  }
+  if (!fpvOn) { camRig.look.copy(_look); camRig.fov = fov; }
+  camRig.pos.copy(_eye); camRig.tp.copy(_eye); camRig.tl.copy(_look); camRig.tf = fov; camRig.rate = 9;
+  fpvOn = true;
+  return true;
+}
+
 // -------------------------------------------------------------------- HUD ----
 let fbTimer = 0;
 function setHint(html) { const el = $('hint'); el.innerHTML = html; el.style.opacity = html ? 1 : 0; }
@@ -3746,6 +3917,8 @@ function hudTeams() {
 function hudScore() {
   $('bugA').querySelector('.bug-runs').textContent = G.score[0];
   $('bugH').querySelector('.bug-runs').textContent = G.score[1];
+  $('absA').textContent = G.ump === 1 ? '●'.repeat(G.challenges[0]) : '';
+  $('absH').textContent = G.ump === 1 ? '●'.repeat(G.challenges[1]) : '';
   $('bugA').classList.toggle('bat', G.half === 0); $('bugH').classList.toggle('bat', G.half === 1);
 }
 function hudCount() {
@@ -3946,6 +4119,74 @@ function showScreen(id) {
   }
 }
 
+// ------------------------------------------------------------ ABS review ----
+let absTimer = 0, absPitch = null;
+function drawABS(x, y, truth) {
+  const g = $('absCanvas').getContext('2d'), W = 400, H = 440;
+  g.clearRect(0, 0, W, H);
+  const k = 120, X = (v) => W / 2 + v * k, Y = (v) => H - 40 - (v - ZONE.bot + 0.55) * k;
+  g.fillStyle = 'rgba(255,255,255,0.05)'; g.fillRect(X(-ZONE.halfW), Y(ZONE.top), 2 * ZONE.halfW * k, (ZONE.top - ZONE.bot) * k);
+  g.strokeStyle = 'rgba(255,255,255,0.9)'; g.lineWidth = 4;
+  g.strokeRect(X(-ZONE.halfW), Y(ZONE.top), 2 * ZONE.halfW * k, (ZONE.top - ZONE.bot) * k);
+  g.fillStyle = 'rgba(255,255,255,0.7)';
+  g.beginPath(); g.moveTo(X(-0.71), H - 22); g.lineTo(X(0.71), H - 22); g.lineTo(X(0.71), H - 12); g.lineTo(X(0), H - 2); g.lineTo(X(-0.71), H - 12); g.closePath(); g.fill();
+  const bx = clamp(X(x), 20, W - 20), by = clamp(Y(y), 20, H - 30);
+  g.fillStyle = truth == null ? '#ffffff' : truth === 'STRIKE' ? '#ff5a5f' : '#3fd38a';
+  g.beginPath(); g.arc(bx, by, BALL_R * k, 0, Math.PI * 2); g.fill();
+  g.strokeStyle = '#081020'; g.lineWidth = 3; g.stroke();
+}
+function absShow(team, x, y, called) {
+  absPitch = { x, y };
+  $('absTeam').textContent = `${team} CHALLENGE · CALLED ${called}`;
+  drawABS(x, y, null);
+  $('absRes').textContent = 'REVIEWING…'; $('absRes').className = 'abs-res';
+  $('absCard').classList.remove('hidden');
+  clearTimeout(absTimer);
+}
+function absReveal(overturned, truth) {
+  if (absPitch) drawABS(absPitch.x, absPitch.y, truth);
+  $('absRes').textContent = overturned ? `OVERTURNED · ${truth}` : `CALL STANDS · ${truth}`;
+  $('absRes').className = 'abs-res ' + (overturned ? 'over' : 'stand');
+  SND.pop(0.5);
+  absTimer = setTimeout(() => $('absCard').classList.add('hidden'), 2300);
+}
+function requestChallenge() {
+  if (isGuest()) { if (G.chkSide === localSide()) netSend({ t: 'act', a: 'challenge' }); return; }
+  const c = G.challengeable;
+  if (c && c.who === 'local') startChallenge(c.side);
+}
+
+// ------------------------------------------------------------ runner map ----
+// live mini diamond: where every runner, fielder and the ball are right now
+function drawMiniMap() {
+  const el = $('miniMap');
+  const show = G.teams && G.mode !== 'derby' && G.mode !== 'menu' && !G.replay && !['menu', 'boot', 'break', 'final', 'wait', 'halfIntro'].includes(G.phase)
+    && (G.mode === 'lock' || G.phase === 'live' || G.phase === 'postPlay' || G.bases.some(Boolean));
+  el.classList.toggle('hidden', !show);
+  if (!show) return;
+  const g = el.getContext('2d'), s = 1.02, ox = 150, oy = 262;
+  const P = (x, z) => [clamp(ox + x * s, 10, 290), clamp(oy + z * s, 10, 290)];
+  g.clearRect(0, 0, 300, 300);
+  g.fillStyle = 'rgba(54,120,58,0.35)'; g.beginPath(); g.moveTo(ox, oy); g.arc(ox, oy, 205, -Math.PI * 0.75, -Math.PI * 0.25); g.closePath(); g.fill();
+  const c = [0, 1, 2, 3].map((i) => P(BASES[i].x, BASES[i].z));
+  g.strokeStyle = 'rgba(190,135,85,0.85)'; g.lineWidth = 10; g.lineJoin = 'round';
+  g.beginPath(); g.moveTo(...c[0]); g.lineTo(...c[1]); g.lineTo(...c[2]); g.lineTo(...c[3]); g.closePath(); g.stroke();
+  g.fillStyle = 'rgba(190,135,85,0.85)'; g.beginPath(); g.arc(...P(0, MOUND_Z), 7, 0, Math.PI * 2); g.fill();
+  g.fillStyle = '#ffffff';
+  for (let i = 1; i <= 3; i++) { g.save(); g.translate(...c[i]); g.rotate(Math.PI / 4); g.fillRect(-6, -6, 12, 12); g.restore(); }
+  g.beginPath(); g.moveTo(c[0][0] - 6, c[0][1] - 5); g.lineTo(c[0][0] + 6, c[0][1] - 5); g.lineTo(c[0][0] + 6, c[0][1]); g.lineTo(c[0][0], c[0][1] + 6); g.lineTo(c[0][0] - 6, c[0][1]); g.closePath(); g.fill();
+  const ufKey = isGuest() ? NET.snap && NET.snap.pl && NET.snap.pl.uf : G.play && G.play.uf && G.play.uf.m.key;
+  const dot = (x, z, r, fill, stroke, w = 3) => { const [px, py] = P(x, z); g.beginPath(); g.arc(px, py, r, 0, Math.PI * 2); g.fillStyle = fill; g.fill(); if (stroke) { g.lineWidth = w; g.strokeStyle = stroke; g.stroke(); } };
+  for (const m of MODELS) {
+    if (!m.root.visible && m !== fpvHidden) continue;
+    if (m.kind === 'ump' || !m.pl) continue;
+    const p = m.root.position, me = m.pl.id === G.lock;
+    if (m.fielding) dot(p.x, p.z, me ? 9 : 7, m.pl.team.c1, me ? '#ffc94a' : m.key === ufKey ? '#ffc94a' : 'rgba(255,255,255,0.8)', me || m.key === ufKey ? 4 : 2);
+    else if (m.j.helmet.visible) dot(p.x, p.z, me ? 11 : 9, '#ffc94a', me ? '#ffffff' : '#081020', 4);
+  }
+  if (ballMesh.visible) { const b = ballMesh.position; dot(b.x, b.z, 4 + Math.min(5, b.y / 25), '#ffffff', '#081020', 2); }
+}
+
 // ------------------------------------------------------------ fireworks ----
 const FW = [];
 function fireworks(n = 5) { for (let k = 0; k < n; k++) setTimeout(burst, k * 380); }
@@ -4005,7 +4246,7 @@ function updateLive(dt) {
   const land = localField && landingAssist() ? pl.landingSpot() : null;
   landMark.visible = !!land; if (land) landMark.position.set(land[0], 0.1, land[1]);
   $('runHelp').classList.toggle('hidden', !(userRuns() && !pl.hr && !pl.awarded && !pl.done));
-  playCam();
+  if (!fpvActive()) playCam();
   if (pl.done) { setHint(''); ctrlRing.visible = false; landMark.visible = false; $('runHelp').classList.add('hidden'); finishPlay(); }
 }
 function onPlayEvent(e) {
@@ -4082,11 +4323,16 @@ canvasEl.addEventListener('pointerdown', (e) => {
   primaryAction(e.button === 2 ? 'power' : e.button === 1 ? 'contact' : 'normal');
   e.preventDefault();
 });
-// field movement: W is toward center field, D toward first base
+// field movement is relative to the camera: W runs where you're looking
 function fieldVec() {
-  let x = 0, z = 0;
-  if (keys.has('a')) x -= 1; if (keys.has('d')) x += 1; if (keys.has('w')) z -= 1; if (keys.has('s')) z += 1;
-  if (G.stick) { x += G.stick.x; z -= G.stick.y; }
+  let ix = 0, iy = 0;
+  if (keys.has('a')) ix -= 1; if (keys.has('d')) ix += 1; if (keys.has('w')) iy += 1; if (keys.has('s')) iy -= 1;
+  if (G.stick) { ix += G.stick.x; iy += G.stick.y; }
+  if (!ix && !iy) return { x: 0, z: 0 };
+  _fwd.copy(camRig.tl).sub(camRig.tp); _fwd.y = 0;
+  if (_fwd.lengthSq() < 1e-6) _fwd.set(0, 0, -1);
+  _fwd.normalize();
+  let x = -_fwd.z * ix + _fwd.x * iy, z = _fwd.x * ix + _fwd.z * iy;
   const L = Math.hypot(x, z); if (L > 1) { x /= L; z /= L; }
   return { x, z };
 }
@@ -4127,6 +4373,7 @@ window.addEventListener('keydown', (e) => {
   else if (k === 'f' && G.mode === 'spectate') { G.ff = G.ff === 1 ? 3 : 1; setHint(G.ff > 1 ? 'Fast-forward <kbd>F</kbd>' : ''); }
   else if (k === 'z') toggleZone();
   else if (k === 'm') toggleSound();
+  else if (k === 'c') requestChallenge();
 });
 window.addEventListener('keyup', (e) => keys.delete(e.key.toLowerCase()));
 window.addEventListener('blur', () => keys.clear());
@@ -4154,7 +4401,8 @@ function pollGamepad() {
       if (edge(4) || edge(14)) selectPitch((G.pitchUI.sel + n - 1) % n);
       if (edge(5) || edge(15)) selectPitch((G.pitchUI.sel + 1) % n);
       if (edge(0)) primaryAction('normal');
-    } else {
+    } else if (G.phase === 'postPitch' && edge(3)) requestChallenge();
+    else {
       if (edge(0)) primaryAction('normal'); if (edge(2)) primaryAction('power'); if (edge(1)) primaryAction('contact'); if (edge(3)) primaryAction('bunt');
       if (edge(8)) startReplay();
     }
@@ -4221,7 +4469,7 @@ function togglePause(force, remote) {
 }
 
 // ------------------------------------------------------------------ menus ----
-const menu = { mode: 'exhibition', away: 0, home: 3, side: 1, innings: 3, diff: 1, manual: 1, batter: 3, lockPick: 'h3' };
+const menu = { mode: 'exhibition', away: 0, home: 3, side: 1, innings: 3, diff: 1, manual: 1, batter: 3, lockPick: 'h3', ump: 1, fpv: 1 };
 try { Object.assign(menu, JSON.parse(localStorage.getItem('fullcount.menu') || '{}')); } catch (e) { /* ignore */ }
 function teamPickHTML(label, idx, key) {
   const t = TEAMS[idx];
@@ -4257,7 +4505,9 @@ function renderMenu() {
   $('optThrow').classList.toggle('hidden', derby || spec || online);
   $('optBatter').classList.toggle('hidden', !derby);
   $('optLock').classList.toggle('hidden', !lock);
-  for (const el of ['optSide', 'optInn', 'optDiff']) $(el).style.pointerEvents = guest ? 'none' : '';
+  $('optView').classList.toggle('hidden', !lock);
+  $('optUmp').classList.toggle('hidden', derby || !showTeams);
+  for (const el of ['optSide', 'optInn', 'optDiff', 'optUmp']) $(el).style.pointerEvents = guest ? 'none' : '';
   for (const b of $('modes').querySelectorAll('button')) b.classList.toggle('on', b.dataset.mode === m);
   for (const seg of document.querySelectorAll('.seg[data-key]')) {
     let v = L[seg.dataset.key] ?? menu[seg.dataset.key];
@@ -4318,7 +4568,7 @@ function buildMenu() {
     SND.init();
     if (menu.mode === 'online') { hostStartOnline(); return; }
     let away = menu.away; if (menu.mode === 'derby' && away === menu.home) away = (menu.home + 1) % TEAMS.length;
-    startGame({ mode: menu.mode, away, home: menu.home, side: menu.side, innings: menu.innings, diff: menu.diff, manual: menu.manual, batter: menu.batter, lockPick: menu.lockPick });
+    startGame({ mode: menu.mode, away, home: menu.home, side: menu.side, innings: menu.innings, diff: menu.diff, manual: menu.manual, batter: menu.batter, lockPick: menu.lockPick, ump: menu.ump, fpv: menu.fpv });
   });
   const openHelp = () => { $('help').classList.remove('hidden'); };
   $('btnHow').addEventListener('click', openHelp);
@@ -4354,6 +4604,7 @@ function toMenu() {
   for (const m of MODELS) m.root.visible = false;
   ballMesh.visible = false; ballShadow.visible = false; trailReset();
   pci.visible = false; reticle.visible = false; zoneGroup.visible = false; pitchMark.visible = false; pitchGuide.visible = false; ctrlRing.visible = false; landMark.visible = false;
+  fpvHide(null); fpvOn = false; $('absCard').classList.add('hidden'); $('runHelp').classList.add('hidden'); $('throwPrompt').classList.add('hidden');
   showScreen('menu');
   renderMenu();
 }
@@ -4383,7 +4634,11 @@ function update(dt) {
     case 'prePitch': { const pc = pitchCtrl(); if (pc === 'local') updatePitchUI(); else if (pc === 'cpu' && G.pt >= G.cpuPitchAt) startWindup(G.spec); break; }
     case 'windup': updateWindup(); break;
     case 'pitch': updatePitch(dt); break;
-    case 'postPitch': if (G.pt >= G.dur) endPostPitch(); break;
+    case 'postPitch':
+      if (G.challengeable && G.cpuChallengeAt && G.now >= G.cpuChallengeAt) { startChallenge(G.challengeable.side); break; }
+      if (G.pt >= G.dur) endPostPitch();
+      break;
+    case 'absReview': if (G.pt >= G.dur) revealChallenge(); break;
     case 'postFoul': if (G.pt >= G.dur) enterPrePitch(); break;
     case 'live': updateLive(dt); break;
     case 'postPlay': if (G.pt >= G.dur) afterAB(); break;
@@ -4395,6 +4650,7 @@ function update(dt) {
   dressFrame();
   for (const m of MODELS) updateModel(m, G.now);
   if (G.recOn) recFrame();
+  fpvCam();
 }
 // Player Lock: sim quickly through everything the locked player isn't part of
 function lockFF() {
@@ -4407,6 +4663,8 @@ function lockFF() {
     if (pl.R.some((r) => r.pl.id === G.lock && (r.state === 'run' || r.state === 'base'))) return 1;
     return 3;
   }
+  // in first person on the field, slow down so you can react to the hit
+  if (G.fpv && lockRole().role === 'field') return ph === 'prePitch' || ph === 'postPitch' || ph === 'postFoul' ? 2 : 1;
   if (['prePitch', 'windup', 'pitch', 'postPitch', 'postFoul'].includes(ph)) return 5;
   if (['postPlay', 'halfIntro', 'break'].includes(ph)) return 3;
   return 1;
@@ -4422,10 +4680,11 @@ function frame(ts) {
   netTick();
   camUpdate(dt);
   const d = camera.position.distanceTo(ballMesh.position);
-  ballMesh.scale.setScalar(clamp(d / 80, 1, 7));
+  ballMesh.scale.setScalar(fpvOn ? clamp(d / 40, 1.5, 8) : clamp(d / 80, 1, 7));
   crowdU.uTime.value += dt;
   crowdU.uEx.value = lerp(crowdU.uEx.value, crowdExTarget, 1 - Math.exp(-dt * 3));
   updateFireworks(dt);
+  drawMiniMap();
   renderer.render(scene, camera);
 }
 function boot() {

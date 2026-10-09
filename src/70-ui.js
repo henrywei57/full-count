@@ -30,6 +30,66 @@ function playCam() {
   camTo(_c1, _c2, 48, 2.6, cut);
 }
 
+// ----------------------------------------------------------- first person ----
+// Player Lock can be played through the locked player's eyes. Hitting keeps the
+// strike-zone view (you can't see the plate from the batter's eyes).
+const _eye = new V3(), _look = new V3(), _fwd = new V3();
+let fpvHidden = null, fpvOn = false;
+function fpvActive() { return G.mode === 'lock' && G.fpv && !G.replay && ['prePitch', 'windup', 'pitch', 'postPitch', 'postFoul', 'live', 'postPlay', 'absReview'].includes(G.phase); }
+function lockRole() {
+  if (G.half === 1 - G.lockSide) {
+    const f = G.fielders.find((x) => x.pl.id === G.lock);
+    return f ? { role: 'field', m: f.m, f } : { role: 'dugout' };
+  }
+  const pl = G.play;
+  if (pl && (G.phase === 'live' || G.phase === 'postPlay')) {
+    const r = pl.R.find((x) => x.pl.id === G.lock && (x.state === 'run' || x.state === 'base'));
+    if (r) return { role: 'run', m: r.m, r };
+    if (G.batter && G.batter.id === G.lock && G.phase === 'live') return { role: 'dugout' };
+  }
+  if (G.batter && G.batter.id === G.lock && G.phase !== 'live' && G.phase !== 'postPlay') return { role: 'bat' };
+  const r = (G.baseRunners || []).find((x) => x.pl.id === G.lock);
+  return r ? { role: 'run', m: r.m, r } : { role: 'dugout' };
+}
+function setModelLayer(m, layer) { m.root.traverse((o) => { if (o.isMesh) o.layers.set(layer); }); }
+function fpvHide(m) {
+  if (fpvHidden === m) return;
+  if (fpvHidden) setModelLayer(fpvHidden, 0);
+  fpvHidden = m || null;
+  if (m) setModelLayer(m, 1);
+}
+function fpvCam() {
+  if (!fpvActive()) { fpvHide(null); fpvOn = false; return false; }
+  const L = lockRole();
+  if (L.role === 'bat') { fpvHide(null); fpvOn = false; return false; }
+  let fov = 64;
+  if (L.role === 'dugout') {
+    fpvHide(null);
+    const sgn = G.lockSide === 1 ? 1 : -1;
+    _eye.set(sgn * 106, 2.6, -41); _look.set(0, 3, -48); fov = 55;
+  } else {
+    const m = L.m;
+    fpvHide(m);
+    m.root.updateMatrixWorld(true);
+    m.j.neck.getWorldPosition(_eye); _eye.y += 0.5;
+    const yaw = m.root.rotation.y; _eye.x += Math.sin(yaw) * 0.35; _eye.z += Math.cos(yaw) * 0.35;
+    const pl = G.play, b = ballMesh.position;
+    if ((G.phase === 'live' || G.phase === 'postPlay') && pl) {
+      if (pl.ball.holder && pl.ball.holder.m === m) _look.set(0, 3, -64);
+      else _look.copy(b);
+      if (_look.distanceTo(_eye) < 2.5) _look.set(_eye.x + Math.sin(yaw) * 10, _eye.y - 2, _eye.z + Math.cos(yaw) * 10);
+      fov = 68;
+    } else if (L.role === 'field' && L.f.role === 'P') { _look.set(0, 2.6, 0); fov = userPitches() ? 21 : 45; }
+    else if (L.role === 'field' && L.f.role === 'C') { _look.set(0, 5.5, -58); fov = 48; }
+    else if (L.role === 'field') { _look.set(0, 3.2, 0); fov = 44; if (G.phase === 'pitch') _look.lerp(b, 0.25); }
+    else _look.set(0, 3, 0);
+  }
+  if (!fpvOn) { camRig.look.copy(_look); camRig.fov = fov; }
+  camRig.pos.copy(_eye); camRig.tp.copy(_eye); camRig.tl.copy(_look); camRig.tf = fov; camRig.rate = 9;
+  fpvOn = true;
+  return true;
+}
+
 // -------------------------------------------------------------------- HUD ----
 let fbTimer = 0;
 function setHint(html) { const el = $('hint'); el.innerHTML = html; el.style.opacity = html ? 1 : 0; }
@@ -51,6 +111,8 @@ function hudTeams() {
 function hudScore() {
   $('bugA').querySelector('.bug-runs').textContent = G.score[0];
   $('bugH').querySelector('.bug-runs').textContent = G.score[1];
+  $('absA').textContent = G.ump === 1 ? '●'.repeat(G.challenges[0]) : '';
+  $('absH').textContent = G.ump === 1 ? '●'.repeat(G.challenges[1]) : '';
   $('bugA').classList.toggle('bat', G.half === 0); $('bugH').classList.toggle('bat', G.half === 1);
 }
 function hudCount() {
@@ -251,6 +313,74 @@ function showScreen(id) {
   }
 }
 
+// ------------------------------------------------------------ ABS review ----
+let absTimer = 0, absPitch = null;
+function drawABS(x, y, truth) {
+  const g = $('absCanvas').getContext('2d'), W = 400, H = 440;
+  g.clearRect(0, 0, W, H);
+  const k = 120, X = (v) => W / 2 + v * k, Y = (v) => H - 40 - (v - ZONE.bot + 0.55) * k;
+  g.fillStyle = 'rgba(255,255,255,0.05)'; g.fillRect(X(-ZONE.halfW), Y(ZONE.top), 2 * ZONE.halfW * k, (ZONE.top - ZONE.bot) * k);
+  g.strokeStyle = 'rgba(255,255,255,0.9)'; g.lineWidth = 4;
+  g.strokeRect(X(-ZONE.halfW), Y(ZONE.top), 2 * ZONE.halfW * k, (ZONE.top - ZONE.bot) * k);
+  g.fillStyle = 'rgba(255,255,255,0.7)';
+  g.beginPath(); g.moveTo(X(-0.71), H - 22); g.lineTo(X(0.71), H - 22); g.lineTo(X(0.71), H - 12); g.lineTo(X(0), H - 2); g.lineTo(X(-0.71), H - 12); g.closePath(); g.fill();
+  const bx = clamp(X(x), 20, W - 20), by = clamp(Y(y), 20, H - 30);
+  g.fillStyle = truth == null ? '#ffffff' : truth === 'STRIKE' ? '#ff5a5f' : '#3fd38a';
+  g.beginPath(); g.arc(bx, by, BALL_R * k, 0, Math.PI * 2); g.fill();
+  g.strokeStyle = '#081020'; g.lineWidth = 3; g.stroke();
+}
+function absShow(team, x, y, called) {
+  absPitch = { x, y };
+  $('absTeam').textContent = `${team} CHALLENGE · CALLED ${called}`;
+  drawABS(x, y, null);
+  $('absRes').textContent = 'REVIEWING…'; $('absRes').className = 'abs-res';
+  $('absCard').classList.remove('hidden');
+  clearTimeout(absTimer);
+}
+function absReveal(overturned, truth) {
+  if (absPitch) drawABS(absPitch.x, absPitch.y, truth);
+  $('absRes').textContent = overturned ? `OVERTURNED · ${truth}` : `CALL STANDS · ${truth}`;
+  $('absRes').className = 'abs-res ' + (overturned ? 'over' : 'stand');
+  SND.pop(0.5);
+  absTimer = setTimeout(() => $('absCard').classList.add('hidden'), 2300);
+}
+function requestChallenge() {
+  if (isGuest()) { if (G.chkSide === localSide()) netSend({ t: 'act', a: 'challenge' }); return; }
+  const c = G.challengeable;
+  if (c && c.who === 'local') startChallenge(c.side);
+}
+
+// ------------------------------------------------------------ runner map ----
+// live mini diamond: where every runner, fielder and the ball are right now
+function drawMiniMap() {
+  const el = $('miniMap');
+  const show = G.teams && G.mode !== 'derby' && G.mode !== 'menu' && !G.replay && !['menu', 'boot', 'break', 'final', 'wait', 'halfIntro'].includes(G.phase)
+    && (G.mode === 'lock' || G.phase === 'live' || G.phase === 'postPlay' || G.bases.some(Boolean));
+  el.classList.toggle('hidden', !show);
+  if (!show) return;
+  const g = el.getContext('2d'), s = 1.02, ox = 150, oy = 262;
+  const P = (x, z) => [clamp(ox + x * s, 10, 290), clamp(oy + z * s, 10, 290)];
+  g.clearRect(0, 0, 300, 300);
+  g.fillStyle = 'rgba(54,120,58,0.35)'; g.beginPath(); g.moveTo(ox, oy); g.arc(ox, oy, 205, -Math.PI * 0.75, -Math.PI * 0.25); g.closePath(); g.fill();
+  const c = [0, 1, 2, 3].map((i) => P(BASES[i].x, BASES[i].z));
+  g.strokeStyle = 'rgba(190,135,85,0.85)'; g.lineWidth = 10; g.lineJoin = 'round';
+  g.beginPath(); g.moveTo(...c[0]); g.lineTo(...c[1]); g.lineTo(...c[2]); g.lineTo(...c[3]); g.closePath(); g.stroke();
+  g.fillStyle = 'rgba(190,135,85,0.85)'; g.beginPath(); g.arc(...P(0, MOUND_Z), 7, 0, Math.PI * 2); g.fill();
+  g.fillStyle = '#ffffff';
+  for (let i = 1; i <= 3; i++) { g.save(); g.translate(...c[i]); g.rotate(Math.PI / 4); g.fillRect(-6, -6, 12, 12); g.restore(); }
+  g.beginPath(); g.moveTo(c[0][0] - 6, c[0][1] - 5); g.lineTo(c[0][0] + 6, c[0][1] - 5); g.lineTo(c[0][0] + 6, c[0][1]); g.lineTo(c[0][0], c[0][1] + 6); g.lineTo(c[0][0] - 6, c[0][1]); g.closePath(); g.fill();
+  const ufKey = isGuest() ? NET.snap && NET.snap.pl && NET.snap.pl.uf : G.play && G.play.uf && G.play.uf.m.key;
+  const dot = (x, z, r, fill, stroke, w = 3) => { const [px, py] = P(x, z); g.beginPath(); g.arc(px, py, r, 0, Math.PI * 2); g.fillStyle = fill; g.fill(); if (stroke) { g.lineWidth = w; g.strokeStyle = stroke; g.stroke(); } };
+  for (const m of MODELS) {
+    if (!m.root.visible && m !== fpvHidden) continue;
+    if (m.kind === 'ump' || !m.pl) continue;
+    const p = m.root.position, me = m.pl.id === G.lock;
+    if (m.fielding) dot(p.x, p.z, me ? 9 : 7, m.pl.team.c1, me ? '#ffc94a' : m.key === ufKey ? '#ffc94a' : 'rgba(255,255,255,0.8)', me || m.key === ufKey ? 4 : 2);
+    else if (m.j.helmet.visible) dot(p.x, p.z, me ? 11 : 9, '#ffc94a', me ? '#ffffff' : '#081020', 4);
+  }
+  if (ballMesh.visible) { const b = ballMesh.position; dot(b.x, b.z, 4 + Math.min(5, b.y / 25), '#ffffff', '#081020', 2); }
+}
+
 // ------------------------------------------------------------ fireworks ----
 const FW = [];
 function fireworks(n = 5) { for (let k = 0; k < n; k++) setTimeout(burst, k * 380); }
@@ -310,7 +440,7 @@ function updateLive(dt) {
   const land = localField && landingAssist() ? pl.landingSpot() : null;
   landMark.visible = !!land; if (land) landMark.position.set(land[0], 0.1, land[1]);
   $('runHelp').classList.toggle('hidden', !(userRuns() && !pl.hr && !pl.awarded && !pl.done));
-  playCam();
+  if (!fpvActive()) playCam();
   if (pl.done) { setHint(''); ctrlRing.visible = false; landMark.visible = false; $('runHelp').classList.add('hidden'); finishPlay(); }
 }
 function onPlayEvent(e) {
@@ -387,11 +517,16 @@ canvasEl.addEventListener('pointerdown', (e) => {
   primaryAction(e.button === 2 ? 'power' : e.button === 1 ? 'contact' : 'normal');
   e.preventDefault();
 });
-// field movement: W is toward center field, D toward first base
+// field movement is relative to the camera: W runs where you're looking
 function fieldVec() {
-  let x = 0, z = 0;
-  if (keys.has('a')) x -= 1; if (keys.has('d')) x += 1; if (keys.has('w')) z -= 1; if (keys.has('s')) z += 1;
-  if (G.stick) { x += G.stick.x; z -= G.stick.y; }
+  let ix = 0, iy = 0;
+  if (keys.has('a')) ix -= 1; if (keys.has('d')) ix += 1; if (keys.has('w')) iy += 1; if (keys.has('s')) iy -= 1;
+  if (G.stick) { ix += G.stick.x; iy += G.stick.y; }
+  if (!ix && !iy) return { x: 0, z: 0 };
+  _fwd.copy(camRig.tl).sub(camRig.tp); _fwd.y = 0;
+  if (_fwd.lengthSq() < 1e-6) _fwd.set(0, 0, -1);
+  _fwd.normalize();
+  let x = -_fwd.z * ix + _fwd.x * iy, z = _fwd.x * ix + _fwd.z * iy;
   const L = Math.hypot(x, z); if (L > 1) { x /= L; z /= L; }
   return { x, z };
 }
@@ -432,6 +567,7 @@ window.addEventListener('keydown', (e) => {
   else if (k === 'f' && G.mode === 'spectate') { G.ff = G.ff === 1 ? 3 : 1; setHint(G.ff > 1 ? 'Fast-forward <kbd>F</kbd>' : ''); }
   else if (k === 'z') toggleZone();
   else if (k === 'm') toggleSound();
+  else if (k === 'c') requestChallenge();
 });
 window.addEventListener('keyup', (e) => keys.delete(e.key.toLowerCase()));
 window.addEventListener('blur', () => keys.clear());
@@ -459,7 +595,8 @@ function pollGamepad() {
       if (edge(4) || edge(14)) selectPitch((G.pitchUI.sel + n - 1) % n);
       if (edge(5) || edge(15)) selectPitch((G.pitchUI.sel + 1) % n);
       if (edge(0)) primaryAction('normal');
-    } else {
+    } else if (G.phase === 'postPitch' && edge(3)) requestChallenge();
+    else {
       if (edge(0)) primaryAction('normal'); if (edge(2)) primaryAction('power'); if (edge(1)) primaryAction('contact'); if (edge(3)) primaryAction('bunt');
       if (edge(8)) startReplay();
     }
@@ -526,7 +663,7 @@ function togglePause(force, remote) {
 }
 
 // ------------------------------------------------------------------ menus ----
-const menu = { mode: 'exhibition', away: 0, home: 3, side: 1, innings: 3, diff: 1, manual: 1, batter: 3, lockPick: 'h3' };
+const menu = { mode: 'exhibition', away: 0, home: 3, side: 1, innings: 3, diff: 1, manual: 1, batter: 3, lockPick: 'h3', ump: 1, fpv: 1 };
 try { Object.assign(menu, JSON.parse(localStorage.getItem('fullcount.menu') || '{}')); } catch (e) { /* ignore */ }
 function teamPickHTML(label, idx, key) {
   const t = TEAMS[idx];
@@ -562,7 +699,9 @@ function renderMenu() {
   $('optThrow').classList.toggle('hidden', derby || spec || online);
   $('optBatter').classList.toggle('hidden', !derby);
   $('optLock').classList.toggle('hidden', !lock);
-  for (const el of ['optSide', 'optInn', 'optDiff']) $(el).style.pointerEvents = guest ? 'none' : '';
+  $('optView').classList.toggle('hidden', !lock);
+  $('optUmp').classList.toggle('hidden', derby || !showTeams);
+  for (const el of ['optSide', 'optInn', 'optDiff', 'optUmp']) $(el).style.pointerEvents = guest ? 'none' : '';
   for (const b of $('modes').querySelectorAll('button')) b.classList.toggle('on', b.dataset.mode === m);
   for (const seg of document.querySelectorAll('.seg[data-key]')) {
     let v = L[seg.dataset.key] ?? menu[seg.dataset.key];
@@ -623,7 +762,7 @@ function buildMenu() {
     SND.init();
     if (menu.mode === 'online') { hostStartOnline(); return; }
     let away = menu.away; if (menu.mode === 'derby' && away === menu.home) away = (menu.home + 1) % TEAMS.length;
-    startGame({ mode: menu.mode, away, home: menu.home, side: menu.side, innings: menu.innings, diff: menu.diff, manual: menu.manual, batter: menu.batter, lockPick: menu.lockPick });
+    startGame({ mode: menu.mode, away, home: menu.home, side: menu.side, innings: menu.innings, diff: menu.diff, manual: menu.manual, batter: menu.batter, lockPick: menu.lockPick, ump: menu.ump, fpv: menu.fpv });
   });
   const openHelp = () => { $('help').classList.remove('hidden'); };
   $('btnHow').addEventListener('click', openHelp);
@@ -659,6 +798,7 @@ function toMenu() {
   for (const m of MODELS) m.root.visible = false;
   ballMesh.visible = false; ballShadow.visible = false; trailReset();
   pci.visible = false; reticle.visible = false; zoneGroup.visible = false; pitchMark.visible = false; pitchGuide.visible = false; ctrlRing.visible = false; landMark.visible = false;
+  fpvHide(null); fpvOn = false; $('absCard').classList.add('hidden'); $('runHelp').classList.add('hidden'); $('throwPrompt').classList.add('hidden');
   showScreen('menu');
   renderMenu();
 }
@@ -688,7 +828,11 @@ function update(dt) {
     case 'prePitch': { const pc = pitchCtrl(); if (pc === 'local') updatePitchUI(); else if (pc === 'cpu' && G.pt >= G.cpuPitchAt) startWindup(G.spec); break; }
     case 'windup': updateWindup(); break;
     case 'pitch': updatePitch(dt); break;
-    case 'postPitch': if (G.pt >= G.dur) endPostPitch(); break;
+    case 'postPitch':
+      if (G.challengeable && G.cpuChallengeAt && G.now >= G.cpuChallengeAt) { startChallenge(G.challengeable.side); break; }
+      if (G.pt >= G.dur) endPostPitch();
+      break;
+    case 'absReview': if (G.pt >= G.dur) revealChallenge(); break;
     case 'postFoul': if (G.pt >= G.dur) enterPrePitch(); break;
     case 'live': updateLive(dt); break;
     case 'postPlay': if (G.pt >= G.dur) afterAB(); break;
@@ -700,6 +844,7 @@ function update(dt) {
   dressFrame();
   for (const m of MODELS) updateModel(m, G.now);
   if (G.recOn) recFrame();
+  fpvCam();
 }
 // Player Lock: sim quickly through everything the locked player isn't part of
 function lockFF() {
@@ -712,6 +857,8 @@ function lockFF() {
     if (pl.R.some((r) => r.pl.id === G.lock && (r.state === 'run' || r.state === 'base'))) return 1;
     return 3;
   }
+  // in first person on the field, slow down so you can react to the hit
+  if (G.fpv && lockRole().role === 'field') return ph === 'prePitch' || ph === 'postPitch' || ph === 'postFoul' ? 2 : 1;
   if (['prePitch', 'windup', 'pitch', 'postPitch', 'postFoul'].includes(ph)) return 5;
   if (['postPlay', 'halfIntro', 'break'].includes(ph)) return 3;
   return 1;
@@ -727,10 +874,11 @@ function frame(ts) {
   netTick();
   camUpdate(dt);
   const d = camera.position.distanceTo(ballMesh.position);
-  ballMesh.scale.setScalar(clamp(d / 80, 1, 7));
+  ballMesh.scale.setScalar(fpvOn ? clamp(d / 40, 1.5, 8) : clamp(d / 80, 1, 7));
   crowdU.uTime.value += dt;
   crowdU.uEx.value = lerp(crowdU.uEx.value, crowdExTarget, 1 - Math.exp(-dt * 3));
   updateFireworks(dt);
+  drawMiniMap();
   renderer.render(scene, camera);
 }
 function boot() {

@@ -9,7 +9,7 @@ Teams, players and sponsors are fictional.
 ## Modes
 
 - **Play Ball** – exhibition game (3, 6 or 9 innings) as the home or away team.
-- **Player Lock** – pick one player. You only bat, pitch, field and run as him; the rest of the game sims quickly until you're involved.
+- **Player Lock** – pick one player. You only bat, pitch, field and run as him; the rest of the game sims quickly until you're involved. Played in first person by default (fielding, running, and from the dugout); at-bats use the strike-zone view.
 - **Online 1v1** – one player hosts and gets a 5-character room code (or invite link); the other joins with it. Works across devices and networks.
 - **Home Run Derby** – 10 outs, every non-homer swing is an out.
 - **CPU vs CPU** – watch a full simulated game (press `F` to fast-forward).
@@ -27,9 +27,16 @@ Teams, players and sponsors are fictional.
 | Dive / switch fielder | Space / Q | RB / LB |
 | Throw to 1B, 2B, 3B, home | → ↑ ← ↓ (or 1–4) | B, Y, X, A |
 | Advance / send back runners | E / Q | RB / LB |
+| ABS challenge | C | Y (right after the call) |
 | Replay, skip, pause | R, Enter, Esc | Back, A, Start |
 
-The AI moves your fielder until you touch the controls, and catches are automatic once you're in reach.
+The AI moves your fielder until you touch the controls. Any ball that comes inside the gold ring (7.5 ft) around your fielder is yours. In first person, W runs wherever you're looking. A live mini diamond shows where every runner, fielder and the ball are.
+
+## Umpires
+
+- **Human ump** – right on about 92% of called pitches; misses cluster on the edges of the zone.
+- **ABS challenge** – the same human ump, plus MLB's 2026 challenge system: each team gets 2 challenges, kept when the call is overturned. Press `C` right after a called ball or strike. In Player Lock only the batter, pitcher or catcher can challenge.
+- **Robot ABS** – every ball and strike is called exactly.
 
 ## Online play notes
 

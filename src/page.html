@@ -236,6 +236,16 @@ button:focus-visible,select:focus-visible{outline:2px solid var(--gold);outline-
 #runHelp button{padding:8px 12px;border-radius:6px;border:1px solid var(--line);background:var(--panel);font-family:var(--f-display);font-weight:700;font-size:15px;cursor:pointer}
 #runHelp button small{color:var(--dust);font-size:11px;margin-left:4px}
 
+/* ---------- runner map + ABS ---------- */
+#miniMap{position:absolute;left:16px;top:50%;transform:translateY(-50%);width:150px;height:150px;background:var(--panel);border:1px solid var(--line);border-radius:6px}
+#absCard{position:absolute;left:50%;top:46%;transform:translate(-50%,-50%);width:250px;background:var(--panel);border:1px solid var(--line);border-radius:6px;overflow:hidden;text-align:center;box-shadow:0 12px 40px rgba(0,0,0,.5)}
+#absCard .abs-head{font-family:var(--f-display);font-weight:800;letter-spacing:.16em;font-size:15px;padding:8px 10px;background:var(--panel-hi);color:var(--gold)}
+#absCard .abs-sub{font-size:12px;letter-spacing:.12em;color:var(--dust);padding-top:8px}
+#absCanvas{display:block;width:200px;height:220px;margin:4px auto 0}
+.abs-res{font-family:var(--f-display);font-weight:800;font-size:22px;padding:6px 0 12px;letter-spacing:.08em}
+.abs-res.over{color:var(--ball)}.abs-res.stand{color:var(--strike)}
+.bug-abs{font-size:8px;letter-spacing:3px;color:var(--gold);margin:0 6px 0 auto;line-height:1}
+
 @media (max-width:860px){
   .menu-wrap{grid-template-columns:1fr}
   .plate{width:200px}
@@ -247,6 +257,7 @@ button:focus-visible,select:focus-visible{outline:2px solid var(--gold);outline-
 }
 @media (max-width:560px){
   #bug{transform:scale(.82);transform-origin:left top}
+  #miniMap{width:108px;height:108px;top:auto;bottom:calc(178px + env(safe-area-inset-bottom,0px));transform:none}
   .plate{width:calc(50vw - 24px)}
   .plate-name{font-size:20px}
   .pitch-row{font-size:12px;padding:4px 8px}
@@ -264,8 +275,8 @@ button:focus-visible,select:focus-visible{outline:2px solid var(--gold);outline-
 <div id="hud" class="hidden">
   <div id="bug">
     <div class="bug-teams">
-      <div class="bug-row" id="bugA"><span class="bug-abbr">AWY</span><span class="bug-runs">0</span></div>
-      <div class="bug-row" id="bugH"><span class="bug-abbr">HOM</span><span class="bug-runs">0</span></div>
+      <div class="bug-row" id="bugA"><span class="bug-abbr">AWY</span><span class="bug-abs" id="absA" title="ABS challenges left"></span><span class="bug-runs">0</span></div>
+      <div class="bug-row" id="bugH"><span class="bug-abbr">HOM</span><span class="bug-abs" id="absH" title="ABS challenges left"></span><span class="bug-runs">0</span></div>
     </div>
     <div class="bug-inn"><span id="bugArrow">&#9650;</span><span id="bugInn">1</span></div>
     <div class="bug-diamond"><i id="bd2"></i><i id="bd3"></i><i id="bd1"></i></div>
@@ -314,6 +325,8 @@ button:focus-visible,select:focus-visible{outline:2px solid var(--gold);outline-
   </div>
   <div id="caption"></div>
   <div id="replayTag" class="hidden">REPLAY</div>
+  <canvas id="miniMap" class="hidden" width="300" height="300" aria-label="Runner map"></canvas>
+  <div id="absCard" class="hidden"><div class="abs-head">ABS CHALLENGE</div><div class="abs-sub" id="absTeam"></div><canvas id="absCanvas" width="400" height="440"></canvas><div class="abs-res" id="absRes"></div></div>
   <div id="lockTag" class="hidden"><span>PLAYER LOCK</span><b id="lockName">&nbsp;</b><em id="lockLine"></em></div>
   <div id="runHelp" class="hidden"><button data-run="go">Advance runners<small>E</small></button><button data-run="back">Go back<small>Q</small></button></div>
 </div>
@@ -354,6 +367,8 @@ button:focus-visible,select:focus-visible{outline:2px solid var(--gold);outline-
         <div class="opt" id="optDiff"><span>DIFFICULTY</span><div class="seg" data-key="diff"><button data-v="0">Rookie</button><button data-v="1" class="on">Veteran</button><button data-v="2">All-Star</button><button data-v="3">Hall of Fame</button></div></div>
         <div class="opt hidden" id="optLock"><span>YOUR PLAYER</span><select id="lockPick" aria-label="Player to control"></select></div>
         <div class="opt hidden" id="optBatter"><span>BATTER</span><select id="derbyBatter" aria-label="Derby batter"></select></div>
+        <div class="opt" id="optUmp"><span>UMPIRE</span><div class="seg" data-key="ump"><button data-v="0">Human ump (92%)</button><button data-v="1" class="on">ABS challenge</button><button data-v="2">Robot ABS</button></div></div>
+        <div class="opt hidden" id="optView"><span>CAMERA</span><div class="seg" data-key="fpv"><button data-v="1" class="on">First person</button><button data-v="0">Broadcast</button></div></div>
         <div class="opt" id="optThrow"><span>THROWS</span><div class="seg" data-key="manual"><button data-v="1" class="on">Manual</button><button data-v="0">Auto</button></div></div>
       </div>
       <div class="row-actions"><button class="cta" id="btnPlay">PLAY BALL</button><button class="ghost" id="btnHow">Controls</button></div>
@@ -404,6 +419,7 @@ button:focus-visible,select:focus-visible{outline:2px solid var(--gold);outline-
       </dl></div>
       <div><h3>GENERAL</h3><dl>
         <dt>Esc</dt><dd>Pause</dd>
+        <dt>C</dt><dd>ABS challenge a ball/strike call (2 per team, kept if you win)</dd>
         <dt>R</dt><dd>Instant replay after a play</dd>
         <dt>Enter</dt><dd>Skip ahead</dd>
         <dt>F</dt><dd>Fast-forward (CPU vs CPU)</dd>

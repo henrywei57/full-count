@@ -495,7 +495,7 @@ pitchMark.renderOrder = 24; pitchMark.visible = false; overlay.add(pitchMark);
 const pitchGuide = new THREE.Mesh(new THREE.RingGeometry(0.1, 0.17, 28), new THREE.MeshBasicMaterial({ color: 0xffa94d, transparent: true, opacity: 0.85, depthTest: false }));
 pitchGuide.renderOrder = 24; pitchGuide.visible = false; overlay.add(pitchGuide);
 // fielding helpers: ring under the fielder you control, target where a fly ball lands
-const ctrlRing = new THREE.Mesh(new THREE.RingGeometry(2.0, 2.7, 36), new THREE.MeshBasicMaterial({ color: 0xffc94a, transparent: true, opacity: 0.9, depthWrite: false }));
+const ctrlRing = new THREE.Mesh(new THREE.RingGeometry(7.0, 7.5, 48), new THREE.MeshBasicMaterial({ color: 0xffc94a, transparent: true, opacity: 0.75, depthWrite: false }));
 ctrlRing.rotation.x = -Math.PI / 2; ctrlRing.renderOrder = 3; ctrlRing.visible = false; scene.add(ctrlRing);
 const landMark = new THREE.Mesh(new THREE.RingGeometry(1.4, 2.0, 32), new THREE.MeshBasicMaterial({ color: 0x5aa8ff, transparent: true, opacity: 0.85, depthWrite: false }));
 landMark.rotation.x = -Math.PI / 2; landMark.renderOrder = 3; landMark.visible = false; scene.add(landMark);

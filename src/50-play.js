@@ -19,6 +19,8 @@ function runTime(d, vmax, a, v0 = 0) {
 // effective throw speed: long throws lose speed to arc and the cutoff
 function throwSpeed(f, d) { return f.arm * (d > 150 ? 0.8 : d > 95 ? 0.92 : 0.96); }
 const heading = (r) => (r.rev ? r.base : r.next);
+// the fielder you control fields anything that comes within this many feet
+const HUMAN_REACH = 7.5;
 
 class Fielder {
   constructor(pl, role, model) {
@@ -127,7 +129,8 @@ class Play {
     let best = null;
     for (const f of this.F) {
       f.plan = null;
-      if (f.excluded || (f.downUntil && f.downUntil > fromT + 0.4)) continue;
+      // a fielder the human is steering isn't counted on; the AI plays the ball behind him
+      if (f.excluded || (f.downUntil && f.downUntil > fromT + 0.4) || (f === this.uf && this.ufManual)) continue;
       const react = fromT === 0 ? f.react : 0.08;
       const start = f.downUntil > fromT ? f.downUntil : fromT;
       let plan = null, divePlan = null;
@@ -191,8 +194,10 @@ class Play {
   setInput(x, z) {
     this.inp.x = x; this.inp.z = z;
     if (!this.hf || !this.uf) return;
+    const was = this.ufManual;
     if (Math.hypot(x, z) > 0.2) { this.ufManual = true; this.lastInput = this.t; }
     else if (this.ufManual && this.t - this.lastInput > 0.9 && this.ball.holder !== this.uf) this.ufManual = false;
+    if (was !== this.ufManual && this.ball.mode === 'flight' && !this.hr && !this.dead) this.replan();
   }
   userSwitch() {
     if (!this.hf || this.hf.lock || this.done) return;
@@ -295,10 +300,9 @@ class Play {
       if (t < f.animHold) { f.sync(); continue; }
       if (f === this.uf && this.ufManual && !this.hr && !this.dead) {
         this.manualMove(f, dt); this.tryHumanCatch(f); f.sync();
-        // the ball got past you: hand the play to the next fielder
-        if (b.mode === 'flight' && f.plan && t > f.plan.t + 0.5 && !this.hf.lock) {
-          f.excluded = true; this.replan(); f.excluded = false;
-          if (this.chaser && this.chaser !== f) { this.uf = this.chaser; this.ufManual = false; }
+        // the ball got past you: hand control to the fielder now playing it
+        if (b.mode === 'flight' && !this.hf.lock && this.chaser && this.chaser !== f && this.chaser.plan && Math.hypot(this.chaser.pos.x - b.pos.x, this.chaser.pos.z - b.pos.z) < Math.hypot(f.pos.x - b.pos.x, f.pos.z - b.pos.z) - 15) {
+          this.uf = this.chaser; this.ufManual = false; this.replan();
         }
         continue;
       }
@@ -369,8 +373,8 @@ class Play {
     if (this.ball.mode !== 'flight' || this.dead) return;
     const s = this.sample(); if (s.dead || s.hr) return;
     const dist = Math.hypot(s.x - f.pos.x, s.z - f.pos.z);
-    const air = !s.b, okH = air ? s.y <= 9.5 && s.t > 0.12 : s.y <= 3.2;
-    if (!okH || dist > (air ? 4.4 : 3.9)) return;
+    const air = !s.b, okH = air ? s.y <= 11 && s.t > 0.12 : s.y <= 4.5;
+    if (!okH || dist > HUMAN_REACH) return;
     const errP = Math.max(0.003, (air ? 0.006 : 0.013) + (78 - f.fld) * (air ? 0.0003 : 0.0005));
     if (Math.random() < errP) { this.error = true; this.events.push('error'); this.secure(f, false, 1.25, false); return; }
     if (air && f.isOF && Math.hypot(s.x, s.z) > fenceDist(clamp(sprayOf(s.x, s.z), -45, 45)) - 6) this.wallCatch = true;
@@ -382,9 +386,9 @@ class Play {
     if (k < 0.4) { const nx = f.pos.x + dv.dx * 14 * dt, nz = f.pos.z + dv.dz * 14 * dt; if (inPoly(nx, nz)) { f.pos.x = nx; f.pos.z = nz; } }
     if (dv.tried || this.ball.mode !== 'flight' || k > 0.55) return;
     const s = this.sample(); if (s.dead || s.hr) return;
-    const air = !s.b, okH = air ? s.y <= 8.5 : s.y <= 2.8;
+    const air = !s.b, okH = air ? s.y <= 11 : s.y <= 4.5;
     const dist = Math.hypot(s.x - f.pos.x, s.z - f.pos.z);
-    if (!okH || dist > (air ? 7.5 : 5.8)) return;
+    if (!okH || dist > HUMAN_REACH + 3.5) return;
     dv.tried = true; this.dove = true;
     const p = (air ? 0.6 : 0.7) + (f.fld - 60) / 200;
     if (Math.random() < p) this.secure(f, air, 0, true);

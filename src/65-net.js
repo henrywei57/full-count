@@ -89,10 +89,10 @@ function netClose() {
   try { if (peer) peer.destroy(); } catch (e) { /* ignore */ }
 }
 function netSend(m) { if (NET.open && NET.conn) try { NET.conn.send(m); } catch (e) { /* channel closing */ } }
-function netSendLobby() { if (NET.role === 'host' && NET.open) netSend({ t: 'lobby', away: menu.away, home: menu.home, side: menu.side, innings: menu.innings, diff: menu.diff }); }
+function netSendLobby() { if (NET.role === 'host' && NET.open) netSend({ t: 'lobby', away: menu.away, home: menu.home, side: menu.side, innings: menu.innings, diff: menu.diff, ump: menu.ump }); }
 function hostStartOnline() {
   if (!(NET.role === 'host' && NET.open)) return;
-  const cfg = { mode: 'online', away: menu.away, home: menu.home, side: menu.side, innings: menu.innings, diff: menu.diff, manual: 1 };
+  const cfg = { mode: 'online', away: menu.away, home: menu.home, side: menu.side, innings: menu.innings, diff: menu.diff, manual: 1, ump: menu.ump };
   netSend({ t: 'start', cfg });
   startGame(cfg);
 }
@@ -120,6 +120,7 @@ function hostOnMsg(m) {
     case 'pause': togglePause(!!m.v, true); break;
     case 'pen': { const s = 1 - localSide(); if (s === 1 - G.half && G.phase === 'prePitch' && bringReliever(s)) enterPrePitch(); break; }
     case 'again': if (G.phase === 'final') hostRestart(); break;
+    case 'challenge': if (G.challengeable && G.challengeable.who === 'remote') startChallenge(G.challengeable.side); break;
   }
 }
 function hostRestart() { netSend({ t: 'start', cfg: G.cfg }); showScreen(null); startGame(G.cfg); }
@@ -146,6 +147,8 @@ function netInstallHooks() {
   { const o = fireworks; fireworks = (...a) => { o(...a); netEv('fw', a); }; }
   { const o = excite; excite = (...a) => { o(...a); netEv('excite', a); }; }
   { const o = updateFeedbackStats; updateFeedbackStats = (d) => { o(d); netEv('fbstats', [d]); }; }
+  { const o = absShow; absShow = (...a) => { o(...a); netEv('absShow', a); }; }
+  { const o = absReveal; absReveal = (...a) => { o(...a); netEv('absReveal', a); }; }
   { const o = hudPitchInfo; hudPitchInfo = (info) => { const i = info || (G.P && { mph: G.P.mph, type: G.P.type }); o(i); netEv('pinfo', [i]); }; }
   { const o = Caster.line.bind(Caster); Caster.line = (...a) => { o(...a); netEv('cast', a); }; }
   for (const k of ['crack', 'pop', 'thud', 'roar', 'charge', 'stretch', 'fanfare', 'say']) { const o = SND[k].bind(SND); SND[k] = (...a) => { o(...a); netEv('snd', [k, ...a]); }; }
@@ -168,6 +171,7 @@ function netGS() {
     bases: G.bases.map((p) => (p ? p.id : null)), batter: G.batter ? G.batter.id : null, batSide: G.batSide,
     pitcher: G.pitcher.map((p) => (p ? p.id : null)), stats: [...G.stats], pstats: [...G.pstats],
     abPitches: G.abPitches, lastP: G.lastP || null,
+    chal: G.challenges, ump: G.ump, chk: G.challengeable && G.challengeable.who === 'remote' ? G.challengeable.side : -1,
   };
 }
 function netSnapshot() {
@@ -229,6 +233,11 @@ function netApplyGS(s) {
   G.batter = s.batter ? PBYID[s.batter] : null;
   if (G.batter) G.batterModel = getModel(G.batter);
   G.stats = new Map(s.stats); G.pstats = new Map(s.pstats);
+  G.challenges = s.chal || [0, 0]; G.ump = s.ump ?? G.ump;
+  const canChallenge = s.chk >= 0 && s.chk === localSide();
+  if (canChallenge && G.chkSide !== s.chk) setHint(`<kbd>C</kbd> challenge the call &middot; ${G.challenges[s.chk]} left`);
+  else if (!canChallenge && G.chkSide >= 0 && G.chkSide === localSide()) setHint('');
+  G.chkSide = s.chk;
   hudScore(); hudCount(); if (G.batter) hudBatter(); hudPitcher(); drawTracker(); drawBoards();
   const n = G.abPitches.length, last = G.abPitches[n - 1];
   if (n !== NET.lastAbLen) {
@@ -318,6 +327,8 @@ function guestEv(f, a) {
     case 'showFeedback': showFeedback(...a); break;
     case 'fbstats': updateFeedbackStats(...a); break;
     case 'pinfo': hudPitchInfo(...a); break;
+    case 'absShow': absShow(...a); break;
+    case 'absReveal': absReveal(...a); break;
   }
 }
 function guestScreen(m) {

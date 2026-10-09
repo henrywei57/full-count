@@ -15,6 +15,7 @@ const G = {
   pci: { x: 0, y: 2.5 }, glove: new V3(0, 2.4, 1.7), rec: [], recOn: false, replay: null, derby: null,
   abEnd: null, contactT: 0, menuAng: 0,
   ctrl: ['cpu', 'cpu'], lock: null, remoteIn: { x: 0, z: 0 }, remoteTake: false, camFocus: null, localPitch: false,
+  ump: 1, challenges: [2, 2], challengeable: null, challenge: null, cpuChallengeAt: 0, fpv: false, lockSide: 1,
 };
 const battingTeam = () => G.teams[G.half];
 const fieldingTeam = () => G.teams[1 - G.half];
@@ -155,6 +156,8 @@ function startGame(cfg) {
     G.lock = pick[0] === 'p' ? team.pitchers[0].id : team.lineup[+pick.slice(1)].id;
   }
   settings.manual = cfg.manual == null ? true : !!cfg.manual;
+  G.ump = cfg.ump ?? 1; G.challenges = [2, 2]; G.challengeable = null; G.challenge = null; G.cpuChallengeAt = 0;
+  G.fpv = cfg.mode === 'lock' && cfg.fpv !== 0; G.lockSide = cfg.side ?? 1;
   Object.assign(G, { inning: 1, half: 0, outs: 0, balls: 0, strikes: 0, score: [0, 0], line: [[], []], hits: [0, 0], errs: [0, 0], bases: [null, null, null, null], order: [0, 0], pen: [0, 0], ff: 1, paused: false, replay: null, play: null, abEnd: null });
   G.stats = new Map(); G.pstats = new Map();
   G.pitcher = [G.teams[0].pitchers[0], G.teams[1].pitchers[0]];
@@ -247,7 +250,7 @@ function newBatter() {
 // ------------------------------------------------------------- pitching ----
 function enterPrePitch() {
   setPhase('prePitch');
-  G.P = null; G.swing = null; G.cpu = null; G.play = null; G.bb = null; G.call = null; G.remoteTake = false;
+  G.P = null; G.swing = null; G.cpu = null; G.play = null; G.bb = null; G.call = null; G.remoteTake = false; G.challengeable = null;
   placeForPitch();
   ballMesh.visible = false; ballShadow.visible = false; trailReset(); pitchGuide.visible = false;
   hideFeedback();
@@ -268,7 +271,7 @@ function prePitchUI() {
   pci.visible = ub; reticle.visible = up; pitchGuide.visible = false;
   pitchMark.visible = pitchMark.visible && ub;
   $('meter').classList.toggle('hidden', !up);
-  $('throwPrompt').classList.add('hidden');
+  $('throwPrompt').classList.add('hidden'); $('runHelp').classList.add('hidden');
   ctrlRing.visible = false; landMark.visible = false;
   if (up) {
     const U = G.pitchUI, n = curPitcher().pitches.length;
@@ -278,6 +281,7 @@ function prePitchUI() {
     setHint('<kbd>1</kbd>–<kbd>' + n + '</kbd> pitch &middot; aim with the mouse &middot; <kbd>Click</kbd> to start the meter');
   } else if (ub) setHint('Aim the PCI &middot; <kbd>Click</kbd> swing &middot; <kbd>Right-click</kbd> power &middot; <kbd>J</kbd> contact &middot; <kbd>B</kbd> bunt');
   else if (G.mode === 'online') setHint('Waiting for your opponent&hellip;');
+  else if (G.mode === 'lock' && G.half === 1 - G.lockSide && G.fielders.some((f) => f.pl.id === G.lock)) setHint('You are in the field &middot; get within the gold ring of the ball to field it');
   else setHint(G.mode === 'lock' ? 'Simulating until you are up&hellip;' : '');
   if (up) pitchCam(G.prevCam !== 'pitch'); else if (ub) batCam(G.prevCam !== 'bat'); else cfCam(G.prevCam !== 'cf');
   hudPitcher();
@@ -558,12 +562,87 @@ function catchPitch() {
   let call;
   if (swung) call = sw && sw.type === 'bunt' ? 'buntMiss' : 'swinging';
   else if (G.hbp) call = 'hbp';
-  else call = G.isStrike ? 'called' : 'ball';
+  else call = umpCallsStrike() ? 'called' : 'ball';
+  G.preCall = { balls: G.balls, strikes: G.strikes };
   if (sw && sw.calc && sw.calc.miss) fbShow(sw.calc);
   if (G.mode === 'derby') { derbyPitchDone(swung ? 'whiff' : 'take'); return; }
   recordPitch(call === 'ball' ? 'Ball' : call === 'hbp' ? 'HBP' : call === 'called' ? 'Called K' : 'Swinging K');
   G.recOn = false;
   applyCall(call);
+  setupChallenge(call);
+}
+
+// ---------------------------------------------------------- umpire & ABS ----
+const UMP_S = 0.1;
+// distance from the pitch to the edge of the zone in feet: positive inside, negative outside
+function zoneEdgeDist(x, y) {
+  const hw = ZONE.halfW + BALL_R, top = ZONE.top + BALL_R, bot = ZONE.bot - BALL_R;
+  const dx = hw - Math.abs(x), dyt = top - y, dyb = y - bot;
+  if (dx >= 0 && dyt >= 0 && dyb >= 0) return Math.min(dx, dyt, dyb);
+  return -Math.hypot(Math.max(0, -dx), Math.max(0, -dyt, -dyb));
+}
+// a human umpire misses some borderline pitches (about 92% right overall); the robot never does
+function umpCallsStrike() {
+  const truth = G.isStrike;
+  const pMiss = G.ump === 2 ? 0 : 0.5 * Math.exp(-Math.abs(zoneEdgeDist(G.cross.x, G.cross.y)) / UMP_S);
+  const strike = Math.random() < pMiss ? !truth : truth;
+  if (G.umpLog) { G.umpLog.n++; if (strike === truth) G.umpLog.ok++; }
+  return strike;
+}
+// ABS challenge system: the side hurt by a called ball/strike gets a short window to challenge
+function setupChallenge(call) {
+  G.challengeable = null; G.cpuChallengeAt = 0;
+  if (G.ump !== 1 || (call !== 'called' && call !== 'ball') || G.mode === 'derby') return;
+  const side = call === 'called' ? G.half : 1 - G.half;
+  if (G.challenges[side] <= 0) return;
+  G.challengeable = { side, call, truth: G.isStrike ? 'called' : 'ball', x: G.cross.x, y: G.cross.y, pre: { ...G.preCall } };
+  let c = sideCtrl(side);
+  // like MLB, only the batter, pitcher or catcher may challenge; in Player Lock that has to be you
+  if (G.lock && side === G.lockSide) {
+    const catcher = G.fByRole.C && G.fByRole.C.pl;
+    const mine = call === 'called' ? G.batter.id === G.lock : curPitcher().id === G.lock || (catcher && catcher.id === G.lock);
+    if (!mine) c = 'cpu';
+  }
+  G.challengeable.who = c;
+  if (c === 'cpu') {
+    const wrong = (call === 'called') !== G.isStrike;
+    const big = call === 'called' ? G.preCall.strikes === 2 : G.preCall.balls === 3;
+    if (Math.random() < (wrong ? (big ? 0.8 : 0.3) : 0.015)) G.cpuChallengeAt = G.now + 0.7; else G.challengeable = null;
+  } else {
+    G.dur = Math.max(G.dur, 2.8);
+    if (c === 'local') setHint(`<kbd>C</kbd> challenge the call &middot; ${G.challenges[side]} left`);
+  }
+  hudScore();
+}
+function startChallenge(side) {
+  const c = G.challengeable;
+  if (!c || c.side !== side || G.phase !== 'postPitch') return;
+  G.challengeable = null; G.cpuChallengeAt = 0;
+  G.challenge = c;
+  const team = G.teams[side];
+  absShow(team.id, c.x, c.y, c.call === 'called' ? 'STRIKE' : 'BALL');
+  Caster.line(`The ${team.name} challenge the call. Let's go to the ABS.`);
+  setHint('');
+  setPhase('absReview', 1.9);
+  hudScore();
+}
+function revealChallenge() {
+  const ch = G.challenge; G.challenge = null;
+  const overturn = ch.call !== ch.truth, word = ch.truth === 'called' ? 'STRIKE' : 'BALL';
+  absReveal(overturn, word);
+  if (overturn) {
+    G.balls = ch.pre.balls; G.strikes = ch.pre.strikes; G.abEnd = null;
+    const last = G.abPitches[G.abPitches.length - 1];
+    if (last) last.res = ch.truth === 'called' ? 'Called K' : 'Ball';
+    Caster.line(`The call is overturned. That's a ${word.toLowerCase()}.`);
+    applyCall(ch.truth, true);
+    drawTracker();
+  } else {
+    G.challenges[ch.side]--;
+    Caster.line(`The call stands. The ${G.teams[ch.side].name} lose a challenge.`);
+    setPhase('postPitch', 1.4);
+  }
+  hudScore(); hudCount();
 }
 function recordPitch(res) {
   const P = G.P;
@@ -574,7 +653,7 @@ function recordPitch(res) {
   drawTracker(); hudPitchInfo(); drawBoards();
   hudPitcher();
 }
-function applyCall(call) {
+function applyCall(call, quiet) {
   const p = curPitcher(), ps = pstat(p), bs = bstat(G.batter), hu = G.umps[0];
   let dur = 1.0;
   if (call === 'ball') {
@@ -586,20 +665,21 @@ function applyCall(call) {
     Caster.line(`${lastName(G.batter.name)} is hit by the pitch and takes first.`);
   } else {
     G.strikes++;
-    if (call === 'called') setAnim(hu, 'ump', { callT: 0.12, call: 'strike' });
+    if (call === 'called' && !quiet) setAnim(hu, 'ump', { callT: 0.12, call: 'strike' });
     if (G.strikes >= 3) {
       G.abEnd = call === 'called' ? 'kLook' : 'kSwing';
       hudCall(call === 'called' ? 'STRIKE THREE' : 'STRIKEOUT', 'strike'); dur = 1.9;
-      if (call === 'called') SND.say('Strike three!', { pitch: 0.6, rate: 0.95 });
+      if (call === 'called' && !quiet) SND.say('Strike three!', { pitch: 0.6, rate: 0.95 });
     } else {
       hudCall(call === 'called' ? 'STRIKE' : 'SWINGING STRIKE', 'strike');
-      if (call === 'called') SND.say('Strike!', { pitch: 0.6, rate: 0.95 });
+      if (call === 'called' && !quiet) SND.say('Strike!', { pitch: 0.6, rate: 0.95 });
     }
   }
   hudCount(); drawBoards();
   setPhase('postPitch', G.mode === 'spectate' ? dur * 0.7 : dur);
 }
 function endPostPitch() {
+  G.challengeable = null; G.cpuChallengeAt = 0;
   const k = G.abEnd;
   if (!k) { enterPrePitch(); return; }
   const p = curPitcher(), ps = pstat(p), bs = bstat(G.batter), bi = G.half;
