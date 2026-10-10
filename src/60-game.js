@@ -274,7 +274,7 @@ function prePitchUI() {
   pci.visible = ub; reticle.visible = up; pitchGuide.visible = false;
   pitchMark.visible = pitchMark.visible && ub;
   $('meter').classList.toggle('hidden', !up);
-  $('throwPrompt').classList.add('hidden'); $('runHelp').classList.add('hidden');
+  $('throwPrompt').classList.add('hidden'); runnerHUD(false);
   ctrlRing.visible = false; landMark.visible = false;
   if (up) {
     const U = G.pitchUI, n = curPitcher().pitches.length;
@@ -600,7 +600,7 @@ function startSim() {
     if (pl.ball.mode === 'flight' && !pl.hr && !pl.dead) pl.replan();
   }
   pci.visible = false; reticle.visible = false; zoneGroup.visible = false; pitchGuide.visible = false;
-  $('meter').classList.add('hidden'); $('throwPrompt').classList.add('hidden'); $('runHelp').classList.add('hidden');
+  $('meter').classList.add('hidden'); $('throwPrompt').classList.add('hidden'); runnerHUD(false);
   ctrlRing.visible = false; landMark.visible = false; baseMark.visible = false;
   setHint('Skipping to the next batter&hellip;');
   if (document.pointerLockElement) try { document.exitPointerLock(); } catch (e) { /* not locked */ }

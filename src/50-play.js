@@ -38,7 +38,7 @@ class Fielder {
   reset() {
     this.v = 0; this.react = this.baseReact + Math.random() * (this.isOF ? 0.22 : 0.1);
     this.task = null; this.target = null; this.plan = null; this.decideAt = 0; this.throwing = false; this.runTo = null;
-    this.holding = false; this.downUntil = 0; this.animHold = 0; this.promptStart = null; this.excluded = false; this.dive = null; this.touched = 0;
+    this.holding = false; this.downUntil = 0; this.animHold = 0; this.promptStart = null; this.excluded = false; this.dive = null; this.touched = 0; this.readyAt = 0;
   }
   setHome(x, z) { this.home.set(x, groundY(x, z), z); }
   snapHome() { this.pos.copy(this.home); this.reset(); }
@@ -52,7 +52,8 @@ class Runner {
     this.pl = pl; this.m = model; this.base = base; this.start = base; this.next = null; this.d = 0; this.v = 0;
     this.top = 23 + (pl.spd ?? 50) * 0.07; this.state = 'base'; this.forced = false; this.wait = false; this.autoRun = false;
     this.lead = base > 0 ? 12 : 0; this.leadVis = this.lead; this.isBatter = base === 0; this.delay = 0; this.target = null;
-    this.rev = false; this.cmd = null; this.leftEarly = false;
+    // userTarget: the base a human told this runner to run to (null = the AI decides)
+    this.rev = false; this.userTarget = null; this.leftEarly = false; this.aiRev = false;
     this.pos = new V3(); this.phase = Math.random() * 6;
   }
   eta() {
@@ -99,6 +100,8 @@ class Play {
     this.fairKnown = false; this.foul = false; this.hr = !!o.bb.hr; this.awarded = false; this.thirdOutForce = false;
     this.queuedThrow = null; this.prompt = false; this.events = []; this.chaser = null; this.dove = false; this.wallCatch = false;
     this.uf = null; this.ufManual = false; this.lastInput = -9; this.inp = { x: 0, z: 0 };
+    // ballBase: a fielder standing on a bag with the ball, ready to tag whoever arrives
+    this.ballBase = null; this.remotePos = null;
     for (const f of this.F) f.reset();
     // force situation at contact
     const occ = [true, false, false, false];
@@ -220,23 +223,54 @@ class Play {
     if (!this.hf || this.done) return;
     this.queuedThrow = base;
   }
-  // kind: 'go' | 'back'; which: runner start base, or null for every runner
+  // kind: 'go' | 'back'; which: one runner's player id, or null for every runner.
+  // Each 'go' sends the runner one base further than he's committed to; each 'back'
+  // takes a base away (stop at the next bag, then turn around and go back).
   runCmd(kind, which = null) {
-    if (!this.hrun || this.done || this.hr) return;
+    if (!this.hrun || this.done || this.hr || this.awarded) return;
     for (const r of this.R) {
       if (r.state !== 'run' && r.state !== 'base') continue;
       if (this.hrun.lock && r.pl.id !== this.hrun.lock) continue;
-      if (which != null && r.start !== which) continue;
-      if (kind === 'go') {
-        if (r.state === 'run' && r.rev) { r.rev = false; r.v = Math.min(r.v, 6); }
-        r.cmd = 'go';
-      } else {
-        if (r.state === 'run' && !r.rev && !(r.isBatter && r.base === 0)) {
-          if (r.d > 63) r.cmd = 'stop';
-          else { r.rev = true; r.v = Math.min(r.v, 6); r.cmd = null; }
-        } else r.cmd = 'stop';
-      }
+      if (which != null && r.pl.id !== which) continue;
+      if (kind === 'go') this.runnerGo(r); else this.runnerBack(r);
     }
+  }
+  runnerGo(r) {
+    if (r.state === 'run' && r.rev) { r.rev = false; r.v = Math.min(r.v, 6); r.userTarget = r.next; return; }
+    const cur = r.state === 'run' ? r.next : r.base;
+    r.userTarget = Math.min(4, Math.max(r.userTarget ?? cur, cur) + 1);
+  }
+  runnerBack(r) {
+    if (r.state === 'base') { r.userTarget = r.base; return; }
+    if (r.rev) { r.userTarget = r.base; return; }
+    const t = r.userTarget ?? (r.d > 63 ? r.next + 1 : r.next);
+    if (t > r.next) r.userTarget = Math.max(r.next, t - 1);
+    else if (r.isBatter && r.base === 0) r.userTarget = 1;   // the batter can't go back home
+    else { r.rev = true; r.v = Math.min(r.v, 6); r.userTarget = r.base; }
+  }
+  // the runner standing on, or running to, base b (1-3, 4 = home)
+  runnerFor(b) {
+    let best = null, bd = 1e9;
+    for (const r of this.R) {
+      if (r.state === 'base' && r.base === b && r.base < 4) return r;
+      if (r.state !== 'run' || heading(r) !== b) continue;
+      const rem = r.rev ? r.d : 90 - r.d;
+      if (rem < bd) { bd = rem; best = r; }
+    }
+    return best;
+  }
+  // where each runner is headed right now, for the baserunning HUD
+  runnerInfo() {
+    const out = [];
+    for (const r of this.R) {
+      if (r.state !== 'run' && r.state !== 'base') continue;
+      const key = r.state === 'base' ? r.base : heading(r);
+      const forcedOff = r.forced && r.state === 'base' && r.base === r.start && !this.caught;
+      let to = r.userTarget;
+      if (to == null || forcedOff) to = r.state === 'base' ? (forcedOff ? r.base + 1 : r.base) : heading(r);
+      out.push({ id: r.pl.id, key, to, from: r.state === 'base' ? r.base : r.rev ? r.next : r.base, run: r.state === 'run', rev: r.rev, user: r.userTarget != null, forced: r.forced && !this.caught, bat: r.isBatter, m: r.m });
+    }
+    return out;
   }
   humanHolder(f) { return this.hf && (this.hf.lock ? f.pl.id === this.hf.lock : true); }
   // ------------------------------------------------------------ update ----
@@ -244,8 +278,16 @@ class Play {
     this.t += dt;
     this.updateBall();
     this.updateFielders(dt);
+    this.trackBallBase();
     this.updateRunners(dt);
     this.checkEnd();
+  }
+  trackBallBase() {
+    const b = this.ball, f = b.mode === 'held' ? b.holder : null;
+    let base = 0;
+    if (f && !f.throwing) for (let k = 1; k <= 4; k++) if (Math.hypot(BASES[k].x - f.pos.x, BASES[k].z - f.pos.z) < 4.5) { base = k; break; }
+    if (!base) this.ballBase = null;
+    else if (!this.ballBase || this.ballBase.base !== base || this.ballBase.f !== f) this.ballBase = { base, f, ready: Math.max(this.t + 0.12, f.readyAt || 0) };
   }
   sample() { const S = this.bb.S; return S[Math.min(S.length - 1, Math.floor(this.t / BB_DT))]; }
   landingSpot() {
@@ -419,7 +461,7 @@ class Play {
   }
   secure(f, air, bobble, dove) {
     const b = this.ball;
-    b.mode = 'held'; b.holder = f; f.holding = false; f.touched = 0;
+    b.mode = 'held'; b.holder = f; f.holding = false; f.touched = 0; f.readyAt = this.t + bobble + 0.12;
     if (!this.firstFielder) { this.firstFielder = f; this.firstAir = air; }
     if (!dove) { f.anim(air ? 'catchHigh' : 'fieldLow'); f.animHold = this.t + 0.3; }
     if (this.hf && !this.hf.lock) { if (this.uf !== f) this.ufManual = false; this.uf = f; }
@@ -433,8 +475,13 @@ class Play {
       this.recordOut(batter, 'catch', 0);
       for (const r of this.R) {
         r.forced = false; r.wait = false;
-        // runners who left early have to get back and tag
-        if (r.leftEarly && r.state === 'run' && !r.rev && !r.isBatter) { r.rev = true; r.v = Math.min(r.v, 6); r.cmd = null; }
+        if (r.isBatter || r.state === 'out' || r.state === 'scored') continue;
+        // anyone off his base has to get back and tag up before he can advance
+        if (r.state === 'run' || r.base !== r.start) {
+          r.leftEarly = true; r.userTarget = null;
+          if (r.state === 'run' && !r.rev) { r.rev = true; r.v = Math.min(r.v, 6); }
+          else if (r.state === 'base') { r.state = 'run'; r.rev = true; r.next = r.base; r.base--; r.d = 90; r.v = 0; }
+        }
       }
       SND.pop(0.7);
       this.events.push('catch');
@@ -495,6 +542,7 @@ class Play {
     const c = this.chooseThrow(f);
     if (c.type === 'throw') { f.holding = false; this.execThrow(f, c.base); }
     else if (c.type === 'run') { f.holding = false; f.runTo = c.base; }
+    else if (c.type === 'wait') { f.holding = false; f.decideAt = t + 0.1; f.anim('ready'); }
     else { f.holding = true; f.decideAt = t + 0.2; }
   }
   chooseThrow(f) {
@@ -504,8 +552,10 @@ class Play {
       if (!runner) continue;
       const bp = BASES[base], d = Math.hypot(bp.x - f.pos.x, bp.z - f.pos.z);
       const eta = runner.eta();
-      const force = runner.forced && heading(runner) === runner.start + 1;
+      const force = this.forcedTo(runner, base);
       let tb, type;
+      // already on the bag with the ball: stand there and put the tag on him
+      if (d < 4.5 && !force) { opts.push({ base, type: 'wait', margin: eta, runner }); continue; }
       if (d < 24 && d / f.speed < eta - 0.15) { tb = d / f.speed; type = 'run'; }
       else { tb = 0.22 + d / throwSpeed(f, d) + (force ? 0.03 : 0.15); type = 'throw'; }
       opts.push({ base, type, margin: eta - tb, runner });
@@ -561,23 +611,29 @@ class Play {
     this.ball.mode = 'held'; this.ball.holder = recv; recv.holding = false; recv.touched = base;
     const bp = BASES[base];
     if (recv.pos.distanceTo(bp) > 3) recv.pos.set(bp.x + (base === 4 ? 0 : 0.8), 0, bp.z + (base === 4 ? 2 : 0.8));
-    recv.anim('catchHigh'); recv.animHold = this.t + 0.22; recv.promptStart = null;
+    recv.anim('catchHigh'); recv.animHold = this.t + 0.22; recv.promptStart = null; recv.readyAt = this.t + (th.err ? 1.1 : 0.1);
     if (this.hf && !this.hf.lock) { this.uf = recv; this.ufManual = false; }
     SND.pop(0.55);
     if (th.err) { this.error = true; this.events.push('throwError'); recv.decideAt = this.t + 1.1; return; }
     this.ballAtBase(base, recv);
     recv.decideAt = this.t + (base === 2 ? 0.58 : 0.45);
   }
+  // The ball reached a bag. Only a force (or doubling a runner off after a catch) is an
+  // out on the spot; anyone else has to be tagged when he gets there (see updateRunners).
   ballAtBase(base, f) {
     for (const r of this.R) {
       if (r.state !== 'run') continue;
-      const forcedHere = r.forced && r.next === base && r.next === r.start + 1;
-      if (heading(r) === base) {
-        if (r.eta() > (forcedHere ? 0.0 : 0.1)) { this.recordOut(r, forcedHere ? 'force' : 'tag', base); this.umpCall = { base, call: 'out' }; }
+      const forcedHere = r.forced && !r.rev && r.next === base && r.next === r.start + 1;
+      const appeal = this.caught && r.rev && r.leftEarly && r.base === base && base === r.start;
+      if (heading(r) === base && (forcedHere || appeal)) {
+        if (r.eta() > 0) { this.recordOut(r, forcedHere ? 'force' : 'appeal', base); this.umpCall = { base, call: 'out' }; }
         else this.umpCall = { base, call: 'safe' };
-      } else if (forcedHere && r.rev) { this.recordOut(r, 'force', base); this.umpCall = { base, call: 'out' }; }
+      } else if (r.forced && r.rev && r.next === base && r.next === r.start + 1) { this.recordOut(r, 'force', base); this.umpCall = { base, call: 'out' }; }
+      else if (heading(r) === base && r.eta() <= 0.12) this.umpCall = { base, call: 'safe' };
     }
   }
+  // is this runner forced to the base he's running to?
+  forcedTo(r, base) { return r.forced && !r.rev && r.next === base && base === r.start + 1; }
   // ----------------------------------------------------------- runners ----
   baseFree(b, me) {
     if (b >= 4) return true;
@@ -629,31 +685,49 @@ class Play {
       if (r.state === 'base') {
         if (r.wait && r.leadVis > 0) r.leadVis = Math.max(0, r.leadVis - dt * 16);
         if (this.outs >= 3 || this.dead) continue;
-        if (r.cmd === 'go') {
-          r.cmd = null;
-          if (r.base < 4 && this.baseFree(r.base + 1, r)) {
+        const forcedOff = r.forced && r.base === r.start && !this.caught;
+        if (r.userTarget != null && !forcedOff) {
+          // a human is running this guy: go only where he was told
+          if (r.userTarget > r.base && r.base < 4 && this.baseFree(r.base + 1, r)) {
             if (r.wait && this.ball.mode === 'flight' && !this.caught) r.leftEarly = true;
-            r.wait = false; this.sendRunner(r); continue;
+            r.wait = false; this.sendRunner(r);
           }
+          continue;
         }
-        if (r.cmd === 'stop' && !(r.forced && r.base === r.start && !this.caught)) continue;
         if (r.wait) {
           const s = this.sample();
           if (this.caught || this.ball.mode !== 'flight' || s.b) r.wait = false; else continue;
         }
-        if (r.forced && r.base === r.start && !this.caught) { this.sendRunner(r); continue; }
+        if (forcedOff) { this.sendRunner(r); continue; }
         if (r.autoRun && r.base === r.start && !this.caught && this.baseFree(r.base + 1, r)) { this.sendRunner(r); continue; }
         if (this.shouldAdvance(r, false)) this.sendRunner(r);
         continue;
       }
       // running
       if (r.delay > 0) { r.delay -= dt; continue; }
+      // a fielder waiting on the bag with the ball tags him as he arrives
+      const bb = this.ballBase, hb = heading(r);
+      if (bb && bb.base === hb && !this.dead && this.outs < 3 && !this.hr && !this.awarded) {
+        const rem = r.rev ? r.d : 90 - r.d;
+        if (rem <= 2.2) {
+          if (t >= bb.ready) { this.recordOut(r, 'tag', hb); this.umpCall = { base: hb, call: 'out' }; continue; }
+          if (r.safeAt !== hb) { r.safeAt = hb; this.umpCall = { base: hb, call: 'safe' }; }
+        } else if (!r.rev && !r.aiRev && r.userTarget == null && !this.forcedTo(r, hb) && rem > 20 && r.d < 65 && r.base > 0 && this.baseFree(r.base, r)) {
+          // the ball beat him there: the AI runner pulls up and heads back
+          r.rev = true; r.aiRev = true; r.v = Math.min(r.v, 6);
+        }
+      }
       const top = this.hr || this.awarded ? r.top * 0.68 : r.top;
       r.v = Math.min(top, r.v + RUN_ACC * dt);
       r.phase += r.v * dt * 0.42;
       if (r.rev) {
         r.d -= r.v * dt;
-        if (r.d <= 0) { r.d = 0; r.rev = false; r.state = 'base'; r.v = 0; r.next = null; r.cmd = null; r.leftEarly = false; }
+        if (r.d <= 0) {
+          // runners going back to tag up after a catch retrace every base they passed
+          if (r.leftEarly && r.base > r.start) { r.next = r.base; r.base--; r.d = 90; continue; }
+          r.d = 0; r.rev = false; r.state = 'base'; r.v = 0; r.next = null; r.leftEarly = false;
+          if (r.userTarget != null && r.userTarget < r.base) r.userTarget = r.base;
+        }
         continue;
       }
       r.d += r.v * dt;
@@ -668,8 +742,11 @@ class Play {
           if (r.base < r.target) r.next = r.base + 1; else { r.state = 'base'; r.v = 0; }
           continue;
         }
-        if (r.cmd === 'stop') { r.cmd = null; r.state = 'base'; r.v = 0; continue; }
-        if (r.cmd === 'go' && this.baseFree(r.base + 1, r)) { r.cmd = null; r.next = r.base + 1; continue; }
+        if (r.userTarget != null) {
+          if (r.userTarget > r.base && this.baseFree(r.base + 1, r)) r.next = r.base + 1;
+          else { r.state = 'base'; r.v = 0; }
+          continue;
+        }
         if (this.outs < 3 && this.shouldAdvance(r, true)) r.next = r.base + 1;
         else { r.state = 'base'; r.v = 0; }
       }
@@ -678,17 +755,20 @@ class Play {
   // ------------------------------------------------------------- finish ----
   checkEnd() {
     if (this.done) return;
+    const moving = this.R.some((r) => r.state === 'run');
+    // a runner took off again while the play was winding down: keep it going
+    if (this.endAt != null && this.endSoft && moving) { this.endAt = null; this.endSoft = false; }
     if (this.endAt != null) { if (this.t >= this.endAt) this.done = true; return; }
     if (this.outs >= 3) { this.finishSoon(0.9); return; }
-    const moving = this.R.some((r) => r.state === 'run');
     if (this.hr || this.awarded) { if (!moving) this.finishSoon(0.8); return; }
     const b = this.ball;
     if (!moving && b.mode === 'held' && b.holder && b.holder.holding && !b.holder.runTo && !this.prompt) {
-      if (!this.R.some((r) => r.state === 'base' && !r.wait && (r.cmd === 'go' || this.shouldAdvance(r, false)))) this.finishSoon(0.7);
+      const wants = (r) => (r.userTarget != null ? r.userTarget > r.base && this.baseFree(r.base + 1, r) : this.shouldAdvance(r, false));
+      if (!this.R.some((r) => r.state === 'base' && !r.wait && wants(r))) { this.finishSoon(this.hrun ? 1.0 : 0.7); this.endSoft = true; }
     }
     if (this.t > 45) this.done = true;
   }
-  finishSoon(d) { if (this.endAt == null) this.endAt = this.t + d; }
+  finishSoon(d) { if (this.endAt == null) { this.endAt = this.t + d; this.endSoft = false; } }
   skipTrot() {
     for (const r of this.R) {
       if (r.state !== 'run') continue;

@@ -26,7 +26,8 @@ Teams, players and sponsors are fictional.
 | Move fielder | WASD | Left stick |
 | Dive / switch fielder | Space / Q | RB / LB |
 | Throw to 1B, 2B, 3B, home | 1 2 3 4 (or → ↑ ← ↓) | B, Y, X, A |
-| Advance / send back runners | E / Q | RB / LB |
+| Advance / send back all runners | E / Q | RB / LB |
+| Run one runner | Hold his base key (1 2 3 4 or arrows) + E / Q, or click ◀ ▶ in the runner panel | Hold the D-pad toward his base + RB / LB |
 | ABS challenge | C | Y (right after the call) |
 | Swing the camera (Player Lock) | Mouse (click to grab it), right-click or T to re-center | Right stick, R3 |
 | Cycle third person / first person / broadcast (Player Lock) | V | |
@@ -34,6 +35,8 @@ Teams, players and sponsors are fictional.
 | Replay, skip, pause | R, Enter, Esc | Back, A, Start |
 
 The AI moves your fielder until you touch the controls. Any ball that comes inside the gold ring (7.5 ft) around your fielder is yours. In Player Lock, W runs the way the camera faces. When you field the ball, the best throw is ringed in green and the camera turns toward it; press 1–4 to throw. A live mini diamond shows where every runner, fielder and the ball are.
+
+When you're batting, a runner panel lists every runner with where he's headed, and a tag over each runner shows his key. Each E sends a runner one base further; each Q takes a base back (stop at the next bag, then turn around). Runners you don't touch are run by the AI. Only force plays are outs on the bag; everyone else has to be tagged when he gets there.
 
 ## Batting cameras
 

@@ -207,7 +207,7 @@ function setHint(html) { const el = $('hint'); el.innerHTML = html; el.style.opa
 function liveHint() {
   const parts = [];
   if (userFields()) parts.push('<kbd>WASD</kbd> move', '<kbd>Space</kbd> dive', G.lock ? '' : '<kbd>Q</kbd> switch', '<kbd>1</kbd>&ndash;<kbd>4</kbd> throw');
-  if (userRuns()) parts.push('<kbd>E</kbd> advance runners', '<kbd>Q</kbd> go back');
+  if (userRuns()) parts.push('<kbd>E</kbd> advance', '<kbd>Q</kbd> back', 'hold <kbd>1</kbd>&ndash;<kbd>4</kbd> + <kbd>E</kbd>/<kbd>Q</kbd> for one runner');
   return parts.filter(Boolean).join(' &middot; ');
 }
 function landingAssist() { return settings.guide && G.diff && G.diff.name !== 'Hall of Fame'; }
@@ -504,6 +504,64 @@ function updateLockUI() {
   $('simBtn').classList.toggle('hidden', !show);
 }
 
+// ------------------------------------------------------- baserunning HUD ----
+// Every runner is keyed by the base he's standing on or running to (1-3, 4 = home),
+// the same keys as throwing. Hold that key and press E / Q to run just him.
+const BASE_KEY = { 1: 1, 2: 2, 3: 3, 4: 4, arrowright: 1, arrowup: 2, arrowleft: 3, arrowdown: 4 };
+const BASE_ABBR = ['HOME', '1B', '2B', '3B', 'HOME'];
+function heldBase() { for (const k in BASE_KEY) if (keys.has(k)) return BASE_KEY[k]; return 0; }
+function runnerList() {
+  let L;
+  if (isGuest()) {
+    const raw = (NET.snap && NET.snap.pl && NET.snap.pl.run) || [];
+    L = raw.map(([id, key, to, from, run, rev, user, mk]) => ({ id, key, to, from, run: !!run, rev: !!rev, user: !!user, m: modelByKey(mk) }));
+  } else L = G.play ? G.play.runnerInfo() : [];
+  return G.lock ? L.filter((r) => r.id === G.lock) : L;
+}
+function runnerIdAt(b) { const L = runnerList(); const r = L.find((x) => x.key === b && x.run) || L.find((x) => x.key === b); return r ? r.id : null; }
+// E / Q: one runner if a base key is held, otherwise everyone
+function runKey(kind, base = heldBase()) {
+  if (!base) { actRun(kind, null); return; }
+  const id = runnerIdAt(base);
+  if (id) actRun(kind, id);
+}
+function runnerPath(r) {
+  if (r.run && r.rev) return { cls: 'back', txt: `BACK TO ${BASE_ABBR[r.to]}`, tag: `&#9664; ${BASE_ABBR[r.to]}` };
+  if (r.run) return { cls: 'go', txt: `${BASE_ABBR[r.from]} &rarr; ${BASE_ABBR[r.to]}`, tag: `&rarr; ${BASE_ABBR[r.to]}` };
+  if (r.to > r.key) return { cls: 'go', txt: `GOING TO ${BASE_ABBR[r.to]}`, tag: `&rarr; ${BASE_ABBR[r.to]}` };
+  return { cls: 'hold', txt: `HOLDING ${BASE_ABBR[r.key]}`, tag: 'HOLD' };
+}
+let rhSig = null;
+const runTagEls = new Map(), _tagV = new V3();
+function runnerHUD(show) {
+  const L = show ? runnerList() : [];
+  $('runHelp').classList.toggle('hidden', !L.length);
+  L.sort((a, b) => b.key - a.key);
+  const sig = L.map((r) => [r.id, r.key, r.to, r.from, r.run, r.rev, r.user].join()).join('|');
+  if (sig !== rhSig) {
+    rhSig = sig;
+    $('runList').innerHTML = L.map((r) => {
+      const p = runnerPath(r), pl = PBYID[r.id];
+      return `<div class="rh-row ${r.user ? 'user' : ''}"><b class="rh-key">${r.key}</b><span class="rh-name">${esc(pl ? lastName(pl.name) : '')}</span><span class="rh-path ${p.cls}">${p.txt}</span>`
+        + `<button data-run="back" data-id="${esc(r.id)}" title="Take a base back">&#9664;</button><button data-run="go" data-id="${esc(r.id)}" title="One more base">&#9654;</button></div>`;
+    }).join('');
+  }
+  // a little tag over each runner's head: his key and where he's going
+  const seen = new Set(), W = window.innerWidth, H = window.innerHeight;
+  for (const r of L) {
+    const m = r.m; if (!m || !m.root.visible) continue;
+    _tagV.copy(m.root.position); _tagV.y += 7.2; _tagV.project(camera);
+    if (_tagV.z > 1 || Math.abs(_tagV.x) > 1.1 || Math.abs(_tagV.y) > 1.1) continue;
+    let el = runTagEls.get(r.id);
+    if (!el) { el = document.createElement('div'); $('runTags').appendChild(el); runTagEls.set(r.id, el); }
+    const p = runnerPath(r), s = `${r.key}|${p.tag}|${r.user}`;
+    if (el.dataset.sig !== s) { el.dataset.sig = s; el.className = `run-tag ${p.cls} ${r.user ? 'user' : ''}`; el.innerHTML = `<b>${r.key}</b>${p.tag}`; }
+    el.style.left = ((_tagV.x + 1) / 2) * W + 'px'; el.style.top = ((1 - _tagV.y) / 2) * H + 'px';
+    seen.add(r.id);
+  }
+  for (const [id, el] of runTagEls) if (!seen.has(id)) { el.remove(); runTagEls.delete(id); }
+}
+
 // ------------------------------------------------------------ runner map ----
 // live mini diamond: where every runner, fielder and the ball are right now
 function drawMiniMap() {
@@ -594,9 +652,9 @@ function updateLive(dt) {
   if (ctrlRing.visible) ctrlRing.position.set(pl.uf.pos.x, groundY(pl.uf.pos.x, pl.uf.pos.z) + 0.12, pl.uf.pos.z);
   const land = localField && landingAssist() ? pl.landingSpot() : null;
   landMark.visible = !!land; if (land) landMark.position.set(land[0], 0.1, land[1]);
-  $('runHelp').classList.toggle('hidden', !(userRuns() && !pl.hr && !pl.awarded && !pl.done));
+  runnerHUD(userRuns() && !pl.hr && !pl.awarded && !pl.done);
   if (!fpvOn) playCam();
-  if (pl.done) { setHint(''); ctrlRing.visible = false; landMark.visible = false; baseMark.visible = false; G.aimShown = 0; $('runHelp').classList.add('hidden'); finishPlay(); }
+  if (pl.done) { setHint(''); ctrlRing.visible = false; landMark.visible = false; baseMark.visible = false; G.aimShown = 0; runnerHUD(false); finishPlay(); }
 }
 function onPlayEvent(e) {
   const homeBats = G.half === 1;
@@ -712,7 +770,7 @@ function fieldVec() {
 function actThrow(b) { if (isGuest()) netSend({ t: 'act', a: 'throw', base: b }); else if (G.play) G.play.userThrow(b); }
 function actDive() { if (isGuest()) netSend({ t: 'act', a: 'dive' }); else if (G.play) G.play.userDive(); }
 function actSwitch() { if (isGuest()) netSend({ t: 'act', a: 'switch' }); else if (G.play) G.play.userSwitch(); }
-function actRun(kind) { if (isGuest()) netSend({ t: 'act', a: 'run', kind }); else if (G.play) G.play.runCmd(kind); }
+function actRun(kind, which = null) { if (isGuest()) netSend({ t: 'act', a: 'run', kind, which }); else if (G.play) G.play.runCmd(kind, which); }
 const trotOn = () => (isGuest() ? !!(NET.snap && NET.snap.pl && NET.snap.pl.hr) : !!(G.play && (G.play.hr || G.play.awarded)));
 window.addEventListener('keydown', (e) => {
   if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT')) return;
@@ -732,8 +790,9 @@ window.addEventListener('keydown', (e) => {
       if ('wasd'.includes(k)) return;
     }
     if (userRuns()) {
-      if (k === 'e') { actRun('go'); return; }
-      if (k === 'q') { actRun('back'); return; }
+      if (k === 'e') { runKey('go'); return; }
+      if (k === 'q') { runKey('back'); return; }
+      if (k in BASE_KEY) return;   // held to pick a runner for E / Q
     }
   }
   if (k === ' ' || k === 'k') primaryAction('normal');
@@ -763,7 +822,7 @@ window.addEventListener('blur', () => keys.clear());
 $('pitchList').addEventListener('click', (e) => { const row = e.target.closest('.pitch-row'); if (row) selectPitch(+row.dataset.i); });
 for (const b of $('throwPrompt').querySelectorAll('button')) b.addEventListener('pointerdown', (e) => { e.stopPropagation(); actThrow(+b.dataset.base); });
 $('simBtn').addEventListener('pointerdown', (e) => { e.stopPropagation(); startSim(); });
-for (const b of $('runHelp').querySelectorAll('button')) b.addEventListener('pointerdown', (e) => { e.stopPropagation(); actRun(b.dataset.run); });
+$('runHelp').addEventListener('pointerdown', (e) => { const b = e.target.closest('button[data-run]'); if (!b) return; e.stopPropagation(); e.preventDefault(); actRun(b.dataset.run, b.dataset.id || null); });
 
 let gpPrev = [];
 function pollGamepad() {
@@ -783,7 +842,11 @@ function pollGamepad() {
     if (G.replay) { if (edge(0) || edge(1)) endReplay(); }
     else if (G.phase === 'live' && !trotOn() && (userFields() || userRuns())) {
       if (userFields()) { if (edge(1)) actThrow(1); if (edge(3)) actThrow(2); if (edge(2)) actThrow(3); if (edge(0)) actThrow(4); if (edge(7)) actDive(); if (edge(5)) actDive(); if (edge(4)) actSwitch(); }
-      else { if (edge(5)) actRun('go'); if (edge(4)) actRun('back'); }
+      else {
+        // hold the D-pad toward a runner's base (right = 1B, up = 2B, left = 3B, down = home) to run just him
+        const pad = pressed(15) ? 1 : pressed(12) ? 2 : pressed(14) ? 3 : pressed(13) ? 4 : 0;
+        if (edge(5)) runKey('go', pad); if (edge(4)) runKey('back', pad);
+      }
     } else if (userPitches() && G.phase === 'prePitch') {
       const n = curPitcher().pitches.length;
       if (edge(4) || edge(14)) selectPitch((G.pitchUI.sel + n - 1) % n);
@@ -1004,7 +1067,7 @@ function toMenu() {
   for (const m of MODELS) m.root.visible = false;
   ballMesh.visible = false; ballShadow.visible = false; trailReset();
   pci.visible = false; reticle.visible = false; zoneGroup.visible = false; pitchMark.visible = false; pitchGuide.visible = false; ctrlRing.visible = false; landMark.visible = false;
-  fpvHide(null); fpvOn = false; exitPointerLock(); $('absCard').classList.add('hidden'); $('simBtn').classList.add('hidden'); $('runHelp').classList.add('hidden'); $('throwPrompt').classList.add('hidden');
+  fpvHide(null); fpvOn = false; exitPointerLock(); $('absCard').classList.add('hidden'); $('simBtn').classList.add('hidden'); runnerHUD(false); $('throwPrompt').classList.add('hidden');
   showScreen('menu');
   renderMenu();
 }
@@ -1135,7 +1198,7 @@ function boot() {
 }
 // Debug handle: lets a test harness advance the simulation without waiting on animation frames.
 window.__fullcount = {
-  G, TEAMS, settings, NET, keys, BAT_CAMS,
+  G, TEAMS, settings, NET, keys, BAT_CAMS, Play, Runner, BASES, simBatted, V3, getModel,
   step(sec, dt = 1 / 60) {
     const n = Math.round(sec / dt);
     for (let i = 0; i < n && !G.paused; i++) { if (isGuest()) guestUpdate(dt); else update(dt); netTick(); }

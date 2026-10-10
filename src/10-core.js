@@ -41,8 +41,10 @@ function kf(t, keys) {
 }
 function angDiff(a, b) { let d = b - a; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI; return d; }
 function ordinal(n) { const s = ['th', 'st', 'nd', 'rd'], v = n % 100; return n + (s[(v - 20) % 10] || s[v] || s[0]); }
-function shortName(n) { const p = n.split(' '); return p[0][0] + '. ' + p.slice(1).join(' '); }
-function lastName(n) { return n.split(' ').slice(1).join(' '); }
+function shortName(n) { const p = n.split(' '); return p.length < 2 ? n : p[0][0] + '. ' + p.slice(1).join(' '); }
+function lastName(n) { return n.split(' ').slice(1).join(' ') || n; }
+// escape text that came from a player (custom roster names, friends' names) before it goes into innerHTML
+function esc(s) { return String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]); }
 
 // ---------------------------------------------------------------- field ----
 const BASES = [new V3(0, 0, 0), new V3(63.64, 0, -63.64), new V3(0, 0, -127.28), new V3(-63.64, 0, -63.64), new V3(0, 0, 0)];

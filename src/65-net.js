@@ -114,7 +114,7 @@ function hostOnMsg(m) {
     case 'throw': if (pl && fieldCtrl() === 'remote') pl.userThrow(clamp(m.base | 0, 1, 4)); break;
     case 'dive': if (pl && fieldCtrl() === 'remote') pl.userDive(); break;
     case 'switch': if (pl && fieldCtrl() === 'remote') pl.userSwitch(); break;
-    case 'run': if (pl && runCtrl() === 'remote') pl.runCmd(m.kind === 'go' ? 'go' : 'back'); break;
+    case 'run': if (pl && runCtrl() === 'remote') pl.runCmd(m.kind === 'go' ? 'go' : 'back', typeof m.which === 'string' ? m.which : null); break;
     case 'skip': skip(true); break;
     case 'trot': if (pl && (pl.hr || pl.awarded) && pl.t > 2) pl.skipTrot(); break;
     case 'pause': togglePause(!!m.v, true); break;
@@ -187,7 +187,10 @@ function netSnapshot() {
   return {
     t: 's', ph: G.phase, dur: G.dur, b: [r2(b.x), r2(b.y), r2(b.z), ballMesh.visible ? 1 : 0], m,
     f: G.camFocus ? G.camFocus.map(r2) : null,
-    pl: pl && G.phase === 'live' ? { prompt: pl.prompt && pl.userDef && remoteField ? 1 : 0, uf: remoteField && pl.uf ? pl.uf.m.key : null, land: remoteField ? pl.landingSpot() : null, hr: pl.hr || pl.awarded ? 1 : 0 } : null,
+    pl: pl && G.phase === 'live' ? {
+      prompt: pl.prompt && pl.userDef && remoteField ? 1 : 0, uf: remoteField && pl.uf ? pl.uf.m.key : null, land: remoteField ? pl.landingSpot() : null, hr: pl.hr || pl.awarded ? 1 : 0,
+      run: runCtrl() === 'remote' ? pl.runnerInfo().map((r) => [r.id, r.key, r.to, r.from, r.run ? 1 : 0, r.rev ? 1 : 0, r.user ? 1 : 0, r.m.key]) : null,
+    } : null,
   };
 }
 function netPitchOut() {
@@ -283,7 +286,7 @@ function guestPhase(ph) {
       setHint(liveHint());
       break;
     case 'postPitch': case 'postFoul': G.recOn = false; break;
-    case 'postPlay': G.recOn = false; setHint(''); $('throwPrompt').classList.add('hidden'); $('runHelp').classList.add('hidden'); ctrlRing.visible = false; landMark.visible = false; break;
+    case 'postPlay': G.recOn = false; setHint(''); $('throwPrompt').classList.add('hidden'); runnerHUD(false); ctrlRing.visible = false; landMark.visible = false; break;
     case 'halfIntro': case 'break':
       pci.visible = false; zoneGroup.visible = false; reticle.visible = false; pitchGuide.visible = false; $('meter').classList.add('hidden'); setHint('');
       wideCam(true);
@@ -361,7 +364,7 @@ function guestUpdate(dt) {
   landMark.visible = !!(pl && pl.land && landingAssist());
   if (landMark.visible) landMark.position.set(pl.land[0], 0.1, pl.land[1]);
   $('throwPrompt').classList.toggle('hidden', !(pl && pl.prompt));
-  $('runHelp').classList.toggle('hidden', !(pl && userRuns() && !pl.hr));
+  runnerHUD(!!(pl && userRuns() && !pl.hr));
   dressFrame();
   for (const m of MODELS) updateModel(m, G.now);
   if (G.recOn) recFrame();

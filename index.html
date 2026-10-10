@@ -157,7 +157,7 @@ button{font:inherit;color:inherit}
 #derbyHud b{display:block;font-size:30px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums}
 #derbyHud span{font-size:11px;letter-spacing:.14em;color:var(--dust)}
 #replayTag{position:absolute;left:50%;top:calc(18px + env(safe-area-inset-top,0px));transform:translateX(-50%);font-family:var(--f-display);font-weight:800;font-style:italic;font-size:22px;letter-spacing:.2em;padding:4px 18px;background:var(--strike);color:#fff;border-radius:3px}
-#hud.replaying .plate,#hud.replaying #tracker,#hud.replaying #caption,#hud.replaying #hint,#hud.replaying #feedback,#hud.replaying #pitchInfo,#hud.replaying #bug,#hud.replaying #derbyHud,#hud.replaying #topbar{display:none}
+#hud.replaying .plate,#hud.replaying #tracker,#hud.replaying #caption,#hud.replaying #hint,#hud.replaying #feedback,#hud.replaying #pitchInfo,#hud.replaying #bug,#hud.replaying #derbyHud,#hud.replaying #topbar,#hud.replaying #runHelp,#hud.replaying #runTags{display:none}
 .letterbox::before,.letterbox::after{content:"";position:fixed;left:0;right:0;height:9vh;background:#000;z-index:4}
 .letterbox::before{top:0}.letterbox::after{bottom:0}
 
@@ -239,9 +239,24 @@ button:focus-visible,select:focus-visible{outline:2px solid var(--gold);outline-
 .net-link{font-size:12px;color:var(--dust);word-break:break-all}
 .team-pick.readonly .arrow{visibility:hidden}
 .cta:disabled{opacity:.45;cursor:not-allowed;filter:none}
-#runHelp{position:absolute;left:50%;bottom:calc(150px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);display:flex;gap:8px;pointer-events:auto}
-#runHelp button{padding:8px 12px;border-radius:6px;border:1px solid var(--line);background:var(--panel);font-family:var(--f-display);font-weight:700;font-size:15px;cursor:pointer}
-#runHelp button small{color:var(--dust);font-size:11px;margin-left:4px}
+#runHelp{position:absolute;left:50%;bottom:calc(150px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);width:min(430px,calc(100vw - 32px));background:var(--panel);border:1px solid var(--line);border-radius:6px;overflow:hidden;pointer-events:auto}
+.rh-head{display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--panel-hi);font-family:var(--f-display);font-weight:700;font-size:13px;letter-spacing:.14em;color:var(--gold)}
+.rh-head span{margin-left:auto;font-family:var(--f-body);font-weight:500;font-size:11px;letter-spacing:0;color:var(--dust);text-align:right}
+.rh-head kbd,.rh-row kbd{font-family:var(--f-display);font-weight:700;padding:0 5px;border-radius:3px;background:rgba(255,255,255,.14);color:var(--chalk)}
+.rh-all{display:flex;gap:6px;padding:6px 10px 2px}
+.rh-all button,.rh-row button{padding:6px 10px;border-radius:4px;border:1px solid var(--line);background:transparent;font-family:var(--f-display);font-weight:700;font-size:14px;cursor:pointer;line-height:1}
+.rh-all button:hover,.rh-row button:hover{background:var(--panel-hi)}
+.rh-row{display:grid;grid-template-columns:26px 1fr auto auto auto;align-items:center;gap:8px;padding:5px 10px;border-top:1px solid rgba(255,255,255,.05)}
+.rh-key{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-family:var(--f-display);font-weight:800;font-size:13px;background:var(--dust);color:#081020}
+.rh-row.user .rh-key{background:var(--gold)}
+.rh-name{font-family:var(--f-display);font-weight:700;font-size:16px;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rh-path{font-family:var(--f-display);font-weight:700;font-size:15px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.rh-path.go{color:var(--ball)}.rh-path.back{color:var(--strike)}.rh-path.hold{color:var(--gold)}
+#runTags{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.run-tag{position:absolute;transform:translate(-50%,-100%);padding:2px 7px 2px 3px;border-radius:12px;background:rgba(5,10,20,.78);font-family:var(--f-display);font-weight:700;font-size:13px;white-space:nowrap;display:flex;align-items:center;gap:5px}
+.run-tag b{width:18px;height:18px;border-radius:50%;display:grid;place-items:center;background:var(--dust);color:#081020;font-size:12px}
+.run-tag.user b{background:var(--gold)}
+.run-tag.go{color:var(--ball)}.run-tag.back{color:var(--strike)}.run-tag.hold{color:var(--gold)}
 
 /* ---------- runner map + ABS ---------- */
 #miniMap{position:absolute;left:16px;top:50%;transform:translateY(-50%);width:150px;height:150px;background:var(--panel);border:1px solid var(--line);border-radius:6px}
@@ -259,7 +274,7 @@ button:focus-visible,select:focus-visible{outline:2px solid var(--gold);outline-
 @keyframes simDot{0%,100%{opacity:.2}50%{opacity:1}}
 #simNext{margin-top:6px;font-size:15px;font-weight:600}
 .sim-foot{margin-top:6px;font-size:12px;color:var(--dust)}
-body.skipping #batterCard,body.skipping #pitcherCard,body.skipping #call,body.skipping #feedback,body.skipping #tracker,body.skipping #pitchInfo,body.skipping #hint,body.skipping #banner,body.skipping #simBtn,body.skipping #throwPrompt,body.skipping #runHelp{visibility:hidden}
+body.skipping #batterCard,body.skipping #pitcherCard,body.skipping #call,body.skipping #feedback,body.skipping #tracker,body.skipping #pitchInfo,body.skipping #hint,body.skipping #banner,body.skipping #simBtn,body.skipping #throwPrompt,body.skipping #runHelp,body.skipping #runTags{visibility:hidden}
 #simBtn{position:absolute;left:50%;top:calc(64px + env(safe-area-inset-top,0px));transform:translateX(-50%);pointer-events:auto;padding:6px 14px;border-radius:4px;border:1px solid var(--line);background:var(--panel);font-family:var(--f-display);font-weight:700;font-size:14px;letter-spacing:.1em;cursor:pointer}
 #simBtn:hover{background:var(--panel-hi)}
 #simBtn kbd{font-family:var(--f-display);padding:0 5px;border-radius:3px;background:rgba(255,255,255,.14);margin-left:6px}
@@ -349,7 +364,12 @@ body.skipping #batterCard,body.skipping #pitcherCard,body.skipping #call,body.sk
   <div id="absCard" class="hidden"><div class="abs-head">ABS CHALLENGE</div><div class="abs-sub" id="absTeam"></div><canvas id="absCanvas" width="400" height="440"></canvas><div class="abs-res" id="absRes"></div></div>
   <button id="simBtn" class="hidden" title="Let the CPU play this at-bat for you">SKIP AT-BAT &#9193;<kbd>Tab</kbd></button>
   <div id="lockTag" class="hidden"><span>PLAYER LOCK</span><b id="lockName">&nbsp;</b><em id="lockLine"></em></div>
-  <div id="runHelp" class="hidden"><button data-run="go">Advance runners<small>E</small></button><button data-run="back">Go back<small>Q</small></button></div>
+  <div id="runTags"></div>
+  <div id="runHelp" class="hidden">
+    <div class="rh-head">BASERUNNING<span>hold a base key (<kbd>1</kbd>&ndash;<kbd>4</kbd> or arrows) + <kbd>E</kbd>/<kbd>Q</kbd> for one runner</span></div>
+    <div class="rh-all"><button data-run="go">All advance <kbd>E</kbd></button><button data-run="back">All go back <kbd>Q</kbd></button></div>
+    <div id="runList"></div>
+  </div>
 </div>
 
 <div id="menu" class="screen hidden">
@@ -439,8 +459,10 @@ body.skipping #batterCard,body.skipping #pitcherCard,body.skipping #call,body.sk
         <dt>Carry the ball</dt><dd>Run onto a bag for a force, or into a runner to tag him</dd>
       </dl></div>
       <div><h3>BASERUNNING</h3><dl>
-        <dt>E / RB</dt><dd>Send every runner to the next base</dd>
-        <dt>Q / LB</dt><dd>Send runners back (or stop at the next bag)</dd>
+        <dt>E / RB</dt><dd>Send every runner one more base</dd>
+        <dt>Q / LB</dt><dd>Take a base back (stop at the next bag, press again to go back)</dd>
+        <dt>Hold 1&ndash;4 + E/Q</dt><dd>Run just the runner on or heading to that base (1B, 2B, 3B, home). Arrows or the D-pad work too.</dd>
+        <dt>Runner panel</dt><dd>Click &#9664; / &#9654; next to any runner. Each runner shows where he's headed.</dd>
       </dl></div>
       <div><h3>GENERAL</h3><dl>
         <dt>Esc</dt><dd>Pause</dd>
@@ -524,8 +546,10 @@ function kf(t, keys) {
 }
 function angDiff(a, b) { let d = b - a; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI; return d; }
 function ordinal(n) { const s = ['th', 'st', 'nd', 'rd'], v = n % 100; return n + (s[(v - 20) % 10] || s[v] || s[0]); }
-function shortName(n) { const p = n.split(' '); return p[0][0] + '. ' + p.slice(1).join(' '); }
-function lastName(n) { return n.split(' ').slice(1).join(' '); }
+function shortName(n) { const p = n.split(' '); return p.length < 2 ? n : p[0][0] + '. ' + p.slice(1).join(' '); }
+function lastName(n) { return n.split(' ').slice(1).join(' ') || n; }
+// escape text that came from a player (custom roster names, friends' names) before it goes into innerHTML
+function esc(s) { return String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]); }
 
 // ---------------------------------------------------------------- field ----
 const BASES = [new V3(0, 0, 0), new V3(63.64, 0, -63.64), new V3(0, 0, -127.28), new V3(-63.64, 0, -63.64), new V3(0, 0, 0)];
@@ -1845,7 +1869,7 @@ class Fielder {
   reset() {
     this.v = 0; this.react = this.baseReact + Math.random() * (this.isOF ? 0.22 : 0.1);
     this.task = null; this.target = null; this.plan = null; this.decideAt = 0; this.throwing = false; this.runTo = null;
-    this.holding = false; this.downUntil = 0; this.animHold = 0; this.promptStart = null; this.excluded = false; this.dive = null; this.touched = 0;
+    this.holding = false; this.downUntil = 0; this.animHold = 0; this.promptStart = null; this.excluded = false; this.dive = null; this.touched = 0; this.readyAt = 0;
   }
   setHome(x, z) { this.home.set(x, groundY(x, z), z); }
   snapHome() { this.pos.copy(this.home); this.reset(); }
@@ -1859,7 +1883,8 @@ class Runner {
     this.pl = pl; this.m = model; this.base = base; this.start = base; this.next = null; this.d = 0; this.v = 0;
     this.top = 23 + (pl.spd ?? 50) * 0.07; this.state = 'base'; this.forced = false; this.wait = false; this.autoRun = false;
     this.lead = base > 0 ? 12 : 0; this.leadVis = this.lead; this.isBatter = base === 0; this.delay = 0; this.target = null;
-    this.rev = false; this.cmd = null; this.leftEarly = false;
+    // userTarget: the base a human told this runner to run to (null = the AI decides)
+    this.rev = false; this.userTarget = null; this.leftEarly = false; this.aiRev = false;
     this.pos = new V3(); this.phase = Math.random() * 6;
   }
   eta() {
@@ -1906,6 +1931,8 @@ class Play {
     this.fairKnown = false; this.foul = false; this.hr = !!o.bb.hr; this.awarded = false; this.thirdOutForce = false;
     this.queuedThrow = null; this.prompt = false; this.events = []; this.chaser = null; this.dove = false; this.wallCatch = false;
     this.uf = null; this.ufManual = false; this.lastInput = -9; this.inp = { x: 0, z: 0 };
+    // ballBase: a fielder standing on a bag with the ball, ready to tag whoever arrives
+    this.ballBase = null; this.remotePos = null;
     for (const f of this.F) f.reset();
     // force situation at contact
     const occ = [true, false, false, false];
@@ -2027,23 +2054,54 @@ class Play {
     if (!this.hf || this.done) return;
     this.queuedThrow = base;
   }
-  // kind: 'go' | 'back'; which: runner start base, or null for every runner
+  // kind: 'go' | 'back'; which: one runner's player id, or null for every runner.
+  // Each 'go' sends the runner one base further than he's committed to; each 'back'
+  // takes a base away (stop at the next bag, then turn around and go back).
   runCmd(kind, which = null) {
-    if (!this.hrun || this.done || this.hr) return;
+    if (!this.hrun || this.done || this.hr || this.awarded) return;
     for (const r of this.R) {
       if (r.state !== 'run' && r.state !== 'base') continue;
       if (this.hrun.lock && r.pl.id !== this.hrun.lock) continue;
-      if (which != null && r.start !== which) continue;
-      if (kind === 'go') {
-        if (r.state === 'run' && r.rev) { r.rev = false; r.v = Math.min(r.v, 6); }
-        r.cmd = 'go';
-      } else {
-        if (r.state === 'run' && !r.rev && !(r.isBatter && r.base === 0)) {
-          if (r.d > 63) r.cmd = 'stop';
-          else { r.rev = true; r.v = Math.min(r.v, 6); r.cmd = null; }
-        } else r.cmd = 'stop';
-      }
+      if (which != null && r.pl.id !== which) continue;
+      if (kind === 'go') this.runnerGo(r); else this.runnerBack(r);
     }
+  }
+  runnerGo(r) {
+    if (r.state === 'run' && r.rev) { r.rev = false; r.v = Math.min(r.v, 6); r.userTarget = r.next; return; }
+    const cur = r.state === 'run' ? r.next : r.base;
+    r.userTarget = Math.min(4, Math.max(r.userTarget ?? cur, cur) + 1);
+  }
+  runnerBack(r) {
+    if (r.state === 'base') { r.userTarget = r.base; return; }
+    if (r.rev) { r.userTarget = r.base; return; }
+    const t = r.userTarget ?? (r.d > 63 ? r.next + 1 : r.next);
+    if (t > r.next) r.userTarget = Math.max(r.next, t - 1);
+    else if (r.isBatter && r.base === 0) r.userTarget = 1;   // the batter can't go back home
+    else { r.rev = true; r.v = Math.min(r.v, 6); r.userTarget = r.base; }
+  }
+  // the runner standing on, or running to, base b (1-3, 4 = home)
+  runnerFor(b) {
+    let best = null, bd = 1e9;
+    for (const r of this.R) {
+      if (r.state === 'base' && r.base === b && r.base < 4) return r;
+      if (r.state !== 'run' || heading(r) !== b) continue;
+      const rem = r.rev ? r.d : 90 - r.d;
+      if (rem < bd) { bd = rem; best = r; }
+    }
+    return best;
+  }
+  // where each runner is headed right now, for the baserunning HUD
+  runnerInfo() {
+    const out = [];
+    for (const r of this.R) {
+      if (r.state !== 'run' && r.state !== 'base') continue;
+      const key = r.state === 'base' ? r.base : heading(r);
+      const forcedOff = r.forced && r.state === 'base' && r.base === r.start && !this.caught;
+      let to = r.userTarget;
+      if (to == null || forcedOff) to = r.state === 'base' ? (forcedOff ? r.base + 1 : r.base) : heading(r);
+      out.push({ id: r.pl.id, key, to, from: r.state === 'base' ? r.base : r.rev ? r.next : r.base, run: r.state === 'run', rev: r.rev, user: r.userTarget != null, forced: r.forced && !this.caught, bat: r.isBatter, m: r.m });
+    }
+    return out;
   }
   humanHolder(f) { return this.hf && (this.hf.lock ? f.pl.id === this.hf.lock : true); }
   // ------------------------------------------------------------ update ----
@@ -2051,8 +2109,16 @@ class Play {
     this.t += dt;
     this.updateBall();
     this.updateFielders(dt);
+    this.trackBallBase();
     this.updateRunners(dt);
     this.checkEnd();
+  }
+  trackBallBase() {
+    const b = this.ball, f = b.mode === 'held' ? b.holder : null;
+    let base = 0;
+    if (f && !f.throwing) for (let k = 1; k <= 4; k++) if (Math.hypot(BASES[k].x - f.pos.x, BASES[k].z - f.pos.z) < 4.5) { base = k; break; }
+    if (!base) this.ballBase = null;
+    else if (!this.ballBase || this.ballBase.base !== base || this.ballBase.f !== f) this.ballBase = { base, f, ready: Math.max(this.t + 0.12, f.readyAt || 0) };
   }
   sample() { const S = this.bb.S; return S[Math.min(S.length - 1, Math.floor(this.t / BB_DT))]; }
   landingSpot() {
@@ -2226,7 +2292,7 @@ class Play {
   }
   secure(f, air, bobble, dove) {
     const b = this.ball;
-    b.mode = 'held'; b.holder = f; f.holding = false; f.touched = 0;
+    b.mode = 'held'; b.holder = f; f.holding = false; f.touched = 0; f.readyAt = this.t + bobble + 0.12;
     if (!this.firstFielder) { this.firstFielder = f; this.firstAir = air; }
     if (!dove) { f.anim(air ? 'catchHigh' : 'fieldLow'); f.animHold = this.t + 0.3; }
     if (this.hf && !this.hf.lock) { if (this.uf !== f) this.ufManual = false; this.uf = f; }
@@ -2240,8 +2306,13 @@ class Play {
       this.recordOut(batter, 'catch', 0);
       for (const r of this.R) {
         r.forced = false; r.wait = false;
-        // runners who left early have to get back and tag
-        if (r.leftEarly && r.state === 'run' && !r.rev && !r.isBatter) { r.rev = true; r.v = Math.min(r.v, 6); r.cmd = null; }
+        if (r.isBatter || r.state === 'out' || r.state === 'scored') continue;
+        // anyone off his base has to get back and tag up before he can advance
+        if (r.state === 'run' || r.base !== r.start) {
+          r.leftEarly = true; r.userTarget = null;
+          if (r.state === 'run' && !r.rev) { r.rev = true; r.v = Math.min(r.v, 6); }
+          else if (r.state === 'base') { r.state = 'run'; r.rev = true; r.next = r.base; r.base--; r.d = 90; r.v = 0; }
+        }
       }
       SND.pop(0.7);
       this.events.push('catch');
@@ -2302,6 +2373,7 @@ class Play {
     const c = this.chooseThrow(f);
     if (c.type === 'throw') { f.holding = false; this.execThrow(f, c.base); }
     else if (c.type === 'run') { f.holding = false; f.runTo = c.base; }
+    else if (c.type === 'wait') { f.holding = false; f.decideAt = t + 0.1; f.anim('ready'); }
     else { f.holding = true; f.decideAt = t + 0.2; }
   }
   chooseThrow(f) {
@@ -2311,8 +2383,10 @@ class Play {
       if (!runner) continue;
       const bp = BASES[base], d = Math.hypot(bp.x - f.pos.x, bp.z - f.pos.z);
       const eta = runner.eta();
-      const force = runner.forced && heading(runner) === runner.start + 1;
+      const force = this.forcedTo(runner, base);
       let tb, type;
+      // already on the bag with the ball: stand there and put the tag on him
+      if (d < 4.5 && !force) { opts.push({ base, type: 'wait', margin: eta, runner }); continue; }
       if (d < 24 && d / f.speed < eta - 0.15) { tb = d / f.speed; type = 'run'; }
       else { tb = 0.22 + d / throwSpeed(f, d) + (force ? 0.03 : 0.15); type = 'throw'; }
       opts.push({ base, type, margin: eta - tb, runner });
@@ -2368,23 +2442,29 @@ class Play {
     this.ball.mode = 'held'; this.ball.holder = recv; recv.holding = false; recv.touched = base;
     const bp = BASES[base];
     if (recv.pos.distanceTo(bp) > 3) recv.pos.set(bp.x + (base === 4 ? 0 : 0.8), 0, bp.z + (base === 4 ? 2 : 0.8));
-    recv.anim('catchHigh'); recv.animHold = this.t + 0.22; recv.promptStart = null;
+    recv.anim('catchHigh'); recv.animHold = this.t + 0.22; recv.promptStart = null; recv.readyAt = this.t + (th.err ? 1.1 : 0.1);
     if (this.hf && !this.hf.lock) { this.uf = recv; this.ufManual = false; }
     SND.pop(0.55);
     if (th.err) { this.error = true; this.events.push('throwError'); recv.decideAt = this.t + 1.1; return; }
     this.ballAtBase(base, recv);
     recv.decideAt = this.t + (base === 2 ? 0.58 : 0.45);
   }
+  // The ball reached a bag. Only a force (or doubling a runner off after a catch) is an
+  // out on the spot; anyone else has to be tagged when he gets there (see updateRunners).
   ballAtBase(base, f) {
     for (const r of this.R) {
       if (r.state !== 'run') continue;
-      const forcedHere = r.forced && r.next === base && r.next === r.start + 1;
-      if (heading(r) === base) {
-        if (r.eta() > (forcedHere ? 0.0 : 0.1)) { this.recordOut(r, forcedHere ? 'force' : 'tag', base); this.umpCall = { base, call: 'out' }; }
+      const forcedHere = r.forced && !r.rev && r.next === base && r.next === r.start + 1;
+      const appeal = this.caught && r.rev && r.leftEarly && r.base === base && base === r.start;
+      if (heading(r) === base && (forcedHere || appeal)) {
+        if (r.eta() > 0) { this.recordOut(r, forcedHere ? 'force' : 'appeal', base); this.umpCall = { base, call: 'out' }; }
         else this.umpCall = { base, call: 'safe' };
-      } else if (forcedHere && r.rev) { this.recordOut(r, 'force', base); this.umpCall = { base, call: 'out' }; }
+      } else if (r.forced && r.rev && r.next === base && r.next === r.start + 1) { this.recordOut(r, 'force', base); this.umpCall = { base, call: 'out' }; }
+      else if (heading(r) === base && r.eta() <= 0.12) this.umpCall = { base, call: 'safe' };
     }
   }
+  // is this runner forced to the base he's running to?
+  forcedTo(r, base) { return r.forced && !r.rev && r.next === base && base === r.start + 1; }
   // ----------------------------------------------------------- runners ----
   baseFree(b, me) {
     if (b >= 4) return true;
@@ -2436,31 +2516,49 @@ class Play {
       if (r.state === 'base') {
         if (r.wait && r.leadVis > 0) r.leadVis = Math.max(0, r.leadVis - dt * 16);
         if (this.outs >= 3 || this.dead) continue;
-        if (r.cmd === 'go') {
-          r.cmd = null;
-          if (r.base < 4 && this.baseFree(r.base + 1, r)) {
+        const forcedOff = r.forced && r.base === r.start && !this.caught;
+        if (r.userTarget != null && !forcedOff) {
+          // a human is running this guy: go only where he was told
+          if (r.userTarget > r.base && r.base < 4 && this.baseFree(r.base + 1, r)) {
             if (r.wait && this.ball.mode === 'flight' && !this.caught) r.leftEarly = true;
-            r.wait = false; this.sendRunner(r); continue;
+            r.wait = false; this.sendRunner(r);
           }
+          continue;
         }
-        if (r.cmd === 'stop' && !(r.forced && r.base === r.start && !this.caught)) continue;
         if (r.wait) {
           const s = this.sample();
           if (this.caught || this.ball.mode !== 'flight' || s.b) r.wait = false; else continue;
         }
-        if (r.forced && r.base === r.start && !this.caught) { this.sendRunner(r); continue; }
+        if (forcedOff) { this.sendRunner(r); continue; }
         if (r.autoRun && r.base === r.start && !this.caught && this.baseFree(r.base + 1, r)) { this.sendRunner(r); continue; }
         if (this.shouldAdvance(r, false)) this.sendRunner(r);
         continue;
       }
       // running
       if (r.delay > 0) { r.delay -= dt; continue; }
+      // a fielder waiting on the bag with the ball tags him as he arrives
+      const bb = this.ballBase, hb = heading(r);
+      if (bb && bb.base === hb && !this.dead && this.outs < 3 && !this.hr && !this.awarded) {
+        const rem = r.rev ? r.d : 90 - r.d;
+        if (rem <= 2.2) {
+          if (t >= bb.ready) { this.recordOut(r, 'tag', hb); this.umpCall = { base: hb, call: 'out' }; continue; }
+          if (r.safeAt !== hb) { r.safeAt = hb; this.umpCall = { base: hb, call: 'safe' }; }
+        } else if (!r.rev && !r.aiRev && r.userTarget == null && !this.forcedTo(r, hb) && rem > 20 && r.d < 65 && r.base > 0 && this.baseFree(r.base, r)) {
+          // the ball beat him there: the AI runner pulls up and heads back
+          r.rev = true; r.aiRev = true; r.v = Math.min(r.v, 6);
+        }
+      }
       const top = this.hr || this.awarded ? r.top * 0.68 : r.top;
       r.v = Math.min(top, r.v + RUN_ACC * dt);
       r.phase += r.v * dt * 0.42;
       if (r.rev) {
         r.d -= r.v * dt;
-        if (r.d <= 0) { r.d = 0; r.rev = false; r.state = 'base'; r.v = 0; r.next = null; r.cmd = null; r.leftEarly = false; }
+        if (r.d <= 0) {
+          // runners going back to tag up after a catch retrace every base they passed
+          if (r.leftEarly && r.base > r.start) { r.next = r.base; r.base--; r.d = 90; continue; }
+          r.d = 0; r.rev = false; r.state = 'base'; r.v = 0; r.next = null; r.leftEarly = false;
+          if (r.userTarget != null && r.userTarget < r.base) r.userTarget = r.base;
+        }
         continue;
       }
       r.d += r.v * dt;
@@ -2475,8 +2573,11 @@ class Play {
           if (r.base < r.target) r.next = r.base + 1; else { r.state = 'base'; r.v = 0; }
           continue;
         }
-        if (r.cmd === 'stop') { r.cmd = null; r.state = 'base'; r.v = 0; continue; }
-        if (r.cmd === 'go' && this.baseFree(r.base + 1, r)) { r.cmd = null; r.next = r.base + 1; continue; }
+        if (r.userTarget != null) {
+          if (r.userTarget > r.base && this.baseFree(r.base + 1, r)) r.next = r.base + 1;
+          else { r.state = 'base'; r.v = 0; }
+          continue;
+        }
         if (this.outs < 3 && this.shouldAdvance(r, true)) r.next = r.base + 1;
         else { r.state = 'base'; r.v = 0; }
       }
@@ -2485,17 +2586,20 @@ class Play {
   // ------------------------------------------------------------- finish ----
   checkEnd() {
     if (this.done) return;
+    const moving = this.R.some((r) => r.state === 'run');
+    // a runner took off again while the play was winding down: keep it going
+    if (this.endAt != null && this.endSoft && moving) { this.endAt = null; this.endSoft = false; }
     if (this.endAt != null) { if (this.t >= this.endAt) this.done = true; return; }
     if (this.outs >= 3) { this.finishSoon(0.9); return; }
-    const moving = this.R.some((r) => r.state === 'run');
     if (this.hr || this.awarded) { if (!moving) this.finishSoon(0.8); return; }
     const b = this.ball;
     if (!moving && b.mode === 'held' && b.holder && b.holder.holding && !b.holder.runTo && !this.prompt) {
-      if (!this.R.some((r) => r.state === 'base' && !r.wait && (r.cmd === 'go' || this.shouldAdvance(r, false)))) this.finishSoon(0.7);
+      const wants = (r) => (r.userTarget != null ? r.userTarget > r.base && this.baseFree(r.base + 1, r) : this.shouldAdvance(r, false));
+      if (!this.R.some((r) => r.state === 'base' && !r.wait && wants(r))) { this.finishSoon(this.hrun ? 1.0 : 0.7); this.endSoft = true; }
     }
     if (this.t > 45) this.done = true;
   }
-  finishSoon(d) { if (this.endAt == null) this.endAt = this.t + d; }
+  finishSoon(d) { if (this.endAt == null) { this.endAt = this.t + d; this.endSoft = false; } }
   skipTrot() {
     for (const r of this.R) {
       if (r.state !== 'run') continue;
@@ -2810,7 +2914,7 @@ function prePitchUI() {
   pci.visible = ub; reticle.visible = up; pitchGuide.visible = false;
   pitchMark.visible = pitchMark.visible && ub;
   $('meter').classList.toggle('hidden', !up);
-  $('throwPrompt').classList.add('hidden'); $('runHelp').classList.add('hidden');
+  $('throwPrompt').classList.add('hidden'); runnerHUD(false);
   ctrlRing.visible = false; landMark.visible = false;
   if (up) {
     const U = G.pitchUI, n = curPitcher().pitches.length;
@@ -3136,7 +3240,7 @@ function startSim() {
     if (pl.ball.mode === 'flight' && !pl.hr && !pl.dead) pl.replan();
   }
   pci.visible = false; reticle.visible = false; zoneGroup.visible = false; pitchGuide.visible = false;
-  $('meter').classList.add('hidden'); $('throwPrompt').classList.add('hidden'); $('runHelp').classList.add('hidden');
+  $('meter').classList.add('hidden'); $('throwPrompt').classList.add('hidden'); runnerHUD(false);
   ctrlRing.visible = false; landMark.visible = false; baseMark.visible = false;
   setHint('Skipping to the next batter&hellip;');
   if (document.pointerLockElement) try { document.exitPointerLock(); } catch (e) { /* not locked */ }
@@ -3619,7 +3723,7 @@ function hostOnMsg(m) {
     case 'throw': if (pl && fieldCtrl() === 'remote') pl.userThrow(clamp(m.base | 0, 1, 4)); break;
     case 'dive': if (pl && fieldCtrl() === 'remote') pl.userDive(); break;
     case 'switch': if (pl && fieldCtrl() === 'remote') pl.userSwitch(); break;
-    case 'run': if (pl && runCtrl() === 'remote') pl.runCmd(m.kind === 'go' ? 'go' : 'back'); break;
+    case 'run': if (pl && runCtrl() === 'remote') pl.runCmd(m.kind === 'go' ? 'go' : 'back', typeof m.which === 'string' ? m.which : null); break;
     case 'skip': skip(true); break;
     case 'trot': if (pl && (pl.hr || pl.awarded) && pl.t > 2) pl.skipTrot(); break;
     case 'pause': togglePause(!!m.v, true); break;
@@ -3692,7 +3796,10 @@ function netSnapshot() {
   return {
     t: 's', ph: G.phase, dur: G.dur, b: [r2(b.x), r2(b.y), r2(b.z), ballMesh.visible ? 1 : 0], m,
     f: G.camFocus ? G.camFocus.map(r2) : null,
-    pl: pl && G.phase === 'live' ? { prompt: pl.prompt && pl.userDef && remoteField ? 1 : 0, uf: remoteField && pl.uf ? pl.uf.m.key : null, land: remoteField ? pl.landingSpot() : null, hr: pl.hr || pl.awarded ? 1 : 0 } : null,
+    pl: pl && G.phase === 'live' ? {
+      prompt: pl.prompt && pl.userDef && remoteField ? 1 : 0, uf: remoteField && pl.uf ? pl.uf.m.key : null, land: remoteField ? pl.landingSpot() : null, hr: pl.hr || pl.awarded ? 1 : 0,
+      run: runCtrl() === 'remote' ? pl.runnerInfo().map((r) => [r.id, r.key, r.to, r.from, r.run ? 1 : 0, r.rev ? 1 : 0, r.user ? 1 : 0, r.m.key]) : null,
+    } : null,
   };
 }
 function netPitchOut() {
@@ -3788,7 +3895,7 @@ function guestPhase(ph) {
       setHint(liveHint());
       break;
     case 'postPitch': case 'postFoul': G.recOn = false; break;
-    case 'postPlay': G.recOn = false; setHint(''); $('throwPrompt').classList.add('hidden'); $('runHelp').classList.add('hidden'); ctrlRing.visible = false; landMark.visible = false; break;
+    case 'postPlay': G.recOn = false; setHint(''); $('throwPrompt').classList.add('hidden'); runnerHUD(false); ctrlRing.visible = false; landMark.visible = false; break;
     case 'halfIntro': case 'break':
       pci.visible = false; zoneGroup.visible = false; reticle.visible = false; pitchGuide.visible = false; $('meter').classList.add('hidden'); setHint('');
       wideCam(true);
@@ -3866,7 +3973,7 @@ function guestUpdate(dt) {
   landMark.visible = !!(pl && pl.land && landingAssist());
   if (landMark.visible) landMark.position.set(pl.land[0], 0.1, pl.land[1]);
   $('throwPrompt').classList.toggle('hidden', !(pl && pl.prompt));
-  $('runHelp').classList.toggle('hidden', !(pl && userRuns() && !pl.hr));
+  runnerHUD(!!(pl && userRuns() && !pl.hr));
   dressFrame();
   for (const m of MODELS) updateModel(m, G.now);
   if (G.recOn) recFrame();
@@ -4080,7 +4187,7 @@ function setHint(html) { const el = $('hint'); el.innerHTML = html; el.style.opa
 function liveHint() {
   const parts = [];
   if (userFields()) parts.push('<kbd>WASD</kbd> move', '<kbd>Space</kbd> dive', G.lock ? '' : '<kbd>Q</kbd> switch', '<kbd>1</kbd>&ndash;<kbd>4</kbd> throw');
-  if (userRuns()) parts.push('<kbd>E</kbd> advance runners', '<kbd>Q</kbd> go back');
+  if (userRuns()) parts.push('<kbd>E</kbd> advance', '<kbd>Q</kbd> back', 'hold <kbd>1</kbd>&ndash;<kbd>4</kbd> + <kbd>E</kbd>/<kbd>Q</kbd> for one runner');
   return parts.filter(Boolean).join(' &middot; ');
 }
 function landingAssist() { return settings.guide && G.diff && G.diff.name !== 'Hall of Fame'; }
@@ -4377,6 +4484,64 @@ function updateLockUI() {
   $('simBtn').classList.toggle('hidden', !show);
 }
 
+// ------------------------------------------------------- baserunning HUD ----
+// Every runner is keyed by the base he's standing on or running to (1-3, 4 = home),
+// the same keys as throwing. Hold that key and press E / Q to run just him.
+const BASE_KEY = { 1: 1, 2: 2, 3: 3, 4: 4, arrowright: 1, arrowup: 2, arrowleft: 3, arrowdown: 4 };
+const BASE_ABBR = ['HOME', '1B', '2B', '3B', 'HOME'];
+function heldBase() { for (const k in BASE_KEY) if (keys.has(k)) return BASE_KEY[k]; return 0; }
+function runnerList() {
+  let L;
+  if (isGuest()) {
+    const raw = (NET.snap && NET.snap.pl && NET.snap.pl.run) || [];
+    L = raw.map(([id, key, to, from, run, rev, user, mk]) => ({ id, key, to, from, run: !!run, rev: !!rev, user: !!user, m: modelByKey(mk) }));
+  } else L = G.play ? G.play.runnerInfo() : [];
+  return G.lock ? L.filter((r) => r.id === G.lock) : L;
+}
+function runnerIdAt(b) { const L = runnerList(); const r = L.find((x) => x.key === b && x.run) || L.find((x) => x.key === b); return r ? r.id : null; }
+// E / Q: one runner if a base key is held, otherwise everyone
+function runKey(kind, base = heldBase()) {
+  if (!base) { actRun(kind, null); return; }
+  const id = runnerIdAt(base);
+  if (id) actRun(kind, id);
+}
+function runnerPath(r) {
+  if (r.run && r.rev) return { cls: 'back', txt: `BACK TO ${BASE_ABBR[r.to]}`, tag: `&#9664; ${BASE_ABBR[r.to]}` };
+  if (r.run) return { cls: 'go', txt: `${BASE_ABBR[r.from]} &rarr; ${BASE_ABBR[r.to]}`, tag: `&rarr; ${BASE_ABBR[r.to]}` };
+  if (r.to > r.key) return { cls: 'go', txt: `GOING TO ${BASE_ABBR[r.to]}`, tag: `&rarr; ${BASE_ABBR[r.to]}` };
+  return { cls: 'hold', txt: `HOLDING ${BASE_ABBR[r.key]}`, tag: 'HOLD' };
+}
+let rhSig = null;
+const runTagEls = new Map(), _tagV = new V3();
+function runnerHUD(show) {
+  const L = show ? runnerList() : [];
+  $('runHelp').classList.toggle('hidden', !L.length);
+  L.sort((a, b) => b.key - a.key);
+  const sig = L.map((r) => [r.id, r.key, r.to, r.from, r.run, r.rev, r.user].join()).join('|');
+  if (sig !== rhSig) {
+    rhSig = sig;
+    $('runList').innerHTML = L.map((r) => {
+      const p = runnerPath(r), pl = PBYID[r.id];
+      return `<div class="rh-row ${r.user ? 'user' : ''}"><b class="rh-key">${r.key}</b><span class="rh-name">${esc(pl ? lastName(pl.name) : '')}</span><span class="rh-path ${p.cls}">${p.txt}</span>`
+        + `<button data-run="back" data-id="${esc(r.id)}" title="Take a base back">&#9664;</button><button data-run="go" data-id="${esc(r.id)}" title="One more base">&#9654;</button></div>`;
+    }).join('');
+  }
+  // a little tag over each runner's head: his key and where he's going
+  const seen = new Set(), W = window.innerWidth, H = window.innerHeight;
+  for (const r of L) {
+    const m = r.m; if (!m || !m.root.visible) continue;
+    _tagV.copy(m.root.position); _tagV.y += 7.2; _tagV.project(camera);
+    if (_tagV.z > 1 || Math.abs(_tagV.x) > 1.1 || Math.abs(_tagV.y) > 1.1) continue;
+    let el = runTagEls.get(r.id);
+    if (!el) { el = document.createElement('div'); $('runTags').appendChild(el); runTagEls.set(r.id, el); }
+    const p = runnerPath(r), s = `${r.key}|${p.tag}|${r.user}`;
+    if (el.dataset.sig !== s) { el.dataset.sig = s; el.className = `run-tag ${p.cls} ${r.user ? 'user' : ''}`; el.innerHTML = `<b>${r.key}</b>${p.tag}`; }
+    el.style.left = ((_tagV.x + 1) / 2) * W + 'px'; el.style.top = ((1 - _tagV.y) / 2) * H + 'px';
+    seen.add(r.id);
+  }
+  for (const [id, el] of runTagEls) if (!seen.has(id)) { el.remove(); runTagEls.delete(id); }
+}
+
 // ------------------------------------------------------------ runner map ----
 // live mini diamond: where every runner, fielder and the ball are right now
 function drawMiniMap() {
@@ -4467,9 +4632,9 @@ function updateLive(dt) {
   if (ctrlRing.visible) ctrlRing.position.set(pl.uf.pos.x, groundY(pl.uf.pos.x, pl.uf.pos.z) + 0.12, pl.uf.pos.z);
   const land = localField && landingAssist() ? pl.landingSpot() : null;
   landMark.visible = !!land; if (land) landMark.position.set(land[0], 0.1, land[1]);
-  $('runHelp').classList.toggle('hidden', !(userRuns() && !pl.hr && !pl.awarded && !pl.done));
+  runnerHUD(userRuns() && !pl.hr && !pl.awarded && !pl.done);
   if (!fpvOn) playCam();
-  if (pl.done) { setHint(''); ctrlRing.visible = false; landMark.visible = false; baseMark.visible = false; G.aimShown = 0; $('runHelp').classList.add('hidden'); finishPlay(); }
+  if (pl.done) { setHint(''); ctrlRing.visible = false; landMark.visible = false; baseMark.visible = false; G.aimShown = 0; runnerHUD(false); finishPlay(); }
 }
 function onPlayEvent(e) {
   const homeBats = G.half === 1;
@@ -4585,7 +4750,7 @@ function fieldVec() {
 function actThrow(b) { if (isGuest()) netSend({ t: 'act', a: 'throw', base: b }); else if (G.play) G.play.userThrow(b); }
 function actDive() { if (isGuest()) netSend({ t: 'act', a: 'dive' }); else if (G.play) G.play.userDive(); }
 function actSwitch() { if (isGuest()) netSend({ t: 'act', a: 'switch' }); else if (G.play) G.play.userSwitch(); }
-function actRun(kind) { if (isGuest()) netSend({ t: 'act', a: 'run', kind }); else if (G.play) G.play.runCmd(kind); }
+function actRun(kind, which = null) { if (isGuest()) netSend({ t: 'act', a: 'run', kind, which }); else if (G.play) G.play.runCmd(kind, which); }
 const trotOn = () => (isGuest() ? !!(NET.snap && NET.snap.pl && NET.snap.pl.hr) : !!(G.play && (G.play.hr || G.play.awarded)));
 window.addEventListener('keydown', (e) => {
   if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT')) return;
@@ -4605,8 +4770,9 @@ window.addEventListener('keydown', (e) => {
       if ('wasd'.includes(k)) return;
     }
     if (userRuns()) {
-      if (k === 'e') { actRun('go'); return; }
-      if (k === 'q') { actRun('back'); return; }
+      if (k === 'e') { runKey('go'); return; }
+      if (k === 'q') { runKey('back'); return; }
+      if (k in BASE_KEY) return;   // held to pick a runner for E / Q
     }
   }
   if (k === ' ' || k === 'k') primaryAction('normal');
@@ -4636,7 +4802,7 @@ window.addEventListener('blur', () => keys.clear());
 $('pitchList').addEventListener('click', (e) => { const row = e.target.closest('.pitch-row'); if (row) selectPitch(+row.dataset.i); });
 for (const b of $('throwPrompt').querySelectorAll('button')) b.addEventListener('pointerdown', (e) => { e.stopPropagation(); actThrow(+b.dataset.base); });
 $('simBtn').addEventListener('pointerdown', (e) => { e.stopPropagation(); startSim(); });
-for (const b of $('runHelp').querySelectorAll('button')) b.addEventListener('pointerdown', (e) => { e.stopPropagation(); actRun(b.dataset.run); });
+$('runHelp').addEventListener('pointerdown', (e) => { const b = e.target.closest('button[data-run]'); if (!b) return; e.stopPropagation(); e.preventDefault(); actRun(b.dataset.run, b.dataset.id || null); });
 
 let gpPrev = [];
 function pollGamepad() {
@@ -4656,7 +4822,11 @@ function pollGamepad() {
     if (G.replay) { if (edge(0) || edge(1)) endReplay(); }
     else if (G.phase === 'live' && !trotOn() && (userFields() || userRuns())) {
       if (userFields()) { if (edge(1)) actThrow(1); if (edge(3)) actThrow(2); if (edge(2)) actThrow(3); if (edge(0)) actThrow(4); if (edge(7)) actDive(); if (edge(5)) actDive(); if (edge(4)) actSwitch(); }
-      else { if (edge(5)) actRun('go'); if (edge(4)) actRun('back'); }
+      else {
+        // hold the D-pad toward a runner's base (right = 1B, up = 2B, left = 3B, down = home) to run just him
+        const pad = pressed(15) ? 1 : pressed(12) ? 2 : pressed(14) ? 3 : pressed(13) ? 4 : 0;
+        if (edge(5)) runKey('go', pad); if (edge(4)) runKey('back', pad);
+      }
     } else if (userPitches() && G.phase === 'prePitch') {
       const n = curPitcher().pitches.length;
       if (edge(4) || edge(14)) selectPitch((G.pitchUI.sel + n - 1) % n);
@@ -4877,7 +5047,7 @@ function toMenu() {
   for (const m of MODELS) m.root.visible = false;
   ballMesh.visible = false; ballShadow.visible = false; trailReset();
   pci.visible = false; reticle.visible = false; zoneGroup.visible = false; pitchMark.visible = false; pitchGuide.visible = false; ctrlRing.visible = false; landMark.visible = false;
-  fpvHide(null); fpvOn = false; exitPointerLock(); $('absCard').classList.add('hidden'); $('simBtn').classList.add('hidden'); $('runHelp').classList.add('hidden'); $('throwPrompt').classList.add('hidden');
+  fpvHide(null); fpvOn = false; exitPointerLock(); $('absCard').classList.add('hidden'); $('simBtn').classList.add('hidden'); runnerHUD(false); $('throwPrompt').classList.add('hidden');
   showScreen('menu');
   renderMenu();
 }
@@ -5008,7 +5178,7 @@ function boot() {
 }
 // Debug handle: lets a test harness advance the simulation without waiting on animation frames.
 window.__fullcount = {
-  G, TEAMS, settings, NET, keys, BAT_CAMS,
+  G, TEAMS, settings, NET, keys, BAT_CAMS, Play, Runner, BASES, simBatted, V3, getModel,
   step(sec, dt = 1 / 60) {
     const n = Math.round(sec / dt);
     for (let i = 0; i < n && !G.paused; i++) { if (isGuest()) guestUpdate(dt); else update(dt); netTick(); }
