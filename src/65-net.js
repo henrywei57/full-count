@@ -193,7 +193,8 @@ function hostOnMsg(m) {
     case 'throw': if (pl && fieldCtrl() === 'remote') pl.userThrow(clamp(m.base | 0, 1, 4)); break;
     case 'dive': if (pl && fieldCtrl() === 'remote') pl.userDive(); break;
     case 'switch': if (pl && fieldCtrl() === 'remote') pl.userSwitch(); break;
-    case 'run': if (pl && runCtrl() === 'remote') pl.runCmd(m.kind === 'go' ? 'go' : 'back', typeof m.which === 'string' ? m.which : null); break;
+    case 'run': if (runCtrl() === 'remote') { const kind = m.kind === 'go' ? 'go' : 'back', which = typeof m.which === 'string' ? m.which : null; if (pl) pl.runCmd(kind, which); else stealCmd(kind, which); } break;
+    case 'pick': if (pitchCtrl() === 'remote') startPickoff(clamp(m.base | 0, 1, 3)); break;
     case 'skip': skip(true); break;
     case 'trot': if (pl && (pl.hr || pl.awarded) && pl.t > 2) pl.skipTrot(); break;
     case 'pause': togglePause(!!m.v, true); break;
@@ -276,9 +277,11 @@ function netSnapshot() {
       // where the ball is, as something the guest can compute for itself every frame
       bm: B.mode === 'flight' ? 'f' : B.mode === 'held' && B.holder ? ['h', B.holder.m.key]
         : B.mode === 'throw' && th ? ['t', th.from.toArray().map(r2), th.to.toArray().map(r2), r3(th.t0), r3(th.T), r2(th.arc)] : null,
-      run: runCtrl() === 'remote' ? pl.runnerInfo().map((r) => [r.id, r.key, r.to, r.from, r.run ? 1 : 0, r.rev ? 1 : 0, r.user ? 1 : 0, r.m.key]) : null,
     };
   }
+  // the guest's runners, during a play or before the pitch (for steals)
+  const ri = runCtrl() !== 'remote' ? null : pl && G.phase === 'live' ? pl.runnerInfo() : STEAL_PHASES.includes(G.phase) ? stealInfo() : null;
+  s.run = ri ? ri.map((r) => [r.id, r.key, r.to, r.from, r.run ? 1 : 0, r.rev ? 1 : 0, r.user ? 1 : 0, r.m.key, r.steal ? 1 : 0]) : null;
   return s;
 }
 function netPitchOut() {
@@ -287,6 +290,8 @@ function netPitchOut() {
   netSend({ t: 'pitch', rel: [P.rel.x, P.rel.y, P.rel.z], v0: [P.v0.x, P.v0.y, P.v0.z], a: [P.a.x, P.a.y, P.a.z], T: P.T, mph: P.mph, type: P.type, tc: G.tc, tPlate: G.tPlate, tCatch: G.tCatch, cross: G.cross, isStrike: G.isStrike });
 }
 // a ball was put in play: the guest runs the same flight model, so only the launch travels
+// a steal or pickoff started: a new play id so the guest restarts its play clock
+function netPlayOut() { if (isHost()) NET.pid++; }
 function netBBOut(origin, ev, la, spray) {
   if (!isHost()) return;
   NET.pid++;
@@ -574,7 +579,8 @@ function guestUpdate(dt) {
   landMark.visible = !!(pl && pl.land && landingAssist());
   if (landMark.visible) landMark.position.set(pl.land[0], 0.1, pl.land[1]);
   $('throwPrompt').classList.toggle('hidden', !(pl && pl.prompt));
-  runnerHUD(!!(pl && userRuns() && !pl.hr));
+  runnerHUD(userRuns() && ((!!pl && !pl.hr) || (STEAL_PHASES.includes(G.phase) && !!(NET.snap && NET.snap.run && NET.snap.run.length))));
+  pickoffHUD();
   for (const m of MODELS) updateModel(m, G.now);
   guestBall();
   dressFrame();

@@ -54,6 +54,7 @@ class Runner {
     this.lead = base > 0 ? 12 : 0; this.leadVis = this.lead; this.isBatter = base === 0; this.delay = 0; this.target = null;
     // userTarget: the base a human told this runner to run to (null = the AI decides)
     this.rev = false; this.userTarget = null; this.leftEarly = false; this.aiRev = false;
+    this.steal = null;   // { user, went }: stealing on this pitch
     this.pos = new V3(); this.phase = Math.random() * 6;
   }
   eta() {
@@ -89,7 +90,9 @@ class Runner {
 class Play {
   // o.field: null for a CPU defense, else { lock: playerId|null, manual: bool } for a human defense
   // o.run:   null for CPU baserunning, else { lock: playerId|null } (AI still assists unless told otherwise)
+  // o.kind:  'hit' (a batted ball, o.bb), 'steal' (the catcher has the pitch) or 'pick' (pickoff to o.pickBase)
   constructor(o) {
+    this.kind = o.kind || 'hit';
     this.bb = o.bb; this.F = o.fielders; this.R = o.runners;
     this.outs = o.outs; this.startOuts = o.outs;
     this.hf = o.field || null; this.hrun = o.run || null;
@@ -97,12 +100,13 @@ class Play {
     this.t = 0; this.done = false; this.endAt = null;
     this.ball = { mode: 'flight', pos: new V3(), holder: null, thr: null, si: 0 };
     this.runs = []; this.outEvents = []; this.error = false; this.caught = false; this.firstFielder = null; this.firstAir = false;
-    this.fairKnown = false; this.foul = false; this.hr = !!o.bb.hr; this.awarded = false; this.thirdOutForce = false;
+    this.fairKnown = false; this.foul = false; this.hr = !!(o.bb && o.bb.hr); this.awarded = false; this.thirdOutForce = false;
     this.queuedThrow = null; this.prompt = false; this.events = []; this.chaser = null; this.dove = false; this.wallCatch = false;
     this.uf = null; this.ufManual = false; this.lastInput = -9; this.inp = { x: 0, z: 0 };
     // ballBase: a fielder standing on a bag with the ball, ready to tag whoever arrives
     this.ballBase = null; this.remotePos = null;
     for (const f of this.F) f.reset();
+    if (this.kind !== 'hit') { this.basesPlay(o); return; }
     // force situation at contact
     const occ = [true, false, false, false];
     for (const r of this.R) if (!r.isBatter) occ[r.base] = true;
@@ -121,6 +125,37 @@ class Play {
       r.autoRun = this.outs === 2;
       if (r.wait) r.lead = 0;
     }
+  }
+  // A steal (the catcher just caught the pitch) or a pickoff (the pitcher throws over).
+  // No batted ball and no forces: every out is a tag.
+  basesPlay(o) {
+    this.fairKnown = true;
+    for (const r of this.R) { r.forced = false; r.wait = false; r.autoRun = false; }
+    this.chaser = null; this.assignTasks();
+    const C = this.F.find((f) => f.role === 'C'), P = this.F.find((f) => f.role === 'P');
+    const holder = this.kind === 'steal' ? C : P;
+    this.ball.mode = 'held'; this.ball.holder = holder;
+    holder.m.root.updateMatrixWorld(true); handWorld(holder.m, holder.m.lefty ? 'R' : 'L', this.ball.pos);
+    if (this.hf) this.uf = this.hf.lock ? this.F.find((f) => f.pl.id === this.hf.lock) || null : holder;
+    if (this.kind === 'steal') {
+      // pop time: the transfer is quicker for a strong arm
+      holder.readyAt = 0.1; holder.decideAt = clamp(0.68 - ((holder.pl.arm ?? 60) - 50) * 0.004 + rand(-0.06, 0.06), 0.4, 0.85);
+      holder.anim('ready');
+      return;
+    }
+    const base = o.pickBase, bp = BASES[base], cov = this.cover[base];
+    const d = Math.hypot(bp.x - P.pos.x, bp.z - P.pos.z), flight = d / throwSpeed(P, d);
+    // time the throw so the fielder covering gets to the bag with it
+    const tCover = cov ? runTime(Math.hypot(bp.x - cov.pos.x, bp.z - cov.pos.z) - 1.5, cov.speed, cov.acc) + cov.react : 0;
+    P.decideAt = Infinity;
+    this.pickThrow = { base, at: Math.max(0.15, tCover - flight - 0.24) };
+    P.face(bp.x, bp.z);
+    const r = this.R.find((x) => x.state === 'base' && x.base === base);
+    if (!r) return;
+    const leaning = !!(r.steal && !r.steal.went);   // he was going on this pitch
+    r.steal = null; r.state = 'run'; r.next = base + 1; r.d = r.lead || 10; r.leadVis = 0;
+    if (leaning && Math.random() < 0.5) { r.rev = false; r.v = r.top * 0.35; r.delay = 0.1; }   // caught going: hung up between bases
+    else { r.rev = true; r.v = r.top * 0.8; r.delay = leaning || Math.random() < 0.1 ? rand(0.35, 0.55) : rand(0.08, 0.2); r.userTarget = base; }   // now and then a bad read
   }
   setupTrot() {
     for (const r of this.R) { r.target = 4; r.state = 'run'; r.next = r.base + 1; r.d = r.isBatter ? 0 : r.lead; r.lead = 0; r.leadVis = 0; r.v = 4; r.delay = r.isBatter ? 0.9 : 0.25; }
@@ -266,6 +301,11 @@ class Play {
   // ------------------------------------------------------------ update ----
   update(dt) {
     this.t += dt;
+    if (this.pickThrow && this.t >= this.pickThrow.at) {
+      const P = this.ball.holder, base = this.pickThrow.base;
+      this.pickThrow = null;
+      if (P) { P.decideAt = 0; this.execThrow(P, base); }
+    }
     this.updateBall();
     this.updateFielders(dt);
     this.trackBallBase();
@@ -583,7 +623,9 @@ class Play {
     const bp = BASES[base], d = Math.hypot(bp.x - f.pos.x, bp.z - f.pos.z);
     if (d < 7) { f.runTo = base; return; }
     f.yaw = Math.atan2(bp.x - f.pos.x, bp.z - f.pos.z);
-    f.anim('throw'); f.throwing = true; f.throwBase = base; f.releaseAt = this.t + 0.24;
+    // a catcher throwing out a base stealer has a short, quick release
+    const quick = this.kind === 'steal' && f.role === 'C' && !this.firstThrowDone;
+    f.anim('throw'); f.throwing = true; f.throwBase = base; f.releaseAt = this.t + (quick ? 0.18 : 0.24);
     this.firstThrowDone = true;
     this.lastThrow = { from: f.role, base };
   }
@@ -802,8 +844,8 @@ class Play {
       foul: this.foul && !this.caught, hr: this.hr, gr: this.awarded, caught: this.caught,
       outsMade: this.outs - this.startOuts, outs: Math.min(3, this.outs),
       runs: runs.length, scorers: runs.map((x) => x.r.pl), error: this.error,
-      batterOut: batter.state === 'out', batterBase: batter.state === 'out' ? 0 : batter.state === 'scored' ? 4 : batter.base,
-      fc: batter.state !== 'out' && forceOutOther, dp: this.outs - this.startOuts >= 2,
+      batterOut: !!batter && batter.state === 'out', batterBase: !batter || batter.state === 'out' ? 0 : batter.state === 'scored' ? 4 : batter.base,
+      fc: !!batter && batter.state !== 'out' && forceOutOther, dp: this.outs - this.startOuts >= 2,
       first: this.firstFielder ? this.firstFielder.role : null, firstAir: this.firstAir, dove: this.dove, wallCatch: this.wallCatch,
       bases: [null, ...[1, 2, 3].map((b) => { const r = this.R.find((x) => x.state === 'base' && x.base === b); return r ? r.pl : null; })],
       outEvents: this.outEvents,

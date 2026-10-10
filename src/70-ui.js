@@ -293,7 +293,7 @@ function hudBanner(main, sub, cls) {
 let piTimer = 0;
 function hudPitchInfo(info) {
   info = info || (G.P && { mph: G.P.mph, type: G.P.type });
-  if (!info) return;
+  if (!info || !info.mph) return;   // a fungo has no pitch
   $('piMph').innerHTML = `${Math.round(info.mph)}<small>MPH</small>`;
   $('piType').textContent = PITCH_TYPES[info.type].name;
   $('pitchInfo').classList.add('show');
@@ -515,9 +515,9 @@ function heldBase() { for (const k in BASE_KEY) if (keys.has(k)) return BASE_KEY
 function runnerList() {
   let L;
   if (isGuest()) {
-    const raw = (NET.snap && NET.snap.pl && NET.snap.pl.run) || [];
-    L = raw.map(([id, key, to, from, run, rev, user, mk]) => ({ id, key, to, from, run: !!run, rev: !!rev, user: !!user, m: modelByKey(mk) }));
-  } else L = G.play ? G.play.runnerInfo() : [];
+    const raw = (NET.snap && NET.snap.run) || [];
+    L = raw.map(([id, key, to, from, run, rev, user, mk, steal]) => ({ id, key, to, from, run: !!run, rev: !!rev, user: !!user, steal: !!steal, m: modelByKey(mk) }));
+  } else L = G.play ? G.play.runnerInfo() : STEAL_PHASES.includes(G.phase) ? stealInfo() : [];
   return G.lock ? L.filter((r) => r.id === G.lock) : L;
 }
 function runnerIdAt(b) { const L = runnerList(); const r = L.find((x) => x.key === b && x.run) || L.find((x) => x.key === b); return r ? r.id : null; }
@@ -527,7 +527,16 @@ function runKey(kind, base = heldBase()) {
   const id = runnerIdAt(base);
   if (id) actRun(kind, id);
 }
+// runners on base before the pitch (or breaking during it): key = the base he's on
+function stealInfo() {
+  return (G.baseRunners || []).filter((r) => r.state === 'run' || r.state === 'base').map((r) => {
+    const run = r.state === 'run';
+    return { id: r.pl.id, key: run ? r.next : r.base, to: run ? r.next : r.steal ? r.base + 1 : r.base, from: r.base, run, rev: false, user: !!r.steal, steal: !!r.steal, m: r.m };
+  });
+}
 function runnerPath(r) {
+  if (r.steal && !r.run) return { cls: 'go', txt: `STEALING ${BASE_ABBR[r.to]}`, tag: `STEAL ${BASE_ABBR[r.to]}` };
+  if (!r.run && STEAL_PHASES.includes(G.phase)) return { cls: 'hold', txt: `ON ${BASE_ABBR[r.key]} &middot; <kbd>${r.key}</kbd>+<kbd>E</kbd> steal`, tag: `ON ${BASE_ABBR[r.key]}` };
   if (r.run && r.rev) return { cls: 'back', txt: `BACK TO ${BASE_ABBR[r.to]}`, tag: `&#9664; ${BASE_ABBR[r.to]}` };
   if (r.run) return { cls: 'go', txt: `${BASE_ABBR[r.from]} &rarr; ${BASE_ABBR[r.to]}`, tag: `&rarr; ${BASE_ABBR[r.to]}` };
   if (r.to > r.key) return { cls: 'go', txt: `GOING TO ${BASE_ABBR[r.to]}`, tag: `&rarr; ${BASE_ABBR[r.to]}` };
@@ -538,6 +547,7 @@ const runTagEls = new Map(), _tagV = new V3();
 function runnerHUD(show) {
   const L = show ? runnerList() : [];
   $('runHelp').classList.toggle('hidden', !L.length);
+  $('runHelp').classList.toggle('pre', STEAL_PHASES.includes(G.phase));   // before the pitch: compact, out of the hitting view
   L.sort((a, b) => b.key - a.key);
   const sig = L.map((r) => [r.id, r.key, r.to, r.from, r.run, r.rev, r.user].join()).join('|');
   if (sig !== rhSig) {
@@ -562,6 +572,30 @@ function runnerHUD(show) {
     seen.add(r.id);
   }
   for (const [id, el] of runTagEls) if (!seen.has(id)) { el.remove(); runTagEls.delete(id); }
+}
+
+// pitching with runners on: buttons to throw over (Shift + 1 / 2 / 3 on the keyboard)
+let pickSig = null;
+function pickoffHUD() {
+  const on = G.phase === 'prePitch' && !G.replay && userPitches() && G.pitchUI.state === 'aim' && G.mode !== 'derby';
+  const bases = on ? [1, 2, 3].filter((b) => G.bases[b]) : [];
+  const sig = bases.join('');
+  if (sig === pickSig) return;
+  pickSig = sig;
+  $('pickHelp').classList.toggle('hidden', !bases.length);
+  $('pickList').innerHTML = bases.map((b) => `<button data-pick="${b}">${BASE_ABBR[b]}<small>Shift+${b}</small></button>`).join('');
+}
+// practice: a running tally for the drill you're doing
+function hudPrac() {
+  if (!G.drill || !G.prac) return;
+  const p = G.prac, pct = (a, b) => (b ? Math.round((a / b) * 100) + '%' : '–');
+  const cells = {
+    bat: [['PITCHES', p.pitches], ['CONTACT', pct(p.contact, p.swings)], ['HITS', p.hits], ['HR', p.hr], ['AVG EV', p.evN ? (p.evSum / p.evN).toFixed(1) : '–']],
+    pitch: [['PITCHES', p.pitches], ['STRIKE %', pct(p.strikes, p.pitches)], ['K', p.k], ['BB', p.bb], ['HITS', p.hits]],
+    run: [['STOLEN', p.sb], ['CAUGHT', p.cs], ['RUNS', p.runs], ['OUT ON BASES', p.picked]],
+    field: [['BALLS', p.chances], ['OUTS', p.outs], ['ERRORS', p.errors], ['HITS', p.hits]],
+  }[G.drill];
+  $('pracHud').innerHTML = `<div class="ph-name">${DRILLS[G.drill].name.toUpperCase()}</div>` + cells.map(([k, v]) => `<div><b>${v}</b><span>${k}</span></div>`).join('');
 }
 
 // ------------------------------------------------------------ runner map ----
@@ -660,7 +694,10 @@ function updateLive(dt) {
   landMark.visible = !!land; if (land) landMark.position.set(land[0], 0.1, land[1]);
   runnerHUD(userRuns() && !pl.hr && !pl.awarded && !pl.done);
   if (!fpvOn) playCam();
-  if (pl.done) { setHint(''); ctrlRing.visible = false; landMark.visible = false; baseMark.visible = false; G.aimShown = 0; runnerHUD(false); finishPlay(); }
+  if (pl.done) {
+    setHint(''); ctrlRing.visible = false; landMark.visible = false; baseMark.visible = false; G.aimShown = 0; runnerHUD(false);
+    if (pl.kind === 'steal') finishStealPlay(); else if (pl.kind === 'pick') finishPickPlay(); else finishPlay();
+  }
 }
 function onPlayEvent(e) {
   const homeBats = G.half === 1;
@@ -776,7 +813,8 @@ function fieldVec() {
 function actThrow(b) { if (isGuest()) { netSend({ t: 'act', a: 'throw', base: b }); NET.pred.hold = G.now + 0.5; } else if (G.play) G.play.userThrow(b); }
 function actDive() { if (isGuest()) { netSend({ t: 'act', a: 'dive' }); NET.pred.hold = G.now + 1.2; } else if (G.play) G.play.userDive(); }
 function actSwitch() { if (isGuest()) netSend({ t: 'act', a: 'switch' }); else if (G.play) G.play.userSwitch(); }
-function actRun(kind, which = null) { if (isGuest()) netSend({ t: 'act', a: 'run', kind, which }); else if (G.play) G.play.runCmd(kind, which); }
+function actRun(kind, which = null) { if (isGuest()) netSend({ t: 'act', a: 'run', kind, which }); else if (G.play) G.play.runCmd(kind, which); else stealCmd(kind, which); }
+function actPick(base) { if (isGuest()) netSend({ t: 'act', a: 'pick', base }); else startPickoff(base); }
 const trotOn = () => (isGuest() ? !!(NET.snap && NET.snap.pl && NET.snap.pl.hr) : !!(G.play && (G.play.hr || G.play.awarded)));
 window.addEventListener('keydown', (e) => {
   const k = e.key.toLowerCase();
@@ -802,6 +840,13 @@ window.addEventListener('keydown', (e) => {
       if (k === 'q') { runKey('back'); return; }
       if (k in BASE_KEY) return;   // held to pick a runner for E / Q
     }
+  }
+  // pitching: Shift + 1/2/3 throws over to that base
+  if (e.shiftKey && /^Digit[1-3]$/.test(e.code) && userPitches() && G.phase === 'prePitch') { actPick(+e.code.slice(5)); return; }
+  // batting team, before or during the pitch: E steals (hold a base key for one runner), Q calls it off
+  if (STEAL_PHASES.includes(G.phase) && userRuns() && !userPitches() && runnerList().length) {
+    if (k === 'e') { runKey('go'); return; }
+    if (k === 'q') { runKey('back'); return; }
   }
   if (k === ' ' || k === 'k') primaryAction('normal');
   else if (k === 'j') primaryAction('contact');
@@ -830,6 +875,7 @@ window.addEventListener('blur', () => keys.clear());
 $('pitchList').addEventListener('click', (e) => { const row = e.target.closest('.pitch-row'); if (row) selectPitch(+row.dataset.i); });
 for (const b of $('throwPrompt').querySelectorAll('button')) b.addEventListener('pointerdown', (e) => { e.stopPropagation(); actThrow(+b.dataset.base); });
 $('simBtn').addEventListener('pointerdown', (e) => { e.stopPropagation(); startSim(); });
+$('pickHelp').addEventListener('pointerdown', (e) => { const b = e.target.closest('button[data-pick]'); if (!b) return; e.stopPropagation(); e.preventDefault(); actPick(+b.dataset.pick); });
 $('runHelp').addEventListener('pointerdown', (e) => { const b = e.target.closest('button[data-run]'); if (!b) return; e.stopPropagation(); e.preventDefault(); actRun(b.dataset.run, b.dataset.id || null); });
 
 let gpPrev = [];
@@ -855,6 +901,9 @@ function pollGamepad() {
         const pad = pressed(15) ? 1 : pressed(12) ? 2 : pressed(14) ? 3 : pressed(13) ? 4 : 0;
         if (edge(5)) runKey('go', pad); if (edge(4)) runKey('back', pad);
       }
+    } else if (userPitches() && G.phase === 'prePitch' && pressed(6)) {
+      // hold LT: B / Y / X throw over to first / second / third
+      if (edge(1)) actPick(1); if (edge(3)) actPick(2); if (edge(2)) actPick(3);
     } else if (userPitches() && G.phase === 'prePitch') {
       const n = curPitcher().pitches.length;
       if (edge(4) || edge(14)) selectPitch((G.pitchUI.sel + n - 1) % n);
@@ -863,6 +912,11 @@ function pollGamepad() {
     } else if (G.phase === 'postPitch' && edge(3)) requestChallenge();
     else {
       if (edge(0)) primaryAction('normal'); if (edge(2)) primaryAction('power'); if (edge(1)) primaryAction('contact'); if (edge(3)) primaryAction('bunt');
+      // batting team: RB steals (hold the D-pad toward one runner's base), LB calls it off
+      if (STEAL_PHASES.includes(G.phase) && userRuns()) {
+        const pad = pressed(15) ? 1 : pressed(12) ? 2 : pressed(14) ? 3 : pressed(13) ? 4 : 0;
+        if (edge(5)) runKey('go', pad); if (edge(4)) runKey('back', pad);
+      }
       if (edge(8)) startReplay();
     }
   }
@@ -929,7 +983,7 @@ function togglePause(force, remote) {
 }
 
 // ------------------------------------------------------------------ menus ----
-const menu = { mode: 'exhibition', away: 'HAW', home: 'COM', side: 1, innings: 3, diff: 1, manual: 1, batter: 3, lockPick: 'h3', ump: 1, view: 2, lockField: 1, lockSkip: 1, batCam: settings.batCam || 0, netTeam: 'COM' };
+const menu = { mode: 'exhibition', away: 'HAW', home: 'COM', side: 1, innings: 3, diff: 1, manual: 1, batter: 3, lockPick: 'h3', ump: 1, view: 2, lockField: 1, lockSkip: 1, batCam: settings.batCam || 0, netTeam: 'COM', drill: 0 };
 try { Object.assign(menu, JSON.parse(localStorage.getItem('fullcount.menu') || '{}')); } catch (e) { /* ignore */ }
 menu.batCam = settings.batCam || 0;   // the pause screen can change it too; settings wins
 // teams used to be saved as an index into the built-in list
@@ -965,7 +1019,7 @@ function onlinePicks() {
   return { teams: mySide ? [theirs, mine] : [mine, theirs], mySide };
 }
 function renderMenu() {
-  const m = menu.mode, derby = m === 'derby', spec = m === 'spectate', lock = m === 'lock', online = m === 'online';
+  const m = menu.mode, derby = m === 'derby', spec = m === 'spectate', lock = m === 'lock', online = m === 'online', prac = m === 'practice';
   const guest = online && NET.role === 'guest', host = online && NET.role === 'host';
   const L = guest && NET.lobby ? NET.lobby : menu;
   const showTeams = !online || host || (guest && NET.open && NET.lobby);
@@ -980,13 +1034,14 @@ function renderMenu() {
     $('pickA').innerHTML = teamPickHTML(P.mySide === 0 ? 'AWAY · YOU' : 'AWAY · FRIEND', P.teams[0], 'away', P.mySide === 0);
     $('pickH').innerHTML = teamPickHTML(P.mySide === 1 ? 'HOME · YOU' : 'HOME · FRIEND', P.teams[1], 'home', P.mySide === 1);
   } else if (showTeams) {
-    $('pickA').innerHTML = teamPickHTML(derby ? 'BP PITCHER FROM' : 'AWAY', menuTeam('away'), 'away');
-    $('pickH').innerHTML = teamPickHTML(derby ? 'YOUR TEAM' : 'HOME', menuTeam('home'), 'home');
+    $('pickA').innerHTML = teamPickHTML(derby ? 'BP PITCHER FROM' : prac ? 'OPPONENT' : 'AWAY', menuTeam('away'), 'away');
+    $('pickH').innerHTML = teamPickHTML(derby || prac ? 'YOUR TEAM' : 'HOME', menuTeam('home'), 'home');
   }
   $('pickA').classList.toggle('hidden', derby); $('vsLabel').classList.toggle('hidden', derby);
-  $('optSide').classList.toggle('hidden', derby || spec || !showTeams);
+  $('optSide').classList.toggle('hidden', derby || spec || prac || !showTeams);
+  $('optDrill').classList.toggle('hidden', !prac);
   $('optSide').querySelector('span').textContent = lock ? 'YOUR TEAM' : 'YOU PLAY AS';
-  $('optInn').classList.toggle('hidden', derby || !showTeams);
+  $('optInn').classList.toggle('hidden', derby || prac || !showTeams);
   $('optDiff').classList.toggle('hidden', spec || !showTeams);
   $('optThrow').classList.toggle('hidden', derby || spec || online);
   $('optBatter').classList.toggle('hidden', !derby);
@@ -1016,7 +1071,7 @@ function renderMenu() {
   play.classList.toggle('hidden', online && !host);
   play.disabled = (host && !NET.open) || !!block;
   play.title = block;
-  play.textContent = derby ? 'START DERBY' : spec ? 'WATCH GAME' : lock ? 'PLAY AS ' + (lock ? lockName() : '') : online ? (NET.open ? 'START ONLINE GAME' : 'WAITING FOR FRIEND') : 'PLAY BALL';
+  play.textContent = derby ? 'START DERBY' : prac ? 'START PRACTICE' : spec ? 'WATCH GAME' : lock ? 'PLAY AS ' + (lock ? lockName() : '') : online ? (NET.open ? 'START ONLINE GAME' : 'WAITING FOR FRIEND') : 'PLAY BALL';
   if (host && NET.open && block !== (NET.blockShown || '')) { NET.blockShown = block; netStatus(block || 'Ready! Press Start when you are.', block ? 'bad' : 'good'); }
   try { localStorage.setItem('fullcount.menu', JSON.stringify(menu)); } catch (e) { /* ignore */ }
   if (host && NET.open) netSendLobby();
@@ -1079,7 +1134,7 @@ function buildMenu() {
     SND.init();
     if (menu.mode === 'online') { hostStartOnline(); return; }
     const teams = [teamSpec(menuTeam('away')), teamSpec(menuTeam('home'))];
-    startGame({ mode: menu.mode, teams, side: menu.side, innings: menu.innings, diff: menu.diff, manual: menu.manual, batter: menu.batter, lockPick: menu.lockPick, ump: menu.ump, view: menu.view, lockField: menu.lockField, lockSkip: menu.lockSkip });
+    startGame({ mode: menu.mode, teams, drill: ['bat', 'pitch', 'run', 'field'][menu.drill] || 'bat', side: menu.side, innings: menu.innings, diff: menu.diff, manual: menu.manual, batter: menu.batter, lockPick: menu.lockPick, ump: menu.ump, view: menu.view, lockField: menu.lockField, lockSkip: menu.lockSkip });
   });
   const openHelp = () => { $('help').classList.remove('hidden'); };
   $('btnHow').addEventListener('click', openHelp);
@@ -1144,9 +1199,15 @@ function update(dt) {
   switch (G.phase) {
     case 'menu': menuCam(dt); break;
     case 'halfIntro': if (G.pt >= G.dur) newBatter(); break;
-    case 'prePitch': { const pc = pitchCtrl(); if (pc === 'local') updatePitchUI(); else if (pc === 'cpu' && G.pt >= G.cpuPitchAt) startWindup(G.spec); break; }
-    case 'windup': updateWindup(); break;
-    case 'pitch': updatePitch(dt); break;
+    case 'prePitch': {
+      const pc = pitchCtrl();
+      if (G.drill === 'field') { if (G.pt >= G.fungoAt) fungo(); break; }
+      if (G.cpuPick && G.pt >= G.cpuPick.at) { startPickoff(G.cpuPick.base); break; }
+      if (pc === 'local') updatePitchUI(); else if (pc === 'cpu' && G.pt >= G.cpuPitchAt) startWindup(G.spec);
+      break;
+    }
+    case 'windup': updateWindup(); updateStealers(dt); break;
+    case 'pitch': updateStealers(dt); updatePitch(dt); break;
     case 'postPitch':
       if (G.challengeable && G.cpuChallengeAt && G.now >= G.cpuChallengeAt) { startChallenge(G.challengeable.side); break; }
       if (G.pt >= G.dur) endPostPitch();
@@ -1154,7 +1215,7 @@ function update(dt) {
     case 'absReview': if (G.pt >= G.dur) revealChallenge(); break;
     case 'postFoul': if (G.pt >= G.dur) enterPrePitch(); break;
     case 'live': updateLive(dt); break;
-    case 'postPlay': if (G.pt >= G.dur) afterAB(); break;
+    case 'postPlay': if (G.pt >= G.dur) { const next = G.postNext; G.postNext = null; if (next) next(); else afterAB(); } break;
     case 'break': if (G.pt >= G.dur) nextHalf(); break;
     case 'derbyFlight': updateDerbyFlight(); playCam(); break;
     case 'derbyResult': if (G.pt >= G.dur) endDerbyResult(); break;
@@ -1164,6 +1225,9 @@ function update(dt) {
   for (const m of MODELS) updateModel(m, G.now);
   if (G.recOn) recFrame();
   updateThrowGuide();
+  if (STEAL_PHASES.includes(G.phase)) runnerHUD(userRuns() && G.baseRunners.length > 0);
+  else if (G.phase !== 'live') runnerHUD(false);
+  pickoffHUD();
   fpvCam(dt);
 }
 // Player Lock: you only play when you're involved - at bat, on base, or when the ball is
@@ -1251,7 +1315,7 @@ function boot() {
 }
 // Debug handle: lets a test harness advance the simulation without waiting on animation frames.
 window.__fullcount = {
-  G, TEAMS, settings, NET, keys, BAT_CAMS, Play, Runner, BASES, simBatted, V3, getModel, ballMesh, rosterCost, teamToDef, cleanRoster, buildCustomTeam, Cloud, cloudRender, inviteToast, get ROSTERS() { return ROSTERS; },
+  G, TEAMS, settings, NET, keys, BAT_CAMS, Play, Runner, BASES, simBatted, V3, getModel, ballMesh, startPickoff, stealCmd, rosterCost, teamToDef, cleanRoster, buildCustomTeam, Cloud, cloudRender, inviteToast, get ROSTERS() { return ROSTERS; },
   step(sec, dt = 1 / 60) {
     const n = Math.round(sec / dt);
     for (let i = 0; i < n && !G.paused; i++) { if (isGuest()) guestUpdate(dt); else update(dt); netTick(); }

@@ -11,6 +11,13 @@ Teams, players and sponsors are fictional.
 - **Play Ball** – exhibition game (3, 6 or 9 innings) as the home or away team.
 - **Player Lock** – pick one player. You only play when he's involved: at bat, on base, or when the ball is hit to the outfield or his way. Everything else is skipped behind a SIMULATING card (set Not Involved to Watch to see it fast-forwarded instead). Fielding and baserunning use a third-person camera behind your player, like Road to the Show: it faces home plate before the pitch, then follows the ball, the base you're running to, or the base you're about to throw to. First person and broadcast cameras are also available, and V cycles between them. At-bats use the strike-zone view. Set Your Role to Bat only to sim all of your fielding, or press Tab to skip any single at-bat.
 - **Online 1v1** – one player hosts and gets a 5-character room code (or invite link); the other joins with it. Each player picks their own team, custom rosters included. Signed in, you can invite a friend straight from your friends list. Works across devices and networks.
+- **Practice** – endless drills with your team against any opponent:
+  - **Batting**: live pitching, as many at-bats as you want, with contact rate, hits and average exit velocity tracked.
+  - **Pitching**: work a full lineup; strike %, strikeouts, walks and hits tracked. Your pitcher never tires.
+  - **Baserunning**: you start on base while the CPU bats. Steal, take the extra base, or hold.
+  - **Fielding**: a ball comes off the bat every few seconds; outs and errors tracked.
+
+  Three outs just clears the bases and keeps going; quit from the pause menu.
 - **Home Run Derby** – 10 outs, every non-homer swing is an out.
 - **CPU vs CPU** – watch a full simulated game (press `F` to fast-forward).
 
@@ -23,6 +30,8 @@ Teams, players and sponsors are fictional.
 | Bunt | B | Y |
 | Pick pitch | 1–5 | LB / RB |
 | Pitch meter | Click 3×: start, power at the top, stop on the gold line | A |
+| Pickoff throw to 1B / 2B / 3B | Shift + 1 / 2 / 3, or the PICKOFF buttons | Hold LT + B / Y / X |
+| Steal (before or during the pitch) | E (everyone), hold 1–3 + E for one runner; Q calls it off | RB, hold the D-pad toward his base; LB calls it off |
 | Move fielder | WASD | Left stick |
 | Dive / switch fielder | Space / Q | RB / LB |
 | Throw to 1B, 2B, 3B, home | 1 2 3 4 (or → ↑ ← ↓) | B, Y, X, A |
@@ -37,6 +46,14 @@ Teams, players and sponsors are fictional.
 The AI moves your fielder until you touch the controls. Any ball that comes inside the gold ring (7.5 ft) around your fielder is yours. In Player Lock, W runs the way the camera faces. When you field the ball, the best throw is ringed in green and the camera turns toward it; press 1–4 to throw. A live mini diamond shows where every runner, fielder and the ball are.
 
 When you're batting, a runner panel lists every runner with where he's headed, and a tag over each runner shows his key. Each E sends a runner one base further; each Q takes a base back (stop at the next bag, then turn around). Runners you don't touch are run by the AI. Only force plays are outs on the bag; everyone else has to be tagged when he gets there.
+
+## Stealing and pickoffs
+
+Call a steal any time before the pitch: the runner breaks on the pitcher's first move. Call it once the pitcher is already delivering and he gets a late jump. If the batter doesn't put the ball in play, the catcher has to throw him out, and it's a tag play at the bag. A strikeout plus a runner thrown out is a double play. If the ball is put in play, the runner already has his jump: a hit-and-run.
+
+Who wins the race comes down to the runner's speed (fast runners also get better jumps), the pitch, and the catcher's arm. Against a typical catcher an average runner makes it a bit more than half the time, a burner almost always, and a slow runner almost never. A runner can't steal a base another runner is standing on unless that runner goes too. CPU teams steal when they have an edge, and with two outs and a full count their forced runners go on the pitch.
+
+When you're pitching with runners on, Shift + 1 / 2 / 3 throws over. The runner dives back and is usually safe, but a runner who was going on that pitch gets caught leaning: he's either picked off or hung up between bases. CPU pitchers throw over too, mostly to fast runners.
 
 ## Roster Builder
 

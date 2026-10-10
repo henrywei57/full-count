@@ -153,7 +153,7 @@ button{font:inherit;color:inherit}
 #derbyHud b{display:block;font-size:30px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums}
 #derbyHud span{font-size:11px;letter-spacing:.14em;color:var(--dust)}
 #replayTag{position:absolute;left:50%;top:calc(18px + env(safe-area-inset-top,0px));transform:translateX(-50%);font-family:var(--f-display);font-weight:800;font-style:italic;font-size:22px;letter-spacing:.2em;padding:4px 18px;background:var(--strike);color:#fff;border-radius:3px}
-#hud.replaying .plate,#hud.replaying #tracker,#hud.replaying #caption,#hud.replaying #hint,#hud.replaying #feedback,#hud.replaying #pitchInfo,#hud.replaying #bug,#hud.replaying #derbyHud,#hud.replaying #topbar,#hud.replaying #runHelp,#hud.replaying #runTags{display:none}
+#hud.replaying .plate,#hud.replaying #tracker,#hud.replaying #caption,#hud.replaying #hint,#hud.replaying #feedback,#hud.replaying #pitchInfo,#hud.replaying #bug,#hud.replaying #derbyHud,#hud.replaying #topbar,#hud.replaying #runHelp,#hud.replaying #runTags,#hud.replaying #pickHelp,#hud.replaying #pracHud{display:none}
 .letterbox::before,.letterbox::after{content:"";position:fixed;left:0;right:0;height:9vh;background:#000;z-index:4}
 .letterbox::before{top:0}.letterbox::after{bottom:0}
 
@@ -249,10 +249,25 @@ button:focus-visible,select:focus-visible{outline:2px solid var(--gold);outline-
 .rh-path{font-family:var(--f-display);font-weight:700;font-size:15px;font-variant-numeric:tabular-nums;white-space:nowrap}
 .rh-path.go{color:var(--ball)}.rh-path.back{color:var(--strike)}.rh-path.hold{color:var(--gold)}
 #runTags{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+#runHelp.pre{left:16px;top:calc(84px + env(safe-area-inset-top,0px));bottom:auto;transform:none;width:min(290px,calc(100vw - 32px))}
+#runHelp.pre .rh-head,#runHelp.pre .rh-all{display:none}
+#runHelp.pre .rh-row:first-of-type{border-top:0}
+#hud.prac #runHelp.pre{top:calc(142px + env(safe-area-inset-top,0px))}
 .run-tag{position:absolute;transform:translate(-50%,-100%);padding:2px 7px 2px 3px;border-radius:12px;background:rgba(5,10,20,.78);font-family:var(--f-display);font-weight:700;font-size:13px;white-space:nowrap;display:flex;align-items:center;gap:5px}
 .run-tag b{width:18px;height:18px;border-radius:50%;display:grid;place-items:center;background:var(--dust);color:#081020;font-size:12px}
 .run-tag.user b{background:var(--gold)}
 .run-tag.go{color:var(--ball)}.run-tag.back{color:var(--strike)}.run-tag.hold{color:var(--gold)}
+
+#pickHelp{position:absolute;right:16px;bottom:calc(300px + env(safe-area-inset-bottom,0px));display:flex;align-items:center;gap:6px;padding:6px 8px;background:var(--panel);border:1px solid var(--line);border-radius:6px;pointer-events:auto}
+#pickHelp .ph-label{font-family:var(--f-display);font-weight:700;font-size:12px;letter-spacing:.16em;color:var(--gold);margin-right:2px}
+#pickHelp button{padding:5px 10px;border-radius:4px;border:1px solid var(--line);background:transparent;font-family:var(--f-display);font-weight:700;font-size:15px;cursor:pointer;line-height:1}
+#pickHelp button small{display:block;font-size:10px;color:var(--dust);letter-spacing:.06em;margin-top:2px}
+#pickHelp button:hover{background:var(--panel-hi)}
+#pracHud{position:absolute;left:16px;top:calc(86px + env(safe-area-inset-top,0px));display:flex;gap:1px;background:var(--line);border-radius:4px;overflow:hidden;font-family:var(--f-display)}
+#pracHud div{background:var(--panel);padding:6px 10px;text-align:center;min-width:62px}
+#pracHud .ph-name{display:flex;align-items:center;font-weight:800;font-size:13px;letter-spacing:.14em;color:var(--gold);min-width:0}
+#pracHud b{display:block;font-size:22px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums}
+#pracHud span{font-size:10px;letter-spacing:.12em;color:var(--dust);white-space:nowrap}
 
 /* ---------- runner map + ABS ---------- */
 #miniMap{position:absolute;left:16px;top:50%;transform:translateY(-50%);width:150px;height:150px;background:var(--panel);border:1px solid var(--line);border-radius:6px}
@@ -270,7 +285,7 @@ button:focus-visible,select:focus-visible{outline:2px solid var(--gold);outline-
 @keyframes simDot{0%,100%{opacity:.2}50%{opacity:1}}
 #simNext{margin-top:6px;font-size:15px;font-weight:600}
 .sim-foot{margin-top:6px;font-size:12px;color:var(--dust)}
-body.skipping #batterCard,body.skipping #pitcherCard,body.skipping #call,body.skipping #feedback,body.skipping #tracker,body.skipping #pitchInfo,body.skipping #hint,body.skipping #banner,body.skipping #simBtn,body.skipping #throwPrompt,body.skipping #runHelp,body.skipping #runTags{visibility:hidden}
+body.skipping #batterCard,body.skipping #pitcherCard,body.skipping #call,body.skipping #feedback,body.skipping #tracker,body.skipping #pitchInfo,body.skipping #hint,body.skipping #banner,body.skipping #simBtn,body.skipping #throwPrompt,body.skipping #runHelp,body.skipping #runTags,body.skipping #pickHelp{visibility:hidden}
 #simBtn{position:absolute;left:50%;top:calc(64px + env(safe-area-inset-top,0px));transform:translateX(-50%);pointer-events:auto;padding:6px 14px;border-radius:4px;border:1px solid var(--line);background:var(--panel);font-family:var(--f-display);font-weight:700;font-size:14px;letter-spacing:.1em;cursor:pointer}
 #simBtn:hover{background:var(--panel-hi)}
 #simBtn kbd{font-family:var(--f-display);padding:0 5px;border-radius:3px;background:rgba(255,255,255,.14);margin-left:6px}
@@ -454,6 +469,8 @@ body.skipping #batterCard,body.skipping #pitcherCard,body.skipping #call,body.sk
   <div id="absCard" class="hidden"><div class="abs-head">ABS CHALLENGE</div><div class="abs-sub" id="absTeam"></div><canvas id="absCanvas" width="400" height="440"></canvas><div class="abs-res" id="absRes"></div></div>
   <button id="simBtn" class="hidden" title="Let the CPU play this at-bat for you">SKIP AT-BAT &#9193;<kbd>Tab</kbd></button>
   <div id="lockTag" class="hidden"><span>PLAYER LOCK</span><b id="lockName">&nbsp;</b><em id="lockLine"></em></div>
+  <div id="pracHud" class="hidden"></div>
+  <div id="pickHelp" class="hidden"><span class="ph-label">PICKOFF</span><span id="pickList"></span></div>
   <div id="runTags"></div>
   <div id="runHelp" class="hidden">
     <div class="rh-head">BASERUNNING<span>hold a base key (<kbd>1</kbd>&ndash;<kbd>4</kbd> or arrows) + <kbd>E</kbd>/<kbd>Q</kbd> for one runner</span></div>
@@ -476,6 +493,7 @@ body.skipping #batterCard,body.skipping #pitcherCard,body.skipping #call,body.sk
         <button data-mode="lock">Player Lock <small>Play as one player</small></button>
         <button data-mode="online">Online 1v1 <small>Play a friend on another device</small></button>
         <button data-mode="derby">Home Run Derby <small>10 outs, swing away</small></button>
+        <button data-mode="practice">Practice <small>Batting, pitching, running, fielding</small></button>
         <button data-mode="spectate">CPU vs CPU <small>Sit back and watch</small></button>
       </div>
       <div class="menu-extra">
@@ -498,6 +516,7 @@ body.skipping #batterCard,body.skipping #pitcherCard,body.skipping #call,body.sk
         <div class="team-pick" id="pickH"></div>
       </div>
       <div class="opts">
+        <div class="opt hidden" id="optDrill"><span>DRILL</span><div class="seg" data-key="drill"><button data-v="0" class="on">Batting</button><button data-v="1">Pitching</button><button data-v="2">Baserunning</button><button data-v="3">Fielding</button></div></div>
         <div class="opt" id="optSide"><span>YOU PLAY AS</span><div class="seg" data-key="side"><button data-v="0">Away</button><button data-v="1" class="on">Home</button></div></div>
         <div class="opt" id="optInn"><span>INNINGS</span><div class="seg" data-key="innings"><button data-v="3" class="on">3</button><button data-v="6">6</button><button data-v="9">9</button></div></div>
         <div class="opt" id="optDiff"><span>DIFFICULTY</span><div class="seg" data-key="diff"><button data-v="0">Rookie</button><button data-v="1" class="on">Veteran</button><button data-v="2">All-Star</button><button data-v="3">Hall of Fame</button></div></div>
@@ -566,6 +585,7 @@ body.skipping #batterCard,body.skipping #pitcherCard,body.skipping #call,body.sk
         <dt>1&ndash;5</dt><dd>Choose pitch</dd>
         <dt>Mouse</dt><dd>Aim the location</dd>
         <dt>Click &times;3</dt><dd>Start meter, set power at the top, stop on the gold line</dd>
+        <dt>Shift + 1&ndash;3</dt><dd>Pickoff throw to first, second or third (or the PICKOFF buttons; hold LT + B/Y/X on a gamepad)</dd>
       </dl></div>
       <div><h3>FIELDING</h3><dl>
         <dt>WASD / stick</dt><dd>Run your fielder (gold ring). The AI helps until you move.</dd>
@@ -578,6 +598,7 @@ body.skipping #batterCard,body.skipping #pitcherCard,body.skipping #call,body.sk
         <dt>E / RB</dt><dd>Send every runner one more base</dd>
         <dt>Q / LB</dt><dd>Take a base back (stop at the next bag, press again to go back)</dd>
         <dt>Hold 1&ndash;4 + E/Q</dt><dd>Run just the runner on or heading to that base (1B, 2B, 3B, home). Arrows or the D-pad work too.</dd>
+        <dt>E before the pitch</dt><dd>Steal: the runner goes on the pitcher's first move (hold 1&ndash;3 for one runner, Q calls it off). RB / LB on a gamepad.</dd>
         <dt>Runner panel</dt><dd>Click &#9664; / &#9654; next to any runner. Each runner shows where he's headed.</dd>
       </dl></div>
       <div><h3>GENERAL</h3><dl>
