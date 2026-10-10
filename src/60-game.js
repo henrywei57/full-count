@@ -15,7 +15,7 @@ const G = {
   pci: { x: 0, y: 2.5 }, glove: new V3(0, 2.4, 1.7), rec: [], recOn: false, replay: null, derby: null,
   abEnd: null, contactT: 0, menuAng: 0,
   ctrl: ['cpu', 'cpu'], lock: null, remoteIn: { x: 0, z: 0 }, remoteTake: false, camFocus: null, localPitch: false,
-  ump: 1, challenges: [2, 2], challengeable: null, challenge: null, cpuChallengeAt: 0, fpv: false, lockSide: 1,
+  ump: 1, challenges: [2, 2], challengeable: null, challenge: null, cpuChallengeAt: 0, view: 0, lockSide: 1,
 };
 const battingTeam = () => G.teams[G.half];
 const fieldingTeam = () => G.teams[1 - G.half];
@@ -158,7 +158,7 @@ function startGame(cfg) {
   }
   settings.manual = cfg.manual == null ? true : !!cfg.manual;
   G.ump = cfg.ump ?? 1; G.challenges = [2, 2]; G.challengeable = null; G.challenge = null; G.cpuChallengeAt = 0;
-  G.fpv = cfg.mode === 'lock' && cfg.fpv !== 0; G.lockSide = cfg.side ?? 1; G.simAB = false; G.lockFieldSim = cfg.mode === 'lock' && cfg.lockField === 0;
+  G.view = cfg.mode === 'lock' ? cfg.view ?? 2 : 0; G.lockSide = cfg.side ?? 1; G.simAB = false; G.lockFieldSim = cfg.mode === 'lock' && cfg.lockField === 0;
   Object.assign(G, { inning: 1, half: 0, outs: 0, balls: 0, strikes: 0, score: [0, 0], line: [[], []], hits: [0, 0], errs: [0, 0], bases: [null, null, null, null], order: [0, 0], pen: [0, 0], ff: 1, paused: false, replay: null, play: null, abEnd: null });
   G.stats = new Map(); G.pstats = new Map();
   G.pitcher = [G.teams[0].pitchers[0], G.teams[1].pitchers[0]];

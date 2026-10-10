@@ -377,7 +377,7 @@ button:focus-visible,select:focus-visible{outline:2px solid var(--gold);outline-
         <div class="opt hidden" id="optBatter"><span>BATTER</span><select id="derbyBatter" aria-label="Derby batter"></select></div>
         <div class="opt" id="optUmp"><span>UMPIRE</span><div class="seg" data-key="ump"><button data-v="0">Human ump (92%)</button><button data-v="1" class="on">ABS challenge</button><button data-v="2">Robot ABS</button></div></div>
         <div class="opt hidden" id="optLockField"><span>YOUR ROLE</span><div class="seg" data-key="lockField"><button data-v="1" class="on">Bat &amp; field</button><button data-v="0">Bat only (sim fielding)</button></div></div>
-        <div class="opt hidden" id="optView"><span>CAMERA</span><div class="seg" data-key="fpv"><button data-v="1" class="on">First person</button><button data-v="0">Broadcast</button></div></div>
+        <div class="opt hidden" id="optView"><span>CAMERA</span><div class="seg" data-key="view"><button data-v="2" class="on">Third person</button><button data-v="1">First person</button><button data-v="0">Broadcast</button></div></div>
         <div class="opt" id="optThrow"><span>THROWS</span><div class="seg" data-key="manual"><button data-v="1" class="on">Manual</button><button data-v="0">Auto</button></div></div>
       </div>
       <div class="row-actions"><button class="cta" id="btnPlay">PLAY BALL</button><button class="ghost" id="btnHow">Controls</button></div>
@@ -419,7 +419,7 @@ button:focus-visible,select:focus-visible{outline:2px solid var(--gold);outline-
         <dt>WASD / stick</dt><dd>Run your fielder (gold ring). The AI helps until you move.</dd>
         <dt>Space / RB</dt><dd>Dive</dd>
         <dt>Q / LB</dt><dd>Switch to the fielder nearest the ball</dd>
-        <dt>Look at a base</dt><dd>In first person, Space or click throws where you're looking</dd>
+        <dt>Aim at a base</dt><dd>Player Lock: turn the camera toward a base (it lights up green), then Space or click throws there</dd>
         <dt>&rarr; &uarr; &larr; &darr;</dt><dd>Throw to 1B, 2B, 3B, home (or keys 1&ndash;4)</dd>
         <dt>Carry the ball</dt><dd>Run onto a bag for a force, or into a runner to tag him</dd>
       </dl></div>
@@ -430,9 +430,9 @@ button:focus-visible,select:focus-visible{outline:2px solid var(--gold);outline-
       <div><h3>GENERAL</h3><dl>
         <dt>Esc</dt><dd>Pause</dd>
         <dt>C</dt><dd>ABS challenge a ball/strike call (2 per team, kept if you win)</dd>
-        <dt>Mouse / right stick</dt><dd>First person: look around (click to grab the mouse)</dd>
-        <dt>T / right-click</dt><dd>First person: snap back to following the play</dd>
-        <dt>V</dt><dd>Player Lock: switch first-person and broadcast view</dd>
+        <dt>Mouse / right stick</dt><dd>Player Lock: swing the camera around your player (click to grab the mouse)</dd>
+        <dt>T / right-click</dt><dd>Player Lock: snap the camera back to following the play</dd>
+        <dt>V</dt><dd>Player Lock: cycle third-person, first-person and broadcast cameras</dd>
         <dt>Tab / Back</dt><dd>Player Lock: skip this at-bat (CPU plays your part)</dd>
         <dt>R</dt><dd>Instant replay after a play</dd>
         <dt>Enter</dt><dd>Skip ahead</dd>

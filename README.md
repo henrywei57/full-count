@@ -9,7 +9,7 @@ Teams, players and sponsors are fictional.
 ## Modes
 
 - **Play Ball** – exhibition game (3, 6 or 9 innings) as the home or away team.
-- **Player Lock** – pick one player. You only bat, pitch, field and run as him; the rest of the game sims quickly until you're involved. Played in first person by default (fielding, running, and from the dugout rail); at-bats use the strike-zone view. Set Your Role to Bat only to sim all of your fielding, or press Tab to skip any single at-bat.
+- **Player Lock** – pick one player. You only bat, pitch, field and run as him; the rest of the game sims quickly until you're involved. Fielding and baserunning use a third-person camera behind your player, like Road to the Show: it faces home plate before the pitch, then follows the ball, the base you're running to, or the base you're about to throw to. First person and broadcast cameras are also available, and V cycles between them. At-bats use the strike-zone view. Set Your Role to Bat only to sim all of your fielding, or press Tab to skip any single at-bat.
 - **Online 1v1** – one player hosts and gets a 5-character room code (or invite link); the other joins with it. Works across devices and networks.
 - **Home Run Derby** – 10 outs, every non-homer swing is an out.
 - **CPU vs CPU** – watch a full simulated game (press `F` to fast-forward).
@@ -28,13 +28,13 @@ Teams, players and sponsors are fictional.
 | Throw to 1B, 2B, 3B, home | → ↑ ← ↓ (or 1–4) | B, Y, X, A |
 | Advance / send back runners | E / Q | RB / LB |
 | ABS challenge | C | Y (right after the call) |
-| Look around (first person) | Mouse (click to grab it), right-click or T to re-center | Right stick, R3 |
-| Throw where you look (first person) | Space or click while holding the ball | RT |
-| Switch first person / broadcast (Player Lock) | V | |
+| Swing the camera (Player Lock) | Mouse (click to grab it), right-click or T to re-center | Right stick, R3 |
+| Throw where the camera faces (Player Lock) | Space or click while holding the ball | RT |
+| Cycle third person / first person / broadcast (Player Lock) | V | |
 | Skip this at-bat (Player Lock) | Tab or the Skip button | Back |
 | Replay, skip, pause | R, Enter, Esc | Back, A, Start |
 
-The AI moves your fielder until you touch the controls. Any ball that comes inside the gold ring (7.5 ft) around your fielder is yours. In first person, W runs wherever you're looking. A live mini diamond shows where every runner, fielder and the ball are.
+The AI moves your fielder until you touch the controls. Any ball that comes inside the gold ring (7.5 ft) around your fielder is yours. In Player Lock, W runs the way the camera faces. When you field the ball, the camera turns to the base the smart play goes to, and that base lights up green. A live mini diamond shows where every runner, fielder and the ball are.
 
 ## Umpires
 

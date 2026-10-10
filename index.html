@@ -384,7 +384,7 @@ button:focus-visible,select:focus-visible{outline:2px solid var(--gold);outline-
         <div class="opt hidden" id="optBatter"><span>BATTER</span><select id="derbyBatter" aria-label="Derby batter"></select></div>
         <div class="opt" id="optUmp"><span>UMPIRE</span><div class="seg" data-key="ump"><button data-v="0">Human ump (92%)</button><button data-v="1" class="on">ABS challenge</button><button data-v="2">Robot ABS</button></div></div>
         <div class="opt hidden" id="optLockField"><span>YOUR ROLE</span><div class="seg" data-key="lockField"><button data-v="1" class="on">Bat &amp; field</button><button data-v="0">Bat only (sim fielding)</button></div></div>
-        <div class="opt hidden" id="optView"><span>CAMERA</span><div class="seg" data-key="fpv"><button data-v="1" class="on">First person</button><button data-v="0">Broadcast</button></div></div>
+        <div class="opt hidden" id="optView"><span>CAMERA</span><div class="seg" data-key="view"><button data-v="2" class="on">Third person</button><button data-v="1">First person</button><button data-v="0">Broadcast</button></div></div>
         <div class="opt" id="optThrow"><span>THROWS</span><div class="seg" data-key="manual"><button data-v="1" class="on">Manual</button><button data-v="0">Auto</button></div></div>
       </div>
       <div class="row-actions"><button class="cta" id="btnPlay">PLAY BALL</button><button class="ghost" id="btnHow">Controls</button></div>
@@ -426,7 +426,7 @@ button:focus-visible,select:focus-visible{outline:2px solid var(--gold);outline-
         <dt>WASD / stick</dt><dd>Run your fielder (gold ring). The AI helps until you move.</dd>
         <dt>Space / RB</dt><dd>Dive</dd>
         <dt>Q / LB</dt><dd>Switch to the fielder nearest the ball</dd>
-        <dt>Look at a base</dt><dd>In first person, Space or click throws where you're looking</dd>
+        <dt>Aim at a base</dt><dd>Player Lock: turn the camera toward a base (it lights up green), then Space or click throws there</dd>
         <dt>&rarr; &uarr; &larr; &darr;</dt><dd>Throw to 1B, 2B, 3B, home (or keys 1&ndash;4)</dd>
         <dt>Carry the ball</dt><dd>Run onto a bag for a force, or into a runner to tag him</dd>
       </dl></div>
@@ -437,9 +437,9 @@ button:focus-visible,select:focus-visible{outline:2px solid var(--gold);outline-
       <div><h3>GENERAL</h3><dl>
         <dt>Esc</dt><dd>Pause</dd>
         <dt>C</dt><dd>ABS challenge a ball/strike call (2 per team, kept if you win)</dd>
-        <dt>Mouse / right stick</dt><dd>First person: look around (click to grab the mouse)</dd>
-        <dt>T / right-click</dt><dd>First person: snap back to following the play</dd>
-        <dt>V</dt><dd>Player Lock: switch first-person and broadcast view</dd>
+        <dt>Mouse / right stick</dt><dd>Player Lock: swing the camera around your player (click to grab the mouse)</dd>
+        <dt>T / right-click</dt><dd>Player Lock: snap the camera back to following the play</dd>
+        <dt>V</dt><dd>Player Lock: cycle third-person, first-person and broadcast cameras</dd>
         <dt>Tab / Back</dt><dd>Player Lock: skip this at-bat (CPU plays your part)</dd>
         <dt>R</dt><dd>Instant replay after a play</dd>
         <dt>Enter</dt><dd>Skip ahead</dd>
@@ -2542,7 +2542,7 @@ const G = {
   pci: { x: 0, y: 2.5 }, glove: new V3(0, 2.4, 1.7), rec: [], recOn: false, replay: null, derby: null,
   abEnd: null, contactT: 0, menuAng: 0,
   ctrl: ['cpu', 'cpu'], lock: null, remoteIn: { x: 0, z: 0 }, remoteTake: false, camFocus: null, localPitch: false,
-  ump: 1, challenges: [2, 2], challengeable: null, challenge: null, cpuChallengeAt: 0, fpv: false, lockSide: 1,
+  ump: 1, challenges: [2, 2], challengeable: null, challenge: null, cpuChallengeAt: 0, view: 0, lockSide: 1,
 };
 const battingTeam = () => G.teams[G.half];
 const fieldingTeam = () => G.teams[1 - G.half];
@@ -2685,7 +2685,7 @@ function startGame(cfg) {
   }
   settings.manual = cfg.manual == null ? true : !!cfg.manual;
   G.ump = cfg.ump ?? 1; G.challenges = [2, 2]; G.challengeable = null; G.challenge = null; G.cpuChallengeAt = 0;
-  G.fpv = cfg.mode === 'lock' && cfg.fpv !== 0; G.lockSide = cfg.side ?? 1; G.simAB = false; G.lockFieldSim = cfg.mode === 'lock' && cfg.lockField === 0;
+  G.view = cfg.mode === 'lock' ? cfg.view ?? 2 : 0; G.lockSide = cfg.side ?? 1; G.simAB = false; G.lockFieldSim = cfg.mode === 'lock' && cfg.lockField === 0;
   Object.assign(G, { inning: 1, half: 0, outs: 0, balls: 0, strikes: 0, score: [0, 0], line: [[], []], hits: [0, 0], errs: [0, 0], bases: [null, null, null, null], order: [0, 0], pen: [0, 0], ff: 1, paused: false, replay: null, play: null, abEnd: null });
   G.stats = new Map(); G.pstats = new Map();
   G.pitcher = [G.teams[0].pitchers[0], G.teams[1].pitchers[0]];
@@ -3873,11 +3873,13 @@ function playCam() {
   camTo(_c1, _c2, 48, 2.6, cut);
 }
 
-// ----------------------------------------------------------- first person ----
-// Player Lock can be played through the locked player's eyes. Hitting keeps the
-// strike-zone view (you can't see the plate from the batter's eyes).
+// ------------------------------------------------------ Player Lock cams ----
+// G.view: 2 = third person behind your player (The Show style), 1 = first person,
+// 0 = broadcast. Hitting always keeps the strike-zone view.
 const _eye = new V3(), _look = new V3(), _fwd = new V3();
 let fpvHidden = null, fpvOn = false;
+const VIEW_NAMES = { 0: 'Broadcast view', 1: 'First-person view', 2: 'Third-person view' };
+const LOCK_PHASES = ['prePitch', 'windup', 'pitch', 'postPitch', 'postFoul', 'live', 'postPlay', 'absReview'];
 // free look: 'track' follows the play automatically; 'free' is wherever you point the mouse / right stick
 const FL = { mode: 'track', yaw: 0, pitch: 0 };
 function lookDelta(dx, dy) {
@@ -3890,7 +3892,7 @@ function lookDelta(dx, dy) {
 }
 function lookRecenter() { FL.mode = 'track'; }
 function exitPointerLock() { if (document.pointerLockElement) try { document.exitPointerLock(); } catch (e) { /* not locked */ } }
-function fpvActive() { return G.mode === 'lock' && G.fpv && !G.replay && ['prePitch', 'windup', 'pitch', 'postPitch', 'postFoul', 'live', 'postPlay', 'absReview'].includes(G.phase); }
+function fpvActive() { return G.mode === 'lock' && G.view > 0 && !G.replay && LOCK_PHASES.includes(G.phase); }
 function lockRole() {
   if (G.half === 1 - G.lockSide) {
     const f = G.fielders.find((x) => x.pl.id === G.lock);
@@ -3899,8 +3901,7 @@ function lockRole() {
   const pl = G.play;
   if (pl && (G.phase === 'live' || G.phase === 'postPlay')) {
     const r = pl.R.find((x) => x.pl.id === G.lock && (x.state === 'run' || x.state === 'base'));
-    if (r) return { role: 'run', m: r.m, r };
-    if (G.batter && G.batter.id === G.lock && G.phase === 'live') return { role: 'dugout' };
+    return r ? { role: 'run', m: r.m, r } : { role: 'dugout' };
   }
   if (G.batter && G.batter.id === G.lock && G.phase !== 'live' && G.phase !== 'postPlay') return { role: 'bat' };
   const r = (G.baseRunners || []).find((x) => x.pl.id === G.lock);
@@ -3913,10 +3914,22 @@ function fpvHide(m) {
   fpvHidden = m || null;
   if (m) setModelLayer(m, 1);
 }
-function fpvCam() {
-  if (!fpvActive()) { fpvHide(null); fpvOn = false; exitPointerLock(); return false; }
+// hand the camera back to the broadcast cameras for the current phase
+function restoreCam() {
+  if (G.replay || !LOCK_PHASES.includes(G.phase)) return;   // other phases set their own camera
+  if (G.phase === 'live' || G.phase === 'postPlay') playCam();
+  else if (userPitches()) pitchCam(true); else if (userBats()) batCam(true); else cfCam(true);
+}
+function lockCamOff() {
+  fpvHide(null); tpUmpGhost = false;
+  if (fpvOn) { fpvOn = false; exitPointerLock(); restoreCam(); }
+  return false;
+}
+function fpvCam(dt = 1 / 60) {
+  if (!fpvActive()) return lockCamOff();
   const L = lockRole();
-  if (L.role === 'bat') { fpvHide(null); fpvOn = false; exitPointerLock(); return false; }
+  if (L.role === 'bat') return lockCamOff();
+  if (G.view === 2) return tpCam(L, dt) || lockCamOff();
   let fov = 64;
   if (L.role === 'dugout') {
     fpvHide(null);
@@ -3950,6 +3963,72 @@ function fpvCam() {
   }
   if (!fpvOn) { camRig.look.copy(_look); camRig.fov = fov; }
   camRig.pos.copy(_eye); camRig.tp.copy(_eye); camRig.tl.copy(_look); camRig.tf = fov; camRig.rate = 9;
+  fpvOn = true;
+  return true;
+}
+
+// Third person: the camera sits behind your player and turns toward whatever matters
+// (home plate before the pitch, the ball in play, the base you're running to, the base
+// you're about to throw to). The mouse / right stick swings it around your player.
+const TP = { yaw: 0, pitch: 0, half: 0.45, blend: 0, holding: false, aimYaw: null };
+const _tpT = new V3();
+let tpUmpGhost = false;
+function tpCam(L, dt) {
+  const pl = G.play, live = (G.phase === 'live' || G.phase === 'postPlay') && !!pl;
+  if (L.role === 'dugout' || G.simAB) return false;
+  if (L.role === 'field' && G.lockFieldSim) return false;
+  if (live && pl.hr) return false;                                   // watch the home run on TV
+  if (L.role === 'field' && L.f.role === 'P' && !live && userPitches()) return false;   // behind-the-mound pitching view
+  if (L.role === 'run' && L.r && L.r.isBatter && live && pl.t < 1.3) return false;     // see the ball off the bat first
+  fpvHide(null);
+  const P = L.m.root.position, b = ballMesh.position;
+  // what the camera turns toward
+  // deeper fielders get a longer, lower camera so the plate stays in the shot
+  const far = clamp((Math.hypot(P.x, P.z) - 120) / 180, 0, 1), TP_DIST = 18 + 6 * far, TP_HEIGHT = 12.5 - 2 * far;
+  let yawT = null, minHalf = 0.48;
+  const toward = (x, y, z, near = 0) => { _tpT.set(x, y, z); if (Math.hypot(x - P.x, z - P.z) > near) yawT = Math.atan2(x - P.x, z - P.z); };
+  const holding = live && L.role === 'field' && pl.ball.holder === L.f && pl.uf === L.f && pl.humanHolder(L.f);
+  if (holding && !TP.holding) {
+    // just got the ball: face the base the smart play goes to (Space throws there)
+    const c = pl.chooseThrow(L.f), base = c.base || (L.f.isOF ? 2 : 0);
+    TP.aimYaw = base ? Math.atan2(BASES[base].x - P.x, BASES[base].z - P.z) : null;
+  }
+  TP.holding = holding;
+  if (L.role === 'field' && !live) {
+    if (L.f.role === 'C') toward(0, 4.5, MOUND_Z); else toward(0, 3, 0);
+    minHalf = lerp(0.45, 0.38, far);
+  } else if (L.role === 'field') {
+    if (holding) { _tpT.set(P.x + Math.sin(TP.yaw) * 60, 3, P.z + Math.cos(TP.yaw) * 60); yawT = TP.aimYaw; }
+    else if (pl.ball.holder === L.f) _tpT.set(P.x + Math.sin(TP.yaw) * 60, 3, P.z + Math.cos(TP.yaw) * 60);
+    else toward(b.x, b.y, b.z, 16);
+  } else if (!live) toward(0, 5, MOUND_Z);                            // leading off: watch the pitcher
+  else if (L.r.state === 'run') { const nb = BASES[heading(L.r)]; toward(nb.x, 3, nb.z, 8); }
+  else if (Math.hypot(b.x - P.x, b.z - P.z) > 25) toward(b.x, b.y, b.z);
+  else { const nb = BASES[Math.min(4, L.r.base + 1)]; toward(nb.x, 3, nb.z, 8); }
+  const free = FL.mode === 'free';
+  if (yawT == null) yawT = TP.yaw;
+  if (!fpvOn) { TP.yaw = free ? FL.yaw : yawT; TP.blend = 0.9; }
+  else if (free) TP.yaw = FL.yaw;
+  else { const d = angDiff(TP.yaw, yawT) * (1 - Math.exp(-(holding ? 8 : 3.5) * dt)), mx = (holding ? 6 : 2.8) * dt; TP.yaw += clamp(d, -mx, mx); }
+  // camera spot behind the player, pulled in (and up) when a wall is in the way
+  const fx = Math.sin(TP.yaw), fz = Math.cos(TP.yaw);
+  let k = 1;
+  while (k > 0.25 && !inPoly(P.x - fx * TP_DIST * k, P.z - fz * TP_DIST * k)) k -= 0.1;
+  const D = TP_DIST * k;
+  _eye.set(P.x - fx * D, P.y + TP_HEIGHT + (1 - k) * 7, P.z - fz * D);
+  // tilt / zoom so both your player and the target are in the shot when possible
+  const eFeet = Math.atan2(P.y - _eye.y, D);
+  const eT = Math.atan2(_tpT.y - _eye.y, Math.max(1, Math.hypot(_tpT.x - _eye.x, _tpT.z - _eye.z)));
+  let half = live ? clamp((eT - eFeet) / 1.7, minHalf, 0.62) : minHalf;
+  let pitch = Math.max(Math.min(eT, eFeet + half * 0.8), eT - half * (live ? 0.85 : 0.6));   // player low in the frame, target above
+  if (free) { pitch = clamp(FL.pitch, -0.75, 1.25); FL.pitch = pitch; half = minHalf; }
+  if (!fpvOn) { TP.pitch = pitch; TP.half = half; }
+  else { const s = 1 - Math.exp(-(free ? 30 : 5) * dt); TP.pitch = lerp(TP.pitch, pitch, s); TP.half = lerp(TP.half, half, 1 - Math.exp(-4 * dt)); }
+  const cp = Math.cos(TP.pitch);
+  _look.set(_eye.x + fx * cp * 60, _eye.y + Math.sin(TP.pitch) * 60, _eye.z + fz * cp * 60);
+  camRig.tp.copy(_eye); camRig.tl.copy(_look); camRig.tf = (TP.half * 2) / DEG;
+  if (TP.blend > 0) { TP.blend -= dt; camRig.rate = 3.2; } else camRig.rate = 20;
+  tpUmpGhost = L.role === 'field' && L.f.role === 'C' && !live;
   fpvOn = true;
   return true;
 }
@@ -4214,13 +4293,15 @@ function requestChallenge() {
   if (c && c.who === 'local') startChallenge(c.side);
 }
 
-// first person: the base most directly in front of you while you hold the ball
+// Player Lock: the base most directly in front of the camera while you hold the ball
 function aimBase() {
   const pl = G.play;
   if (!fpvOn || !pl || G.phase !== 'live') return 0;
   const f = pl.ball.holder;
   if (!f || f !== pl.uf || !pl.humanHolder(f) || f.throwing) return 0;
-  const fx = camRig.look.x - camRig.pos.x, fz = camRig.look.z - camRig.pos.z, L = Math.hypot(fx, fz) || 1;
+  // third person aims where the camera is heading (not where it is mid-swing)
+  const ay = FL.mode !== 'free' && TP.holding && TP.aimYaw != null ? TP.aimYaw : TP.yaw;
+  const fx = G.view === 2 ? Math.sin(ay) : camRig.look.x - camRig.pos.x, fz = G.view === 2 ? Math.cos(ay) : camRig.look.z - camRig.pos.z, L = Math.hypot(fx, fz) || 1;
   let best = 0, bestA = 0.62;
   for (let b = 1; b <= 4; b++) {
     const bp = BASES[b], dx = bp.x - f.pos.x, dz = bp.z - f.pos.z, d = Math.hypot(dx, dz);
@@ -4235,10 +4316,10 @@ function throwAtLook() { const b = aimBase(); if (b) { actThrow(b); return true;
 function updateAimMarker() {
   const ab = G.phase === 'live' ? aimBase() : 0;
   const pl = G.play, holding = fpvOn && G.phase === 'live' && pl && pl.ball.holder && pl.ball.holder === pl.uf && pl.humanHolder(pl.uf);
-  $('crosshair').classList.toggle('hidden', !holding);
+  $('crosshair').classList.toggle('hidden', !holding || G.view === 2);
   $('crosshair').classList.toggle('on', !!ab);
   baseMark.visible = !!ab;
-  if (ab) { baseMark.position.set(BASES[ab].x, 0.15, BASES[ab].z); if (G.aimShown !== ab) { G.aimShown = ab; setHint(`<kbd>Space</kbd> or click: throw to ${BASE_NAMES[ab]} &middot; look at a base to aim`); } }
+  if (ab) { baseMark.position.set(BASES[ab].x, 0.15, BASES[ab].z); if (G.aimShown !== ab) { G.aimShown = ab; setHint(`<kbd>Space</kbd> or click: throw to ${BASE_NAMES[ab]} &middot; ${G.view === 2 ? 'swing the camera to another base to aim' : 'look at a base to aim'}`); } }
   else if (G.aimShown) { G.aimShown = 0; setHint(G.phase === 'live' ? liveHint() : ''); }
 }
 function updateLockUI() {
@@ -4337,7 +4418,7 @@ function updateLive(dt) {
   const land = localField && landingAssist() ? pl.landingSpot() : null;
   landMark.visible = !!land; if (land) landMark.position.set(land[0], 0.1, land[1]);
   $('runHelp').classList.toggle('hidden', !(userRuns() && !pl.hr && !pl.awarded && !pl.done));
-  if (!fpvActive()) playCam();
+  if (!fpvOn) playCam();
   if (pl.done) { setHint(''); ctrlRing.visible = false; landMark.visible = false; baseMark.visible = false; G.aimShown = 0; $('runHelp').classList.add('hidden'); finishPlay(); }
 }
 function onPlayEvent(e) {
@@ -4431,14 +4512,21 @@ canvasEl.addEventListener('pointerdown', (e) => {
   primaryAction(e.button === 2 ? 'power' : e.button === 1 ? 'contact' : 'normal');
   e.preventDefault();
 });
-// field movement is relative to the camera: W runs where you're looking
+// field movement is relative to the camera: W runs where you're looking. When the
+// third-person camera turns on its own, keep the direction you started running in
+// until you let go, so a camera swing never flips your controls mid-sprint.
+let moveYaw = null;
 function fieldVec() {
   let ix = 0, iy = 0;
   if (keys.has('a')) ix -= 1; if (keys.has('d')) ix += 1; if (keys.has('w')) iy += 1; if (keys.has('s')) iy -= 1;
   if (G.stick) { ix += G.stick.x; iy += G.stick.y; }
-  if (!ix && !iy) return { x: 0, z: 0 };
+  if (!ix && !iy) { moveYaw = null; return { x: 0, z: 0 }; }
   _fwd.copy(camRig.tl).sub(camRig.tp); _fwd.y = 0;
   if (_fwd.lengthSq() < 1e-6) _fwd.set(0, 0, -1);
+  if (fpvOn && G.view === 2 && FL.mode !== 'free') {
+    if (moveYaw == null) moveYaw = TP.yaw;
+    _fwd.set(Math.sin(moveYaw), 0, Math.cos(moveYaw));
+  } else moveYaw = null;
   _fwd.normalize();
   let x = -_fwd.z * ix + _fwd.x * iy, z = _fwd.x * ix + _fwd.z * iy;
   const L = Math.hypot(x, z); if (L > 1) { x /= L; z /= L; }
@@ -4487,10 +4575,12 @@ window.addEventListener('keydown', (e) => {
   else if (k === 'tab') startSim();
   else if (k === 'v' && G.mode === 'lock') toggleView();
 });
+// V cycles third person -> first person -> broadcast
 function toggleView() {
-  G.fpv = !G.fpv; FL.mode = 'track';
-  if (!G.fpv) { fpvHide(null); fpvOn = false; exitPointerLock(); if (G.phase === 'live' || G.phase === 'postPlay') playCam(); else if (G.phase === 'prePitch') prePitchUI(); else cfCam(true); }
-  setHint(G.fpv ? 'First-person view &middot; <kbd>V</kbd> to switch' : 'Broadcast view &middot; <kbd>V</kbd> to switch');
+  G.view = (G.view + 2) % 3; FL.mode = 'track';
+  fpvHide(null); fpvOn = false; exitPointerLock();
+  if (!G.view) restoreCam();
+  setHint(VIEW_NAMES[G.view] + ' &middot; <kbd>V</kbd> to switch');
 }
 window.addEventListener('keyup', (e) => keys.delete(e.key.toLowerCase()));
 window.addEventListener('blur', () => keys.clear());
@@ -4591,7 +4681,7 @@ function togglePause(force, remote) {
 }
 
 // ------------------------------------------------------------------ menus ----
-const menu = { mode: 'exhibition', away: 0, home: 3, side: 1, innings: 3, diff: 1, manual: 1, batter: 3, lockPick: 'h3', ump: 1, fpv: 1, lockField: 1 };
+const menu = { mode: 'exhibition', away: 0, home: 3, side: 1, innings: 3, diff: 1, manual: 1, batter: 3, lockPick: 'h3', ump: 1, view: 2, lockField: 1 };
 try { Object.assign(menu, JSON.parse(localStorage.getItem('fullcount.menu') || '{}')); } catch (e) { /* ignore */ }
 function teamPickHTML(label, idx, key) {
   const t = TEAMS[idx];
@@ -4691,7 +4781,7 @@ function buildMenu() {
     SND.init();
     if (menu.mode === 'online') { hostStartOnline(); return; }
     let away = menu.away; if (menu.mode === 'derby' && away === menu.home) away = (menu.home + 1) % TEAMS.length;
-    startGame({ mode: menu.mode, away, home: menu.home, side: menu.side, innings: menu.innings, diff: menu.diff, manual: menu.manual, batter: menu.batter, lockPick: menu.lockPick, ump: menu.ump, fpv: menu.fpv, lockField: menu.lockField });
+    startGame({ mode: menu.mode, away, home: menu.home, side: menu.side, innings: menu.innings, diff: menu.diff, manual: menu.manual, batter: menu.batter, lockPick: menu.lockPick, ump: menu.ump, view: menu.view, lockField: menu.lockField });
   });
   const openHelp = () => { $('help').classList.remove('hidden'); };
   $('btnHow').addEventListener('click', openHelp);
@@ -4739,7 +4829,7 @@ function dressFrame() {
   const ghost = G.prevCam === 'bat' && ['prePitch', 'windup', 'pitch', 'postPitch'].includes(G.phase) ? 0.28 : 1;
   const cm = G.fByRole.C ? G.fByRole.C.m : isGuest() ? MODELS.find((m) => m.root.visible && m.anim === 'catcher') : null;
   if (cm) setFade(cm, ghost);
-  if (G.umps[0]) setFade(G.umps[0], ghost);
+  if (G.umps[0]) setFade(G.umps[0], tpUmpGhost ? 0.3 : ghost);
   const bp = ballMesh.position;
   const inPlay = LIVE_BALL.has(G.phase) && ballMesh.visible;
   ballShadow.visible = inPlay && bp.y > 0.4;
@@ -4773,7 +4863,7 @@ function update(dt) {
   dressFrame();
   for (const m of MODELS) updateModel(m, G.now);
   if (G.recOn) recFrame();
-  fpvCam();
+  fpvCam(dt);
   updateAimMarker();
 }
 // Player Lock: sim quickly through everything the locked player isn't part of
@@ -4788,8 +4878,8 @@ function lockFF() {
     if (pl.R.some((r) => r.pl.id === G.lock && (r.state === 'run' || r.state === 'base'))) return 1;
     return 3;
   }
-  // in first person on the field, slow down so you can react to the hit
-  if (G.fpv && !G.lockFieldSim && lockRole().role === 'field') return ph === 'prePitch' || ph === 'postPitch' || ph === 'postFoul' ? 2 : 1;
+  // in the field with a Player Lock camera, slow down so you can react to the hit
+  if (G.view && !G.lockFieldSim && lockRole().role === 'field') return ph === 'prePitch' || ph === 'postPitch' || ph === 'postFoul' ? 2 : 1;
   if (['prePitch', 'windup', 'pitch', 'postPitch', 'postFoul'].includes(ph)) return 5;
   if (['postPlay', 'halfIntro', 'break'].includes(ph)) return 3;
   return 1;
@@ -4840,7 +4930,7 @@ window.__fullcount = {
     camUpdate(dt); renderer.render(scene, camera);
   },
   render() { camUpdate(1 / 60); renderer.render(scene, camera); },
-  cam: () => ({ pos: camRig.pos.toArray().map((v) => +v.toFixed(1)), look: camRig.look.toArray().map((v) => +v.toFixed(1)), fl: { ...FL }, fpvOn }),
+  cam: () => ({ pos: camRig.pos.toArray().map((v) => +v.toFixed(1)), look: camRig.look.toArray().map((v) => +v.toFixed(1)), fl: { ...FL }, fpvOn, tp: { ...TP } }),
   tick(dt = 1 / 30) { if (isGuest()) guestUpdate(dt); else update(dt); netTick(); },
   setBases(list) { const lu = battingTeam().lineup; G.bases = [null, null, null, null]; for (const b of list) G.bases[b] = lu[(b + 4) % 9]; placeForPitch(); },
   // put a specific ball in play from the current pitch setup (for testing fielding / running)
