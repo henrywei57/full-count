@@ -571,7 +571,7 @@ class Play {
     if (!f.holding) f.anim('ready');
     if (t < f.decideAt) return;
     if (this.hf && this.humanHolder(f)) {
-      if (this.queuedThrow != null) { const base = this.queuedThrow; this.queuedThrow = null; this.prompt = false; f.holding = false; this.execThrow(f, base); return; }
+      if (this.queuedThrow != null) { const base = this.queuedThrow; this.queuedThrow = null; this.prompt = false; f.holding = false; this.execThrow(f, base); tutNote('throw'); return; }
       if (this.userDef) {
         const anyRunning = this.R.some((r) => r.state === 'run');
         if (anyRunning || !f.holding) {

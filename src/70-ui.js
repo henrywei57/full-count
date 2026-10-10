@@ -662,7 +662,7 @@ function updateFireworks(dt) {
 // ------------------------------------------------------------ live play ----
 function updateLive(dt) {
   const pl = G.play, fc = fieldCtrl();
-  if (fc === 'local') { const v = fieldVec(); pl.setInput(v.x, v.z); }
+  if (fc === 'local') { const v = fieldVec(); pl.setInput(v.x, v.z); if (!pl.tutMoved && Math.hypot(v.x, v.z) > 0.2 && pl.uf) { pl.tutMoved = true; tutNote('move'); } }
   else if (fc === 'remote') {
     pl.setInput(G.remoteIn.x, G.remoteIn.z);
     const rp = G.remotePos;
@@ -813,8 +813,11 @@ function fieldVec() {
 function actThrow(b) { if (isGuest()) { netSend({ t: 'act', a: 'throw', base: b }); NET.pred.hold = G.now + 0.5; } else if (G.play) G.play.userThrow(b); }
 function actDive() { if (isGuest()) { netSend({ t: 'act', a: 'dive' }); NET.pred.hold = G.now + 1.2; } else if (G.play) G.play.userDive(); }
 function actSwitch() { if (isGuest()) netSend({ t: 'act', a: 'switch' }); else if (G.play) G.play.userSwitch(); }
-function actRun(kind, which = null) { if (isGuest()) netSend({ t: 'act', a: 'run', kind, which }); else if (G.play) G.play.runCmd(kind, which); else stealCmd(kind, which); }
-function actPick(base) { if (isGuest()) netSend({ t: 'act', a: 'pick', base }); else startPickoff(base); }
+function actRun(kind, which = null) {
+  if (isGuest()) { netSend({ t: 'act', a: 'run', kind, which }); return; }
+  if (G.play) { G.play.runCmd(kind, which); if (G.play.hrun) tutNote('runCmd'); } else stealCmd(kind, which);
+}
+function actPick(base) { if (isGuest()) { netSend({ t: 'act', a: 'pick', base }); return; } if (canPickoff(base)) tutNote('pick'); startPickoff(base); }
 const trotOn = () => (isGuest() ? !!(NET.snap && NET.snap.pl && NET.snap.pl.hr) : !!(G.play && (G.play.hr || G.play.awarded)));
 window.addEventListener('keydown', (e) => {
   const k = e.key.toLowerCase();
@@ -983,7 +986,7 @@ function togglePause(force, remote) {
 }
 
 // ------------------------------------------------------------------ menus ----
-const menu = { mode: 'exhibition', away: 'HAW', home: 'COM', side: 1, innings: 3, diff: 1, manual: 1, batter: 3, lockPick: 'h3', ump: 1, view: 2, lockField: 1, lockSkip: 1, batCam: settings.batCam || 0, netTeam: 'COM', drill: 0 };
+const menu = { mode: 'exhibition', away: 'HAW', home: 'COM', side: 1, innings: 3, diff: 1, manual: 1, batter: 3, lockPick: 'h3', ump: 1, view: 2, lockField: 1, lockSkip: 1, batCam: settings.batCam || 0, netTeam: 'COM', drill: 0, tutLesson: -1 };
 try { Object.assign(menu, JSON.parse(localStorage.getItem('fullcount.menu') || '{}')); } catch (e) { /* ignore */ }
 menu.batCam = settings.batCam || 0;   // the pause screen can change it too; settings wins
 // teams used to be saved as an index into the built-in list
@@ -1019,7 +1022,7 @@ function onlinePicks() {
   return { teams: mySide ? [theirs, mine] : [mine, theirs], mySide };
 }
 function renderMenu() {
-  const m = menu.mode, derby = m === 'derby', spec = m === 'spectate', lock = m === 'lock', online = m === 'online', prac = m === 'practice';
+  const m = menu.mode, derby = m === 'derby', spec = m === 'spectate', lock = m === 'lock', online = m === 'online', tut = m === 'tutorial', prac = m === 'practice' || tut;
   const guest = online && NET.role === 'guest', host = online && NET.role === 'host';
   const L = guest && NET.lobby ? NET.lobby : menu;
   const showTeams = !online || host || (guest && NET.open && NET.lobby);
@@ -1039,17 +1042,19 @@ function renderMenu() {
   }
   $('pickA').classList.toggle('hidden', derby); $('vsLabel').classList.toggle('hidden', derby);
   $('optSide').classList.toggle('hidden', derby || spec || prac || !showTeams);
-  $('optDrill').classList.toggle('hidden', !prac);
+  $('optDrill').classList.toggle('hidden', !prac || tut);
+  $('optLesson').classList.toggle('hidden', !tut);
+  $('tutNew').classList.toggle('hidden', (() => { try { return !!localStorage.getItem('fullcount.tutSeen'); } catch (e) { return true; } })());
   $('optSide').querySelector('span').textContent = lock ? 'YOUR TEAM' : 'YOU PLAY AS';
   $('optInn').classList.toggle('hidden', derby || prac || !showTeams);
-  $('optDiff').classList.toggle('hidden', spec || !showTeams);
-  $('optThrow').classList.toggle('hidden', derby || spec || online);
+  $('optDiff').classList.toggle('hidden', spec || tut || !showTeams);
+  $('optThrow').classList.toggle('hidden', derby || spec || online || tut);
   $('optBatter').classList.toggle('hidden', !derby);
   $('optLock').classList.toggle('hidden', !lock);
   $('optView').classList.toggle('hidden', !lock);
   $('optLockField').classList.toggle('hidden', !lock);
   $('optLockSkip').classList.toggle('hidden', !lock);
-  $('optUmp').classList.toggle('hidden', derby || !showTeams);
+  $('optUmp').classList.toggle('hidden', derby || tut || !showTeams);
   for (const el of ['optSide', 'optInn', 'optDiff', 'optUmp']) $(el).style.pointerEvents = guest ? 'none' : '';
   for (const b of $('modes').querySelectorAll('button')) b.classList.toggle('on', b.dataset.mode === m);
   for (const seg of document.querySelectorAll('.seg[data-key]')) {
@@ -1071,7 +1076,7 @@ function renderMenu() {
   play.classList.toggle('hidden', online && !host);
   play.disabled = (host && !NET.open) || !!block;
   play.title = block;
-  play.textContent = derby ? 'START DERBY' : prac ? 'START PRACTICE' : spec ? 'WATCH GAME' : lock ? 'PLAY AS ' + (lock ? lockName() : '') : online ? (NET.open ? 'START ONLINE GAME' : 'WAITING FOR FRIEND') : 'PLAY BALL';
+  play.textContent = derby ? 'START DERBY' : tut ? 'START TUTORIAL' : prac ? 'START PRACTICE' : spec ? 'WATCH GAME' : lock ? 'PLAY AS ' + (lock ? lockName() : '') : online ? (NET.open ? 'START ONLINE GAME' : 'WAITING FOR FRIEND') : 'PLAY BALL';
   if (host && NET.open && block !== (NET.blockShown || '')) { NET.blockShown = block; netStatus(block || 'Ready! Press Start when you are.', block ? 'bad' : 'good'); }
   try { localStorage.setItem('fullcount.menu', JSON.stringify(menu)); } catch (e) { /* ignore */ }
   if (host && NET.open) netSendLobby();
@@ -1133,6 +1138,7 @@ function buildMenu() {
   $('btnPlay').addEventListener('click', () => {
     SND.init();
     if (menu.mode === 'online') { hostStartOnline(); return; }
+    if (menu.mode === 'tutorial') { tutStart(menu.tutLesson >= 0 ? menu.tutLesson : null); return; }
     const teams = [teamSpec(menuTeam('away')), teamSpec(menuTeam('home'))];
     startGame({ mode: menu.mode, teams, drill: ['bat', 'pitch', 'run', 'field'][menu.drill] || 'bat', side: menu.side, innings: menu.innings, diff: menu.diff, manual: menu.manual, batter: menu.batter, lockPick: menu.lockPick, ump: menu.ump, view: menu.view, lockField: menu.lockField, lockSkip: menu.lockSkip });
   });
@@ -1164,6 +1170,7 @@ function buildMenu() {
 }
 function toMenu() {
   try { speechSynthesis.cancel(); } catch (e) { /* none */ }
+  if (TUT.on) tutEnd();
   if (G.mode === 'online') netClose();
   G.mode = 'menu'; G.paused = false; G.replay = null; G.play = null; G.lock = null; G.ctrl = ['cpu', 'cpu']; G.localPitch = false;
   setPhase('menu');
@@ -1296,6 +1303,7 @@ function boot() {
   makeUmps();
   netInstallHooks();
   buildRosterUI();
+  buildTutorialUI();
   $('btnRosters').addEventListener('click', openRosters);
   buildMenu();
   buildCloudUI();
@@ -1315,7 +1323,7 @@ function boot() {
 }
 // Debug handle: lets a test harness advance the simulation without waiting on animation frames.
 window.__fullcount = {
-  G, TEAMS, settings, NET, keys, BAT_CAMS, Play, Runner, BASES, simBatted, V3, getModel, ballMesh, startPickoff, stealCmd, rosterCost, teamToDef, cleanRoster, buildCustomTeam, Cloud, cloudRender, inviteToast, get ROSTERS() { return ROSTERS; },
+  G, TEAMS, settings, NET, keys, BAT_CAMS, Play, Runner, BASES, simBatted, V3, getModel, ballMesh, startPickoff, stealCmd, TUT, tutStart, rosterCost, teamToDef, cleanRoster, buildCustomTeam, Cloud, cloudRender, inviteToast, get ROSTERS() { return ROSTERS; },
   step(sec, dt = 1 / 60) {
     const n = Math.round(sec / dt);
     for (let i = 0; i < n && !G.paused; i++) { if (isGuest()) guestUpdate(dt); else update(dt); netTick(); }

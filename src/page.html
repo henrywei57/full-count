@@ -269,6 +269,26 @@ button:focus-visible,select:focus-visible{outline:2px solid var(--gold);outline-
 #pracHud b{display:block;font-size:22px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums}
 #pracHud span{font-size:10px;letter-spacing:.12em;color:var(--dust);white-space:nowrap}
 
+/* ---------- tutorial ---------- */
+#tutCard{position:fixed;right:16px;top:calc(110px + env(safe-area-inset-top,0px));z-index:6;width:min(330px,calc(100vw - 32px));background:var(--panel);border:1px solid var(--gold);border-radius:6px;padding:12px 14px;display:flex;flex-direction:column;gap:8px;box-shadow:0 10px 30px rgba(0,0,0,.45)}
+#tutCard.big{left:50%;top:50%;right:auto;transform:translate(-50%,-50%);width:min(460px,calc(100vw - 32px));padding:20px 22px;z-index:9}
+#tutCard h2{margin:0;font-family:var(--f-display);font-weight:800;font-style:italic;font-size:40px;line-height:1}
+.tut-head{display:flex;justify-content:space-between;gap:10px;font-family:var(--f-display);font-weight:700;font-size:12px;letter-spacing:.16em;color:var(--gold)}
+.tut-head span:last-child{color:var(--dust)}
+.tut-text{margin:0;font-size:14px;line-height:1.45}
+.tut-text.dim{color:var(--dust);font-size:12.5px}
+.tut-text kbd,.tut-list kbd{font-family:var(--f-display);font-weight:700;padding:0 5px;border-radius:3px;background:rgba(255,255,255,.14)}
+.tut-list{margin:0;padding-left:20px;color:var(--dust);font-size:14px;line-height:1.6}
+.tut-goal{display:flex;justify-content:space-between;align-items:baseline;font-family:var(--f-display);font-weight:700;font-size:15px;letter-spacing:.06em;text-transform:uppercase}
+.tut-goal b{font-size:20px;font-variant-numeric:tabular-nums}
+.tut-goal.done{color:var(--ball)}
+.tut-bar{height:6px;border-radius:3px;background:rgba(255,255,255,.1);overflow:hidden}
+.tut-bar i{display:block;height:100%;background:var(--gold);transition:width .25s}
+.tut-actions{display:flex;gap:8px;flex-wrap:wrap}
+.tut-actions .ghost{padding:7px 12px;font-size:13px}
+.tut-actions .cta{flex:1;font-size:20px;padding:10px 16px}
+.modes .new{font-family:var(--f-display);font-weight:800;font-size:11px;letter-spacing:.14em;padding:2px 7px;border-radius:3px;background:var(--gold);color:#1a1205;margin-left:8px;vertical-align:3px}
+
 /* ---------- runner map + ABS ---------- */
 #miniMap{position:absolute;left:16px;top:50%;transform:translateY(-50%);width:150px;height:150px;background:var(--panel);border:1px solid var(--line);border-radius:6px}
 #absCard{position:absolute;left:50%;top:46%;transform:translate(-50%,-50%);width:250px;background:var(--panel);border:1px solid var(--line);border-radius:6px;overflow:hidden;text-align:center;box-shadow:0 12px 40px rgba(0,0,0,.5)}
@@ -286,6 +306,8 @@ button:focus-visible,select:focus-visible{outline:2px solid var(--gold);outline-
 #simNext{margin-top:6px;font-size:15px;font-weight:600}
 .sim-foot{margin-top:6px;font-size:12px;color:var(--dust)}
 body.skipping #batterCard,body.skipping #pitcherCard,body.skipping #call,body.skipping #feedback,body.skipping #tracker,body.skipping #pitchInfo,body.skipping #hint,body.skipping #banner,body.skipping #simBtn,body.skipping #throwPrompt,body.skipping #runHelp,body.skipping #runTags,body.skipping #pickHelp{visibility:hidden}
+body.letterbox #tutCard{display:none}
+#hud.tut #hint{display:none}
 #simBtn{position:absolute;left:50%;top:calc(64px + env(safe-area-inset-top,0px));transform:translateX(-50%);pointer-events:auto;padding:6px 14px;border-radius:4px;border:1px solid var(--line);background:var(--panel);font-family:var(--f-display);font-weight:700;font-size:14px;letter-spacing:.1em;cursor:pointer}
 #simBtn:hover{background:var(--panel-hi)}
 #simBtn kbd{font-family:var(--f-display);padding:0 5px;border-radius:3px;background:rgba(255,255,255,.14);margin-left:6px}
@@ -489,6 +511,7 @@ body.skipping #batterCard,body.skipping #pitcherCard,body.skipping #call,body.sk
         <p>Broadcast-style 3D baseball. Zone hitting, meter pitching, real ball-flight physics.</p>
       </div>
       <div class="modes" id="modes">
+        <button data-mode="tutorial"><span>Tutorial<span class="new hidden" id="tutNew">START HERE</span></span> <small>Learn to hit, pitch, field and run</small></button>
         <button data-mode="exhibition" class="on">Play Ball <small>Exhibition game</small></button>
         <button data-mode="lock">Player Lock <small>Play as one player</small></button>
         <button data-mode="online">Online 1v1 <small>Play a friend on another device</small></button>
@@ -516,6 +539,7 @@ body.skipping #batterCard,body.skipping #pitcherCard,body.skipping #call,body.sk
         <div class="team-pick" id="pickH"></div>
       </div>
       <div class="opts">
+        <div class="opt hidden" id="optLesson"><span>LESSONS</span><div class="seg" data-key="tutLesson"><button data-v="-1" class="on">All, in order</button><button data-v="0">Hitting</button><button data-v="1">Pitching</button><button data-v="2">Fielding</button><button data-v="3">Baserunning</button><button data-v="4">Pickoffs</button></div></div>
         <div class="opt hidden" id="optDrill"><span>DRILL</span><div class="seg" data-key="drill"><button data-v="0" class="on">Batting</button><button data-v="1">Pitching</button><button data-v="2">Baserunning</button><button data-v="3">Fielding</button></div></div>
         <div class="opt" id="optSide"><span>YOU PLAY AS</span><div class="seg" data-key="side"><button data-v="0">Away</button><button data-v="1" class="on">Home</button></div></div>
         <div class="opt" id="optInn"><span>INNINGS</span><div class="seg" data-key="innings"><button data-v="3" class="on">3</button><button data-v="6">6</button><button data-v="9">9</button></div></div>
@@ -554,6 +578,7 @@ body.skipping #batterCard,body.skipping #pitcherCard,body.skipping #call,body.sk
   </div>
 </div>
 <div id="toast" class="hidden" role="status"></div>
+<div id="tutCard" class="hidden" role="dialog" aria-label="Tutorial"></div>
 
 <div id="pause" class="screen modal hidden">
   <div class="card">

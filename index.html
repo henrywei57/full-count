@@ -276,6 +276,26 @@ button:focus-visible,select:focus-visible{outline:2px solid var(--gold);outline-
 #pracHud b{display:block;font-size:22px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums}
 #pracHud span{font-size:10px;letter-spacing:.12em;color:var(--dust);white-space:nowrap}
 
+/* ---------- tutorial ---------- */
+#tutCard{position:fixed;right:16px;top:calc(110px + env(safe-area-inset-top,0px));z-index:6;width:min(330px,calc(100vw - 32px));background:var(--panel);border:1px solid var(--gold);border-radius:6px;padding:12px 14px;display:flex;flex-direction:column;gap:8px;box-shadow:0 10px 30px rgba(0,0,0,.45)}
+#tutCard.big{left:50%;top:50%;right:auto;transform:translate(-50%,-50%);width:min(460px,calc(100vw - 32px));padding:20px 22px;z-index:9}
+#tutCard h2{margin:0;font-family:var(--f-display);font-weight:800;font-style:italic;font-size:40px;line-height:1}
+.tut-head{display:flex;justify-content:space-between;gap:10px;font-family:var(--f-display);font-weight:700;font-size:12px;letter-spacing:.16em;color:var(--gold)}
+.tut-head span:last-child{color:var(--dust)}
+.tut-text{margin:0;font-size:14px;line-height:1.45}
+.tut-text.dim{color:var(--dust);font-size:12.5px}
+.tut-text kbd,.tut-list kbd{font-family:var(--f-display);font-weight:700;padding:0 5px;border-radius:3px;background:rgba(255,255,255,.14)}
+.tut-list{margin:0;padding-left:20px;color:var(--dust);font-size:14px;line-height:1.6}
+.tut-goal{display:flex;justify-content:space-between;align-items:baseline;font-family:var(--f-display);font-weight:700;font-size:15px;letter-spacing:.06em;text-transform:uppercase}
+.tut-goal b{font-size:20px;font-variant-numeric:tabular-nums}
+.tut-goal.done{color:var(--ball)}
+.tut-bar{height:6px;border-radius:3px;background:rgba(255,255,255,.1);overflow:hidden}
+.tut-bar i{display:block;height:100%;background:var(--gold);transition:width .25s}
+.tut-actions{display:flex;gap:8px;flex-wrap:wrap}
+.tut-actions .ghost{padding:7px 12px;font-size:13px}
+.tut-actions .cta{flex:1;font-size:20px;padding:10px 16px}
+.modes .new{font-family:var(--f-display);font-weight:800;font-size:11px;letter-spacing:.14em;padding:2px 7px;border-radius:3px;background:var(--gold);color:#1a1205;margin-left:8px;vertical-align:3px}
+
 /* ---------- runner map + ABS ---------- */
 #miniMap{position:absolute;left:16px;top:50%;transform:translateY(-50%);width:150px;height:150px;background:var(--panel);border:1px solid var(--line);border-radius:6px}
 #absCard{position:absolute;left:50%;top:46%;transform:translate(-50%,-50%);width:250px;background:var(--panel);border:1px solid var(--line);border-radius:6px;overflow:hidden;text-align:center;box-shadow:0 12px 40px rgba(0,0,0,.5)}
@@ -293,6 +313,8 @@ button:focus-visible,select:focus-visible{outline:2px solid var(--gold);outline-
 #simNext{margin-top:6px;font-size:15px;font-weight:600}
 .sim-foot{margin-top:6px;font-size:12px;color:var(--dust)}
 body.skipping #batterCard,body.skipping #pitcherCard,body.skipping #call,body.skipping #feedback,body.skipping #tracker,body.skipping #pitchInfo,body.skipping #hint,body.skipping #banner,body.skipping #simBtn,body.skipping #throwPrompt,body.skipping #runHelp,body.skipping #runTags,body.skipping #pickHelp{visibility:hidden}
+body.letterbox #tutCard{display:none}
+#hud.tut #hint{display:none}
 #simBtn{position:absolute;left:50%;top:calc(64px + env(safe-area-inset-top,0px));transform:translateX(-50%);pointer-events:auto;padding:6px 14px;border-radius:4px;border:1px solid var(--line);background:var(--panel);font-family:var(--f-display);font-weight:700;font-size:14px;letter-spacing:.1em;cursor:pointer}
 #simBtn:hover{background:var(--panel-hi)}
 #simBtn kbd{font-family:var(--f-display);padding:0 5px;border-radius:3px;background:rgba(255,255,255,.14);margin-left:6px}
@@ -496,6 +518,7 @@ body.skipping #batterCard,body.skipping #pitcherCard,body.skipping #call,body.sk
         <p>Broadcast-style 3D baseball. Zone hitting, meter pitching, real ball-flight physics.</p>
       </div>
       <div class="modes" id="modes">
+        <button data-mode="tutorial"><span>Tutorial<span class="new hidden" id="tutNew">START HERE</span></span> <small>Learn to hit, pitch, field and run</small></button>
         <button data-mode="exhibition" class="on">Play Ball <small>Exhibition game</small></button>
         <button data-mode="lock">Player Lock <small>Play as one player</small></button>
         <button data-mode="online">Online 1v1 <small>Play a friend on another device</small></button>
@@ -523,6 +546,7 @@ body.skipping #batterCard,body.skipping #pitcherCard,body.skipping #call,body.sk
         <div class="team-pick" id="pickH"></div>
       </div>
       <div class="opts">
+        <div class="opt hidden" id="optLesson"><span>LESSONS</span><div class="seg" data-key="tutLesson"><button data-v="-1" class="on">All, in order</button><button data-v="0">Hitting</button><button data-v="1">Pitching</button><button data-v="2">Fielding</button><button data-v="3">Baserunning</button><button data-v="4">Pickoffs</button></div></div>
         <div class="opt hidden" id="optDrill"><span>DRILL</span><div class="seg" data-key="drill"><button data-v="0" class="on">Batting</button><button data-v="1">Pitching</button><button data-v="2">Baserunning</button><button data-v="3">Fielding</button></div></div>
         <div class="opt" id="optSide"><span>YOU PLAY AS</span><div class="seg" data-key="side"><button data-v="0">Away</button><button data-v="1" class="on">Home</button></div></div>
         <div class="opt" id="optInn"><span>INNINGS</span><div class="seg" data-key="innings"><button data-v="3" class="on">3</button><button data-v="6">6</button><button data-v="9">9</button></div></div>
@@ -561,6 +585,7 @@ body.skipping #batterCard,body.skipping #pitcherCard,body.skipping #call,body.sk
   </div>
 </div>
 <div id="toast" class="hidden" role="status"></div>
+<div id="tutCard" class="hidden" role="dialog" aria-label="Tutorial"></div>
 
 <div id="pause" class="screen modal hidden">
   <div class="card">
@@ -2551,7 +2576,7 @@ class Play {
     if (!f.holding) f.anim('ready');
     if (t < f.decideAt) return;
     if (this.hf && this.humanHolder(f)) {
-      if (this.queuedThrow != null) { const base = this.queuedThrow; this.queuedThrow = null; this.prompt = false; f.holding = false; this.execThrow(f, base); return; }
+      if (this.queuedThrow != null) { const base = this.queuedThrow; this.queuedThrow = null; this.prompt = false; f.holding = false; this.execThrow(f, base); tutNote('throw'); return; }
       if (this.userDef) {
         const anyRunning = this.R.some((r) => r.state === 'run');
         if (anyRunning || !f.holding) {
@@ -2987,7 +3012,8 @@ function startGame(cfg) {
   const away = teamFromSpec(specs[0]), home = teamFromSpec(specs[1]);
   G.teams = cfg.mode === 'derby' ? [home, away] : [away, home];
   // practice: your team is the home pick; it bats in the batting and baserunning drills
-  G.drill = cfg.mode === 'practice' ? (DRILLS[cfg.drill] ? cfg.drill : 'bat') : null;
+  G.drill = cfg.mode === 'practice' || cfg.mode === 'tutorial' ? (DRILLS[cfg.drill] ? cfg.drill : 'bat') : null;
+  G.tutRunners = !!cfg.tutRunners;
   const youBat = G.drill === 'bat' || G.drill === 'run';
   if (G.drill && youBat) G.teams = [home, away];
   if (G.drill) G.innings = 99;
@@ -3018,9 +3044,9 @@ function startGame(cfg) {
   $('hud').classList.remove('hidden');
   $('bug').classList.toggle('hidden', G.mode === 'derby');
   $('derbyHud').classList.toggle('hidden', G.mode !== 'derby');
-  $('tracker').classList.toggle('hidden', G.mode === 'derby');
+  $('tracker').classList.toggle('hidden', G.mode === 'derby' || G.mode === 'tutorial');
   $('lockTag').classList.toggle('hidden', G.mode !== 'lock');
-  $('pracHud').classList.toggle('hidden', !G.drill); $('hud').classList.toggle('prac', !!G.drill);
+  $('pracHud').classList.toggle('hidden', !G.drill || G.mode === 'tutorial'); $('hud').classList.toggle('prac', !!G.drill && G.mode !== 'tutorial'); $('hud').classList.toggle('tut', G.mode === 'tutorial');
   hudPrac();
   SND.init();
   if (G.mode === 'online' && cfg.guest) { guestStart(); return; }
@@ -3038,7 +3064,7 @@ function startGame(cfg) {
   if (G.mode === 'lock') {
     const me = PBYID[G.lock];
     Caster.line(`Player Lock: you are ${me.name}. The rest of the game sims until you are involved.`);
-  } else if (G.drill) Caster.line(DRILLS[G.drill].intro, false);
+  } else if (G.drill) { if (G.mode !== 'tutorial') Caster.line(DRILLS[G.drill].intro, false); }
   else Caster.line(`Good evening and welcome to the ballpark. The ${G.teams[0].name} visit the ${G.teams[1].name} tonight.`);
   hudLock();
   startHalf();
@@ -3051,7 +3077,7 @@ function startHalf() {
   }
   setupFielders();
   hudScore(); hudCount();
-  const title = G.drill ? DRILLS[G.drill].name.toUpperCase() : `${G.half ? 'BOTTOM' : 'TOP'} OF THE ${ordinal(G.inning).toUpperCase()}`;
+  const title = G.mode === 'tutorial' ? 'TUTORIAL' : G.drill ? DRILLS[G.drill].name.toUpperCase() : `${G.half ? 'BOTTOM' : 'TOP'} OF THE ${ordinal(G.inning).toUpperCase()}`;
   hudBanner(title, G.drill ? 'Practice · quit from the pause menu' : `${battingTeam().city} ${battingTeam().name} batting`, '');
   if (G.inning > G.innings) Caster.line(`Extra innings. ${shortName(G.bases[2].name)} starts at second base.`, true, { queue: true });
   setPhase('halfIntro', G.mode === 'spectate' ? 1.8 : 2.6);
@@ -3104,7 +3130,7 @@ function newBatter() {
 function enterPrePitch() {
   setPhase('prePitch');
   G.P = null; G.swing = null; G.cpu = null; G.play = null; G.bb = null; G.call = null; G.remoteTake = false; G.challengeable = null; G.cpuPick = null;
-  if (G.drill === 'run' && !G.abPitches.length && !G.bases[1] && !G.bases[2] && !G.bases[3]) practiceRunners();
+  if ((G.drill === 'run' || G.tutRunners) && !G.abPitches.length && !G.bases[1] && !G.bases[2] && !G.bases[3]) practiceRunners();
   placeForPitch();
   ballMesh.visible = false; ballShadow.visible = false; trailReset(); pitchGuide.visible = false;
   hideFeedback();
@@ -3170,6 +3196,7 @@ function cpuChoosePitch() {
     if (Math.random() < 0.5) { y = rand(3.6, 4.1); x = rand(-0.7, 0.7); }
     else { x = away * rand(0.95, 1.3) * (Math.random() < 0.7 ? 1 : -1); y = rand(1.8, 3.2); }
   } else { y = rand(0.95, 1.45); x = away * rand(0.3, 1.15) * (Math.random() < 0.75 ? 1 : -1); }
+  if (G.mode === 'tutorial') { const a = { x, y }; tutPitchAim(a); x = a.x; y = a.y; }
   const sig = (0.15 + ((100 - p.ctl) / 100) * 0.42) * (batCtrl() !== 'cpu' ? G.diff.cpuCtl : 1) * (1 + fatigue(p) * 0.9);
   return { pitch, aim: { x, y }, target: { x: x + randn() * sig, y: y + randn() * sig * 0.85 }, power: rand(0.86, 1), q: rand(0.45, 0.9) };
 }
@@ -3218,6 +3245,7 @@ function finishUserPitch() {
   const U = G.pitchUI; U.state = 'done';
   meterGrade(U.acc < 0.015 ? 'PERFECT' : U.acc < 0.04 ? 'GOOD' : U.acc < 0.09 ? 'OK' : 'POOR');
   setHint('');
+  tutNote('pitch');
   if (NET.role === 'guest') { netSend({ t: 'act', a: 'pitch', sel: U.sel, aim: { ...U.aim }, power: U.power, acc: U.acc }); reticle.visible = false; return; }
   startWindup(userPitchSpec(U.sel, U.aim, U.power, U.acc));
 }
@@ -3305,6 +3333,7 @@ function userSwing(type) {
   if (G.mode === 'derby' && type === 'bunt') return;
   const tNow = G.phase === 'pitch' || G.localPitch ? G.now - G.pitchT0 : -(G.releaseAt - G.now);
   const delay = SWING_DELAY[type];
+  if (type === 'power') tutNote('powerSwing');
   G.swing = { type, tPress: tNow, tContact: tNow + delay, pci: { x: G.pci.x, y: G.pci.y }, dims: pciDims(type), done: false };
   if (NET.role === 'guest') guestPrepSwing();
   const m = G.batterModel, prm = G.batPrm;
@@ -3429,6 +3458,7 @@ function catchPitch() {
   else call = umpCallsStrike() ? 'called' : 'ball';
   G.preCall = { balls: G.balls, strikes: G.strikes };
   if (sw && sw.calc && sw.calc.miss) fbShow(sw.calc);
+  if (call === 'ball' && userBats()) tutNote('takeBall');
   if (G.mode === 'derby') { derbyPitchDone(swung ? 'whiff' : 'take'); return; }
   recordPitch(call === 'ball' ? 'Ball' : call === 'hbp' ? 'HBP' : call === 'called' ? 'Called K' : 'Swinging K');
   G.recOn = false;
@@ -3467,6 +3497,7 @@ function stealCmd(kind, which = null) {
       if (r.steal) continue;
       if (!canSteal(r)) { if (which != null && runCtrl() === 'local') setHint(`${BASE_ABBR[r.base + 1]} is taken: the runner ahead has to go too`); continue; }
       r.steal = { user: true };
+      if (runCtrl() === 'local') tutNote('stealTry');
       if (G.phase !== 'prePitch') stealBreak(r, stealJump(r) + 0.15);   // the pitcher is already going: a late jump
       SND.tick();
     } else if (r.steal && !r.steal.went) r.steal = null;
@@ -3587,7 +3618,7 @@ function finishPickPlay() {
 }
 // CPU steal calls: speed against the catcher's arm, the count and the score
 function cpuSteals() {
-  if (G.mode === 'derby' || !G.fByRole.C || G.drill === 'bat') return;
+  if (G.mode === 'derby' || G.mode === 'tutorial' || !G.fByRole.C || G.drill === 'bat') return;
   const arm = G.fByRole.C.pl.arm ?? 60, full = G.outs === 2 && G.balls === 3 && G.strikes === 2;
   for (const r of [...G.baseRunners].sort((a, b) => b.base - a.base)) {
     if (runnerIsHuman(r) || r.state !== 'base') continue;
@@ -3605,7 +3636,7 @@ function cpuSteals() {
 }
 // CPU pitchers throw over now and then, more to fast runners, less each time this at-bat
 function cpuPickoff() {
-  if (G.mode === 'derby' || G.drill === 'bat') return;
+  if (G.mode === 'derby' || G.mode === 'tutorial' || G.drill === 'bat') return;
   for (const r of G.baseRunners) {
     if (r.base > 2 || G.bases[r.base + 1]) continue;
     let p = (0.05 + Math.max(0, r.pl.spd - 70) * 0.004) * Math.pow(0.45, G.abPicks);
@@ -3761,6 +3792,7 @@ function recordPitch(res) {
   if (res !== 'Ball' && res !== 'HBP') pr.strikes++;
   if (res === 'Swinging K' || res === 'Foul' || res === 'In play') pr.swings++;
   if (res === 'Foul' || res === 'In play') pr.contact++;
+  if (res !== 'Ball' && res !== 'HBP' && userPitches()) tutNote('strike');
   pitchMark.position.set(G.cross.x, G.cross.y, 0);
   pitchMark.material.color.set(res === 'Ball' || res === 'HBP' ? '#3fd38a' : res === 'Foul' ? '#ffc94a' : res === 'In play' ? '#5aa8ff' : '#ff5a5f');
   pitchMark.visible = userBats() && settings.zone;
@@ -3841,7 +3873,7 @@ function launch(ev, la, spray, origin, q, byUser) {
   $('meter').classList.add('hidden');
   const bb = simBatted(origin, ev, la, spray);
   netBBOut(origin, ev, la, spray);
-  if (byUser) { G.prac.evSum += ev; G.prac.evN++; }
+  if (byUser) { G.prac.evSum += ev; G.prac.evN++; tutNote('contact'); }
   G.bb = bb; G.contactT = G.now; G.byUser = byUser; FL.mode = 'track';
   ballMesh.visible = true;
   hudPitchInfo();
@@ -5254,6 +5286,136 @@ function buildCloudUI() {
   Cloud.init();
 }
 // ============================================================================
+// Tutorial: short hands-on lessons built on the practice drills. Each step asks
+// you to actually do the thing (make contact, throw a strike, make a throw...)
+// and moves on by itself once you have. Game code reports what happened through
+// tutNote(event); everything else lives here.
+// ============================================================================
+
+const LESSONS = [
+  {
+    id: 'hit', title: 'Hitting', drill: 'bat',
+    intro: "You're at the plate against slow, hittable pitches. Learn to aim, time your swing, and lay off bad pitches.",
+    steps: [
+      { ev: 'contact', n: 2, goal: 'Make contact', text: 'Move the mouse to aim the <b>PCI</b>, the circle over the plate. <kbd>Click</kbd> (or <kbd>Space</kbd>) to swing as the pitch arrives.', tip: 'The orange ring shows where the pitch will cross: put the PCI on it. Gamepad: left stick aims, A swings.' },
+      { ev: 'powerSwing', n: 1, goal: 'Take a power swing', text: '<kbd>Right-click</kbd> (or <kbd>L</kbd>) is a <b>power swing</b>: a smaller PCI, but the ball jumps off the bat. <kbd>J</kbd> is a contact swing with a bigger PCI.', tip: 'Feedback under the zone shows your timing and contact after each swing.' },
+      { ev: 'takeBall', n: 1, goal: 'Take a ball', text: "Pitches outside the box are <b>balls</b>. Four of them is a walk. Let one go by without swinging.", tip: 'The strike zone box is drawn over the plate. Toggle it with Z.' },
+    ],
+  },
+  {
+    id: 'pitch', title: 'Pitching', drill: 'pitch',
+    intro: "You're on the mound. Pitching is three clicks on the meter: start, power, accuracy.",
+    steps: [
+      { ev: 'pitch', n: 3, goal: 'Throw pitches', text: 'Pick a pitch with <kbd>1</kbd>&ndash;<kbd>5</kbd> and aim with the mouse. Then <kbd>Click</kbd> three times: to start the meter, near the top for <b>power</b>, and on the <b>gold line</b> for accuracy.', tip: 'The pitch list on the right shows each pitch and its speed. Gamepad: LB / RB pick, A clicks.' },
+      { ev: 'strike', n: 2, goal: 'Throw strikes', text: 'Now throw <b>strikes</b>: aim inside the zone and stop the meter right on the gold line. Missing the line pulls the pitch off target.', tip: 'Fouls and balls in play count too: the batter offered at it.' },
+    ],
+  },
+  {
+    id: 'field', title: 'Fielding', drill: 'field',
+    intro: 'Balls come off the bat every few seconds. You control the fielder playing the ball.',
+    steps: [
+      { ev: 'move', n: 2, goal: 'Run your fielder', text: 'The fielder with the <b>gold ring</b> is yours. <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> runs him. The AI helps until you touch the keys. A blue ring marks where a fly ball will land.', tip: 'Space dives. Q switches to the fielder closest to the ball. Gamepad: left stick runs, RB dives.' },
+      { ev: 'throw', n: 2, goal: 'Make throws', text: 'Once you have the ball, throw with <kbd>1</kbd> first, <kbd>2</kbd> second, <kbd>3</kbd> third or <kbd>4</kbd> home. The best throw is ringed in <b>green</b>.', tip: 'Arrow keys throw too (→ first, ↑ second, ← third, ↓ home). Wait too long and the AI throws for you.' },
+    ],
+  },
+  {
+    id: 'run', title: 'Baserunning', drill: 'run',
+    intro: "You're on base and the CPU is batting. You decide when your runners go.",
+    steps: [
+      { ev: 'runCmd', n: 2, goal: 'Give running orders', text: 'When the ball is hit, <kbd>E</kbd> sends every runner one more base and <kbd>Q</kbd> takes a base back. Hold a runner\'s base key (<kbd>1</kbd>&ndash;<kbd>4</kbd>) with <kbd>E</kbd> or <kbd>Q</kbd> to run just him.', tip: 'The runner panel and the tags over each runner show where everyone is headed. Only force plays are outs on the bag; everyone else has to be tagged.' },
+      { ev: 'stealTry', n: 1, goal: 'Call a steal', text: 'Steal: before the pitch, press <kbd>E</kbd> (or hold <kbd>1</kbd> + <kbd>E</kbd>) and your runner goes on the pitcher\'s first move. <kbd>Q</kbd> calls it off.', tip: "Fast runners get better jumps; a strong-armed catcher throws more of them out." },
+    ],
+  },
+  {
+    id: 'pick', title: 'Pickoffs', drill: 'pitch', runners: true,
+    intro: 'Back on the mound, now with a runner on. Keep him close.',
+    steps: [
+      { ev: 'pick', n: 1, goal: 'Throw over', text: 'Before you start the meter, <kbd>Shift</kbd> + the base number (<kbd>1</kbd>, <kbd>2</kbd> or <kbd>3</kbd>) throws over, or click the <b>PICKOFF</b> buttons.', tip: "The runner usually dives back, but one who was going on that pitch gets caught leaning. Gamepad: hold LT + B / Y / X." },
+    ],
+  },
+];
+const TUT = { on: false, only: false, lesson: 0, step: 0, count: 0, state: 'off', teams: null, doneT: 0 };
+const tutStepDef = () => (TUT.on ? LESSONS[TUT.lesson].steps[TUT.step] : null);
+// game code reports what the player just did
+function tutNote(ev, k = 1) {
+  const s = tutStepDef();
+  if (!s || TUT.state !== 'step' || s.ev !== ev) return;
+  TUT.count = Math.min(s.n, TUT.count + k);
+  tutRender();
+  if (TUT.count >= s.n) {
+    TUT.state = 'done'; tutRender();
+    SND.init(); if (SND.ctx) SND.fanfare();
+    clearTimeout(TUT.doneT); TUT.doneT = setTimeout(tutNext, 1600);
+  }
+}
+// what the tutorial pitcher throws: mostly hittable strikes while you learn to swing, clear balls for the take
+function tutPitchAim(aim) {
+  const s = tutStepDef();
+  if (!s || G.drill !== 'bat') return;
+  if (s.ev === 'takeBall' && Math.random() < 0.6) { aim.x = (Math.random() < 0.5 ? -1 : 1) * rand(1.3, 1.6); aim.y = rand(2.0, 3.0); }
+  else if (s.ev !== 'takeBall' && Math.random() < 0.8) { aim.x = rand(-0.35, 0.35); aim.y = rand(2.1, 2.9); }
+}
+function tutStart(only) {
+  TUT.on = true; TUT.only = only != null; TUT.lesson = only ?? 0;
+  TUT.teams = [teamSpec(menuTeam('away')), teamSpec(menuTeam('home'))];
+  try { localStorage.setItem('fullcount.tutSeen', '1'); } catch (e) { /* ignore */ }
+  tutLesson();
+}
+function tutLesson() {
+  const L = LESSONS[TUT.lesson];
+  TUT.step = 0; TUT.count = 0; TUT.state = 'intro';
+  startGame({ mode: 'tutorial', drill: L.drill, teams: TUT.teams, diff: 0, ump: 2, manual: 1, tutRunners: !!L.runners });
+  G.hold = true;   // wait on the lesson card
+  tutRender();
+}
+function tutGo() { if (TUT.state !== 'intro') return; TUT.state = 'step'; G.hold = false; SND.init(); tutRender(); }
+function tutNext() {
+  if (!TUT.on) return;
+  clearTimeout(TUT.doneT);
+  const L = LESSONS[TUT.lesson];
+  if (TUT.step + 1 < L.steps.length) { TUT.step++; TUT.count = 0; TUT.state = 'step'; tutRender(); return; }
+  if (!TUT.only && TUT.lesson + 1 < LESSONS.length) { TUT.lesson++; tutLesson(); return; }
+  TUT.state = 'finish'; G.hold = true; tutRender();
+}
+function tutEnd() { TUT.on = false; TUT.state = 'off'; clearTimeout(TUT.doneT); G.hold = false; tutRender(); }
+function tutRender() {
+  const el = $('tutCard');
+  if (!TUT.on || TUT.state === 'off') { el.classList.add('hidden'); return; }
+  el.classList.remove('hidden');
+  const L = LESSONS[TUT.lesson], s = L.steps[TUT.step];
+  const lessonNo = `LESSON ${TUT.lesson + 1} OF ${LESSONS.length}`;
+  el.classList.toggle('big', TUT.state === 'intro' || TUT.state === 'finish');
+  if (TUT.state === 'intro') {
+    el.innerHTML = `<div class="tut-head"><span>TUTORIAL</span><span>${TUT.only ? '' : lessonNo}</span></div><h2>${L.title}</h2><p class="tut-text">${L.intro}</p>`
+      + `<ol class="tut-list">${L.steps.map((x) => `<li>${x.goal}</li>`).join('')}</ol>`
+      + `<div class="tut-actions"><button class="cta" data-tut="go">START</button><button class="ghost" data-tut="skipLesson">Skip lesson</button><button class="ghost" data-tut="exit">Exit tutorial</button></div>`;
+    return;
+  }
+  if (TUT.state === 'finish') {
+    el.innerHTML = `<div class="tut-head"><span>TUTORIAL</span><span>COMPLETE</span></div><h2>${TUT.only ? `${L.title} done` : "You're ready"}</h2>`
+      + `<p class="tut-text">${TUT.only ? 'Nice work. Pick another lesson from the menu, or jump into a game.' : 'That covers hitting, pitching, fielding and running the bases. Play Ball for a full game, Practice to drill any one skill, or Online 1v1 to take on a friend.'}</p>`
+      + `<p class="tut-text dim">Press Esc in a game for the full controls list.</p>`
+      + `<div class="tut-actions"><button class="cta" data-tut="menu">MAIN MENU</button></div>`;
+    return;
+  }
+  const done = TUT.state === 'done';
+  el.innerHTML = `<div class="tut-head"><span>${L.title.toUpperCase()}</span><span>STEP ${TUT.step + 1} OF ${L.steps.length}</span></div>`
+    + `<p class="tut-text">${s.text}</p>${s.tip ? `<p class="tut-text dim">${s.tip}</p>` : ''}`
+    + `<div class="tut-goal ${done ? 'done' : ''}"><span>${done ? 'Nice!' : s.goal}</span><b>${TUT.count} / ${s.n}</b></div>`
+    + `<div class="tut-bar"><i style="width:${(TUT.count / s.n) * 100}%"></i></div>`
+    + `<div class="tut-actions"><button class="ghost" data-tut="skip">Skip step</button><button class="ghost" data-tut="exit">Exit</button></div>`;
+}
+function buildTutorialUI() {
+  $('tutCard').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-tut]'); if (!b) return;
+    const a = b.dataset.tut;
+    if (a === 'go') tutGo();
+    else if (a === 'skip') tutNext();
+    else if (a === 'skipLesson') { TUT.step = LESSONS[TUT.lesson].steps.length - 1; G.hold = false; tutNext(); }
+    else if (a === 'exit' || a === 'menu') { tutEnd(); toMenu(); }
+  });
+}
+// ============================================================================
 // Presentation: cameras, HUD, videoboards, input, replays, menus, main loop
 // ============================================================================
 
@@ -5917,7 +6079,7 @@ function updateFireworks(dt) {
 // ------------------------------------------------------------ live play ----
 function updateLive(dt) {
   const pl = G.play, fc = fieldCtrl();
-  if (fc === 'local') { const v = fieldVec(); pl.setInput(v.x, v.z); }
+  if (fc === 'local') { const v = fieldVec(); pl.setInput(v.x, v.z); if (!pl.tutMoved && Math.hypot(v.x, v.z) > 0.2 && pl.uf) { pl.tutMoved = true; tutNote('move'); } }
   else if (fc === 'remote') {
     pl.setInput(G.remoteIn.x, G.remoteIn.z);
     const rp = G.remotePos;
@@ -6068,8 +6230,11 @@ function fieldVec() {
 function actThrow(b) { if (isGuest()) { netSend({ t: 'act', a: 'throw', base: b }); NET.pred.hold = G.now + 0.5; } else if (G.play) G.play.userThrow(b); }
 function actDive() { if (isGuest()) { netSend({ t: 'act', a: 'dive' }); NET.pred.hold = G.now + 1.2; } else if (G.play) G.play.userDive(); }
 function actSwitch() { if (isGuest()) netSend({ t: 'act', a: 'switch' }); else if (G.play) G.play.userSwitch(); }
-function actRun(kind, which = null) { if (isGuest()) netSend({ t: 'act', a: 'run', kind, which }); else if (G.play) G.play.runCmd(kind, which); else stealCmd(kind, which); }
-function actPick(base) { if (isGuest()) netSend({ t: 'act', a: 'pick', base }); else startPickoff(base); }
+function actRun(kind, which = null) {
+  if (isGuest()) { netSend({ t: 'act', a: 'run', kind, which }); return; }
+  if (G.play) { G.play.runCmd(kind, which); if (G.play.hrun) tutNote('runCmd'); } else stealCmd(kind, which);
+}
+function actPick(base) { if (isGuest()) { netSend({ t: 'act', a: 'pick', base }); return; } if (canPickoff(base)) tutNote('pick'); startPickoff(base); }
 const trotOn = () => (isGuest() ? !!(NET.snap && NET.snap.pl && NET.snap.pl.hr) : !!(G.play && (G.play.hr || G.play.awarded)));
 window.addEventListener('keydown', (e) => {
   const k = e.key.toLowerCase();
@@ -6238,7 +6403,7 @@ function togglePause(force, remote) {
 }
 
 // ------------------------------------------------------------------ menus ----
-const menu = { mode: 'exhibition', away: 'HAW', home: 'COM', side: 1, innings: 3, diff: 1, manual: 1, batter: 3, lockPick: 'h3', ump: 1, view: 2, lockField: 1, lockSkip: 1, batCam: settings.batCam || 0, netTeam: 'COM', drill: 0 };
+const menu = { mode: 'exhibition', away: 'HAW', home: 'COM', side: 1, innings: 3, diff: 1, manual: 1, batter: 3, lockPick: 'h3', ump: 1, view: 2, lockField: 1, lockSkip: 1, batCam: settings.batCam || 0, netTeam: 'COM', drill: 0, tutLesson: -1 };
 try { Object.assign(menu, JSON.parse(localStorage.getItem('fullcount.menu') || '{}')); } catch (e) { /* ignore */ }
 menu.batCam = settings.batCam || 0;   // the pause screen can change it too; settings wins
 // teams used to be saved as an index into the built-in list
@@ -6274,7 +6439,7 @@ function onlinePicks() {
   return { teams: mySide ? [theirs, mine] : [mine, theirs], mySide };
 }
 function renderMenu() {
-  const m = menu.mode, derby = m === 'derby', spec = m === 'spectate', lock = m === 'lock', online = m === 'online', prac = m === 'practice';
+  const m = menu.mode, derby = m === 'derby', spec = m === 'spectate', lock = m === 'lock', online = m === 'online', tut = m === 'tutorial', prac = m === 'practice' || tut;
   const guest = online && NET.role === 'guest', host = online && NET.role === 'host';
   const L = guest && NET.lobby ? NET.lobby : menu;
   const showTeams = !online || host || (guest && NET.open && NET.lobby);
@@ -6294,17 +6459,19 @@ function renderMenu() {
   }
   $('pickA').classList.toggle('hidden', derby); $('vsLabel').classList.toggle('hidden', derby);
   $('optSide').classList.toggle('hidden', derby || spec || prac || !showTeams);
-  $('optDrill').classList.toggle('hidden', !prac);
+  $('optDrill').classList.toggle('hidden', !prac || tut);
+  $('optLesson').classList.toggle('hidden', !tut);
+  $('tutNew').classList.toggle('hidden', (() => { try { return !!localStorage.getItem('fullcount.tutSeen'); } catch (e) { return true; } })());
   $('optSide').querySelector('span').textContent = lock ? 'YOUR TEAM' : 'YOU PLAY AS';
   $('optInn').classList.toggle('hidden', derby || prac || !showTeams);
-  $('optDiff').classList.toggle('hidden', spec || !showTeams);
-  $('optThrow').classList.toggle('hidden', derby || spec || online);
+  $('optDiff').classList.toggle('hidden', spec || tut || !showTeams);
+  $('optThrow').classList.toggle('hidden', derby || spec || online || tut);
   $('optBatter').classList.toggle('hidden', !derby);
   $('optLock').classList.toggle('hidden', !lock);
   $('optView').classList.toggle('hidden', !lock);
   $('optLockField').classList.toggle('hidden', !lock);
   $('optLockSkip').classList.toggle('hidden', !lock);
-  $('optUmp').classList.toggle('hidden', derby || !showTeams);
+  $('optUmp').classList.toggle('hidden', derby || tut || !showTeams);
   for (const el of ['optSide', 'optInn', 'optDiff', 'optUmp']) $(el).style.pointerEvents = guest ? 'none' : '';
   for (const b of $('modes').querySelectorAll('button')) b.classList.toggle('on', b.dataset.mode === m);
   for (const seg of document.querySelectorAll('.seg[data-key]')) {
@@ -6326,7 +6493,7 @@ function renderMenu() {
   play.classList.toggle('hidden', online && !host);
   play.disabled = (host && !NET.open) || !!block;
   play.title = block;
-  play.textContent = derby ? 'START DERBY' : prac ? 'START PRACTICE' : spec ? 'WATCH GAME' : lock ? 'PLAY AS ' + (lock ? lockName() : '') : online ? (NET.open ? 'START ONLINE GAME' : 'WAITING FOR FRIEND') : 'PLAY BALL';
+  play.textContent = derby ? 'START DERBY' : tut ? 'START TUTORIAL' : prac ? 'START PRACTICE' : spec ? 'WATCH GAME' : lock ? 'PLAY AS ' + (lock ? lockName() : '') : online ? (NET.open ? 'START ONLINE GAME' : 'WAITING FOR FRIEND') : 'PLAY BALL';
   if (host && NET.open && block !== (NET.blockShown || '')) { NET.blockShown = block; netStatus(block || 'Ready! Press Start when you are.', block ? 'bad' : 'good'); }
   try { localStorage.setItem('fullcount.menu', JSON.stringify(menu)); } catch (e) { /* ignore */ }
   if (host && NET.open) netSendLobby();
@@ -6388,6 +6555,7 @@ function buildMenu() {
   $('btnPlay').addEventListener('click', () => {
     SND.init();
     if (menu.mode === 'online') { hostStartOnline(); return; }
+    if (menu.mode === 'tutorial') { tutStart(menu.tutLesson >= 0 ? menu.tutLesson : null); return; }
     const teams = [teamSpec(menuTeam('away')), teamSpec(menuTeam('home'))];
     startGame({ mode: menu.mode, teams, drill: ['bat', 'pitch', 'run', 'field'][menu.drill] || 'bat', side: menu.side, innings: menu.innings, diff: menu.diff, manual: menu.manual, batter: menu.batter, lockPick: menu.lockPick, ump: menu.ump, view: menu.view, lockField: menu.lockField, lockSkip: menu.lockSkip });
   });
@@ -6419,6 +6587,7 @@ function buildMenu() {
 }
 function toMenu() {
   try { speechSynthesis.cancel(); } catch (e) { /* none */ }
+  if (TUT.on) tutEnd();
   if (G.mode === 'online') netClose();
   G.mode = 'menu'; G.paused = false; G.replay = null; G.play = null; G.lock = null; G.ctrl = ['cpu', 'cpu']; G.localPitch = false;
   setPhase('menu');
@@ -6551,6 +6720,7 @@ function boot() {
   makeUmps();
   netInstallHooks();
   buildRosterUI();
+  buildTutorialUI();
   $('btnRosters').addEventListener('click', openRosters);
   buildMenu();
   buildCloudUI();
@@ -6570,7 +6740,7 @@ function boot() {
 }
 // Debug handle: lets a test harness advance the simulation without waiting on animation frames.
 window.__fullcount = {
-  G, TEAMS, settings, NET, keys, BAT_CAMS, Play, Runner, BASES, simBatted, V3, getModel, ballMesh, startPickoff, stealCmd, rosterCost, teamToDef, cleanRoster, buildCustomTeam, Cloud, cloudRender, inviteToast, get ROSTERS() { return ROSTERS; },
+  G, TEAMS, settings, NET, keys, BAT_CAMS, Play, Runner, BASES, simBatted, V3, getModel, ballMesh, startPickoff, stealCmd, TUT, tutStart, rosterCost, teamToDef, cleanRoster, buildCustomTeam, Cloud, cloudRender, inviteToast, get ROSTERS() { return ROSTERS; },
   step(sec, dt = 1 / 60) {
     const n = Math.round(sec / dt);
     for (let i = 0; i < n && !G.paused; i++) { if (isGuest()) guestUpdate(dt); else update(dt); netTick(); }

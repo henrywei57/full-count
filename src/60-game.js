@@ -153,7 +153,8 @@ function startGame(cfg) {
   const away = teamFromSpec(specs[0]), home = teamFromSpec(specs[1]);
   G.teams = cfg.mode === 'derby' ? [home, away] : [away, home];
   // practice: your team is the home pick; it bats in the batting and baserunning drills
-  G.drill = cfg.mode === 'practice' ? (DRILLS[cfg.drill] ? cfg.drill : 'bat') : null;
+  G.drill = cfg.mode === 'practice' || cfg.mode === 'tutorial' ? (DRILLS[cfg.drill] ? cfg.drill : 'bat') : null;
+  G.tutRunners = !!cfg.tutRunners;
   const youBat = G.drill === 'bat' || G.drill === 'run';
   if (G.drill && youBat) G.teams = [home, away];
   if (G.drill) G.innings = 99;
@@ -184,9 +185,9 @@ function startGame(cfg) {
   $('hud').classList.remove('hidden');
   $('bug').classList.toggle('hidden', G.mode === 'derby');
   $('derbyHud').classList.toggle('hidden', G.mode !== 'derby');
-  $('tracker').classList.toggle('hidden', G.mode === 'derby');
+  $('tracker').classList.toggle('hidden', G.mode === 'derby' || G.mode === 'tutorial');
   $('lockTag').classList.toggle('hidden', G.mode !== 'lock');
-  $('pracHud').classList.toggle('hidden', !G.drill); $('hud').classList.toggle('prac', !!G.drill);
+  $('pracHud').classList.toggle('hidden', !G.drill || G.mode === 'tutorial'); $('hud').classList.toggle('prac', !!G.drill && G.mode !== 'tutorial'); $('hud').classList.toggle('tut', G.mode === 'tutorial');
   hudPrac();
   SND.init();
   if (G.mode === 'online' && cfg.guest) { guestStart(); return; }
@@ -204,7 +205,7 @@ function startGame(cfg) {
   if (G.mode === 'lock') {
     const me = PBYID[G.lock];
     Caster.line(`Player Lock: you are ${me.name}. The rest of the game sims until you are involved.`);
-  } else if (G.drill) Caster.line(DRILLS[G.drill].intro, false);
+  } else if (G.drill) { if (G.mode !== 'tutorial') Caster.line(DRILLS[G.drill].intro, false); }
   else Caster.line(`Good evening and welcome to the ballpark. The ${G.teams[0].name} visit the ${G.teams[1].name} tonight.`);
   hudLock();
   startHalf();
@@ -217,7 +218,7 @@ function startHalf() {
   }
   setupFielders();
   hudScore(); hudCount();
-  const title = G.drill ? DRILLS[G.drill].name.toUpperCase() : `${G.half ? 'BOTTOM' : 'TOP'} OF THE ${ordinal(G.inning).toUpperCase()}`;
+  const title = G.mode === 'tutorial' ? 'TUTORIAL' : G.drill ? DRILLS[G.drill].name.toUpperCase() : `${G.half ? 'BOTTOM' : 'TOP'} OF THE ${ordinal(G.inning).toUpperCase()}`;
   hudBanner(title, G.drill ? 'Practice · quit from the pause menu' : `${battingTeam().city} ${battingTeam().name} batting`, '');
   if (G.inning > G.innings) Caster.line(`Extra innings. ${shortName(G.bases[2].name)} starts at second base.`, true, { queue: true });
   setPhase('halfIntro', G.mode === 'spectate' ? 1.8 : 2.6);
@@ -270,7 +271,7 @@ function newBatter() {
 function enterPrePitch() {
   setPhase('prePitch');
   G.P = null; G.swing = null; G.cpu = null; G.play = null; G.bb = null; G.call = null; G.remoteTake = false; G.challengeable = null; G.cpuPick = null;
-  if (G.drill === 'run' && !G.abPitches.length && !G.bases[1] && !G.bases[2] && !G.bases[3]) practiceRunners();
+  if ((G.drill === 'run' || G.tutRunners) && !G.abPitches.length && !G.bases[1] && !G.bases[2] && !G.bases[3]) practiceRunners();
   placeForPitch();
   ballMesh.visible = false; ballShadow.visible = false; trailReset(); pitchGuide.visible = false;
   hideFeedback();
@@ -336,6 +337,7 @@ function cpuChoosePitch() {
     if (Math.random() < 0.5) { y = rand(3.6, 4.1); x = rand(-0.7, 0.7); }
     else { x = away * rand(0.95, 1.3) * (Math.random() < 0.7 ? 1 : -1); y = rand(1.8, 3.2); }
   } else { y = rand(0.95, 1.45); x = away * rand(0.3, 1.15) * (Math.random() < 0.75 ? 1 : -1); }
+  if (G.mode === 'tutorial') { const a = { x, y }; tutPitchAim(a); x = a.x; y = a.y; }
   const sig = (0.15 + ((100 - p.ctl) / 100) * 0.42) * (batCtrl() !== 'cpu' ? G.diff.cpuCtl : 1) * (1 + fatigue(p) * 0.9);
   return { pitch, aim: { x, y }, target: { x: x + randn() * sig, y: y + randn() * sig * 0.85 }, power: rand(0.86, 1), q: rand(0.45, 0.9) };
 }
@@ -384,6 +386,7 @@ function finishUserPitch() {
   const U = G.pitchUI; U.state = 'done';
   meterGrade(U.acc < 0.015 ? 'PERFECT' : U.acc < 0.04 ? 'GOOD' : U.acc < 0.09 ? 'OK' : 'POOR');
   setHint('');
+  tutNote('pitch');
   if (NET.role === 'guest') { netSend({ t: 'act', a: 'pitch', sel: U.sel, aim: { ...U.aim }, power: U.power, acc: U.acc }); reticle.visible = false; return; }
   startWindup(userPitchSpec(U.sel, U.aim, U.power, U.acc));
 }
@@ -471,6 +474,7 @@ function userSwing(type) {
   if (G.mode === 'derby' && type === 'bunt') return;
   const tNow = G.phase === 'pitch' || G.localPitch ? G.now - G.pitchT0 : -(G.releaseAt - G.now);
   const delay = SWING_DELAY[type];
+  if (type === 'power') tutNote('powerSwing');
   G.swing = { type, tPress: tNow, tContact: tNow + delay, pci: { x: G.pci.x, y: G.pci.y }, dims: pciDims(type), done: false };
   if (NET.role === 'guest') guestPrepSwing();
   const m = G.batterModel, prm = G.batPrm;
@@ -595,6 +599,7 @@ function catchPitch() {
   else call = umpCallsStrike() ? 'called' : 'ball';
   G.preCall = { balls: G.balls, strikes: G.strikes };
   if (sw && sw.calc && sw.calc.miss) fbShow(sw.calc);
+  if (call === 'ball' && userBats()) tutNote('takeBall');
   if (G.mode === 'derby') { derbyPitchDone(swung ? 'whiff' : 'take'); return; }
   recordPitch(call === 'ball' ? 'Ball' : call === 'hbp' ? 'HBP' : call === 'called' ? 'Called K' : 'Swinging K');
   G.recOn = false;
@@ -633,6 +638,7 @@ function stealCmd(kind, which = null) {
       if (r.steal) continue;
       if (!canSteal(r)) { if (which != null && runCtrl() === 'local') setHint(`${BASE_ABBR[r.base + 1]} is taken: the runner ahead has to go too`); continue; }
       r.steal = { user: true };
+      if (runCtrl() === 'local') tutNote('stealTry');
       if (G.phase !== 'prePitch') stealBreak(r, stealJump(r) + 0.15);   // the pitcher is already going: a late jump
       SND.tick();
     } else if (r.steal && !r.steal.went) r.steal = null;
@@ -753,7 +759,7 @@ function finishPickPlay() {
 }
 // CPU steal calls: speed against the catcher's arm, the count and the score
 function cpuSteals() {
-  if (G.mode === 'derby' || !G.fByRole.C || G.drill === 'bat') return;
+  if (G.mode === 'derby' || G.mode === 'tutorial' || !G.fByRole.C || G.drill === 'bat') return;
   const arm = G.fByRole.C.pl.arm ?? 60, full = G.outs === 2 && G.balls === 3 && G.strikes === 2;
   for (const r of [...G.baseRunners].sort((a, b) => b.base - a.base)) {
     if (runnerIsHuman(r) || r.state !== 'base') continue;
@@ -771,7 +777,7 @@ function cpuSteals() {
 }
 // CPU pitchers throw over now and then, more to fast runners, less each time this at-bat
 function cpuPickoff() {
-  if (G.mode === 'derby' || G.drill === 'bat') return;
+  if (G.mode === 'derby' || G.mode === 'tutorial' || G.drill === 'bat') return;
   for (const r of G.baseRunners) {
     if (r.base > 2 || G.bases[r.base + 1]) continue;
     let p = (0.05 + Math.max(0, r.pl.spd - 70) * 0.004) * Math.pow(0.45, G.abPicks);
@@ -927,6 +933,7 @@ function recordPitch(res) {
   if (res !== 'Ball' && res !== 'HBP') pr.strikes++;
   if (res === 'Swinging K' || res === 'Foul' || res === 'In play') pr.swings++;
   if (res === 'Foul' || res === 'In play') pr.contact++;
+  if (res !== 'Ball' && res !== 'HBP' && userPitches()) tutNote('strike');
   pitchMark.position.set(G.cross.x, G.cross.y, 0);
   pitchMark.material.color.set(res === 'Ball' || res === 'HBP' ? '#3fd38a' : res === 'Foul' ? '#ffc94a' : res === 'In play' ? '#5aa8ff' : '#ff5a5f');
   pitchMark.visible = userBats() && settings.zone;
@@ -1007,7 +1014,7 @@ function launch(ev, la, spray, origin, q, byUser) {
   $('meter').classList.add('hidden');
   const bb = simBatted(origin, ev, la, spray);
   netBBOut(origin, ev, la, spray);
-  if (byUser) { G.prac.evSum += ev; G.prac.evN++; }
+  if (byUser) { G.prac.evSum += ev; G.prac.evN++; tutNote('contact'); }
   G.bb = bb; G.contactT = G.now; G.byUser = byUser; FL.mode = 'track';
   ballMesh.visible = true;
   hudPitchInfo();
