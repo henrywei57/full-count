@@ -194,15 +194,20 @@ function genTeam(def, idx) {
     p.pitches = ars.map((t) => ({ type: t, velo: p.velo + PITCH_TYPES[t].d + Math.round(g() * 1.2), brk: clamp(0.88 + r() * 0.3 + (def.pit - 76) * 0.01, 0.78, 1.3) }));
     team.pitchers.push(p);
   }
+  team.ovr = teamOvr(team);
+  return team;
+}
+function teamOvr(team) {
   const avg = (arr, f) => Math.round(arr.reduce((s, x) => s + f(x), 0) / arr.length);
-  team.ovr = {
+  return {
     bat: avg(team.hitters, (h) => (h.con + h.pow + h.eye) / 3),
     pit: avg(team.pitchers, (p) => p.ctl * 0.6 + (p.velo - 85) * 2.2),
     def: avg(team.hitters.filter((h) => h.pos !== 'DH'), (h) => (h.fld + h.arm) / 2),
   };
-  return team;
 }
+// built-in teams; custom rosters are added in 66-roster.js. team.key names a team in menus and online.
 const TEAMS = TEAM_DEFS.map(genTeam);
+for (const t of TEAMS) { t.key = t.id; t.ver = ''; }
 
 // pitchScale: slows pitch flight; pci: PCI size; win: timing windows (perfect, good, contact) in seconds;
 // assist: how far the PCI is pulled toward the pitch on a swing; guide: show where the pitch will cross

@@ -110,6 +110,9 @@ button{font:inherit;color:inherit}
 #topbar button{width:36px;height:36px;border-radius:50%;border:1px solid var(--line);background:var(--panel);display:grid;place-items:center;cursor:pointer;padding:0}
 #topbar button:hover{background:var(--panel-hi)}
 #topbar svg{width:16px;height:16px;fill:var(--chalk)}
+#netPing{align-self:center;padding:4px 9px;border-radius:12px;background:var(--panel);border:1px solid var(--line);font-family:var(--f-display);font-weight:700;font-size:13px;letter-spacing:.06em}
+#netPing::before{content:'';display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:6px;background:currentColor;vertical-align:1px}
+#netPing.good{color:var(--ball)}#netPing.ok{color:var(--gold)}#netPing.bad{color:var(--strike)}
 
 /* ---------- hitting feedback / statcast ---------- */
 #feedback{position:absolute;left:50%;bottom:calc(84px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);width:360px;background:var(--panel);border-radius:4px;padding:10px 14px 12px;opacity:0;transition:opacity .25s}
@@ -280,7 +283,100 @@ body.skipping #batterCard,body.skipping #pitcherCard,body.skipping #call,body.sk
 #simBtn kbd{font-family:var(--f-display);padding:0 5px;border-radius:3px;background:rgba(255,255,255,.14);margin-left:6px}
 .bug-abs{font-size:8px;letter-spacing:3px;color:var(--gold);margin:0 6px 0 auto;line-height:1}
 
+/* ---------- roster builder ---------- */
+.menu-extra{display:flex;gap:8px;margin-top:8px}
+.menu-extra button{flex:1;display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:left;font-family:var(--f-display);font-weight:700;font-size:17px;letter-spacing:.04em;text-transform:uppercase;background:var(--panel)}
+.menu-extra small{font-family:var(--f-body);text-transform:none;font-weight:500;font-size:12px;color:var(--dust);letter-spacing:0}
+.menu-extra .dot{display:inline-block;min-width:18px;height:18px;padding:0 5px;margin-left:6px;border-radius:9px;background:var(--strike);color:#fff;font-size:12px;line-height:18px;text-align:center;vertical-align:2px}
+.tp-custom{font-family:var(--f-display);font-weight:700;font-size:11px;letter-spacing:.18em;color:var(--gold)}
+.badge.wait{background:transparent;border-style:dashed;border-color:var(--line);color:var(--dust)}
+.badge.xs{width:40px;height:40px;font-size:14px;border-width:2px;flex:none;box-shadow:none}
+#rosterScreen,#friendsScreen{align-items:flex-start}
+.rs-wrap{width:min(1180px,100%);margin:auto;background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:18px;display:flex;flex-direction:column;gap:14px}
+.rs-head{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.rs-head h2{margin:0;font-family:var(--f-display);font-weight:800;font-style:italic;font-size:36px;letter-spacing:.02em}
+.rs-sync{flex:1;min-width:180px;color:var(--dust);font-size:13px}
+.rs-head .cta{font-size:18px;padding:10px 18px}
+.rs-body{display:grid;grid-template-columns:230px 1fr;gap:18px;min-width:0}
+.rs-side{display:flex;flex-direction:column;gap:10px;min-width:0}
+.rs-list{display:flex;flex-direction:column;gap:6px}
+.rs-card{display:flex;align-items:center;gap:10px;padding:8px;border-radius:4px;border:1px solid var(--line);background:transparent;cursor:pointer;text-align:left;min-width:0}
+.rs-card:hover{background:var(--panel-hi)}
+.rs-card.on{border-color:var(--gold);background:rgba(255,201,74,.08)}
+.rs-card div{min-width:0}
+.rs-card b{display:block;font-family:var(--f-display);font-size:16px;text-transform:uppercase;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rs-card span{font-size:11px;color:var(--dust)}
+.rs-new{display:flex;flex-direction:column;gap:6px}
+.rs-empty{color:var(--dust);font-size:14px;padding:8px 0}
+.rs-empty.big{padding:48px 0;text-align:center}
+.rs-edit{min-width:0;display:flex;flex-direction:column;gap:10px}
+.rs-wrap input:not([type=color]),.rs-wrap select,.fr-card input{font:inherit;font-weight:600;background:var(--night);color:var(--chalk);border:1px solid var(--line);border-radius:3px;padding:6px 8px;min-width:0}
+.rs-ident{display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap}
+.rs-ident .badge{width:64px;height:64px;font-size:22px;border-width:3px}
+.rs-ident label{display:flex;flex-direction:column;gap:4px;font-family:var(--f-display);font-weight:700;letter-spacing:.14em;font-size:12px;color:var(--dust);flex:1;min-width:120px}
+.rs-ident label.short{flex:0 0 auto;min-width:0}
+.rs-ident label.short input{width:76px;text-transform:uppercase}
+.cols{display:flex;gap:6px}
+.cols input{width:42px;height:34px;padding:2px;border:1px solid var(--line);border-radius:3px;background:var(--night);cursor:pointer}
+.rs-points{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.rs-track{flex:1;min-width:160px;height:10px;background:rgba(255,255,255,.1);border-radius:5px;overflow:hidden}
+.rs-track i{display:block;height:100%;background:linear-gradient(90deg,var(--ball),var(--gold));transition:width .2s}
+.rs-track i.over{background:var(--strike)}
+.rs-track.flash{animation:capFlash .5s}
+@keyframes capFlash{0%,100%{box-shadow:none}50%{box-shadow:0 0 0 3px var(--strike)}}
+#rsPts{font-size:14px;color:var(--dust)}
+#rsPts b{color:var(--chalk);font-family:var(--f-display);font-size:20px}
+#rsPts .over{color:var(--strike);font-weight:700}
+.rs-help{margin:0;color:var(--dust);font-size:13px;line-height:1.45}
+.rs-edit h3{margin:6px 0 0;font-family:var(--f-display);font-weight:700;letter-spacing:.14em;font-size:14px;color:var(--gold)}
+.rs-edit h3 small{color:var(--dust);letter-spacing:.02em;font-weight:500;margin-left:8px;font-family:var(--f-body)}
+.rs-scroll{overflow-x:auto}
+.rs-table{border-collapse:collapse;width:100%;font-size:13px}
+.rs-table th{font-family:var(--f-display);font-weight:700;letter-spacing:.1em;font-size:12px;color:var(--dust);padding:4px;text-align:center;white-space:nowrap}
+.rs-table th[title]{cursor:help;text-decoration:underline dotted rgba(255,255,255,.3)}
+.rs-table td{padding:3px;text-align:center;border-top:1px solid rgba(255,255,255,.06)}
+.rs-table input.nm{width:150px}
+.rs-table input.no{width:54px}
+.rs-table input.rt{width:58px;text-align:center;font-family:var(--f-display);font-size:16px;font-weight:700}
+.rs-table .pos{font-family:var(--f-display);font-weight:800;font-size:15px}
+.rs-table .ovr{font-family:var(--f-display);font-weight:800;font-size:17px;color:var(--gold)}
+.rs-table .cost{color:var(--dust);font-variant-numeric:tabular-nums}
+.ord{white-space:nowrap}
+.ord button{width:22px;height:22px;padding:0;border-radius:3px;border:1px solid var(--line);background:transparent;cursor:pointer;font-size:9px}
+.ord button:disabled{opacity:.25;cursor:default}
+.ord b{display:inline-block;width:18px;font-family:var(--f-display)}
+.chips{display:flex;flex-wrap:wrap;gap:3px;justify-content:center;min-width:250px}
+.chip{padding:3px 6px;border-radius:3px;border:1px solid var(--line);background:transparent;cursor:pointer;font-family:var(--f-display);font-weight:700;font-size:12px;color:var(--dust)}
+.chip.on{background:var(--pc);border-color:var(--pc);color:#081020}
+.rs-actions .ghost{flex:0 0 auto}
+.ghost.danger{color:var(--strike);border-color:rgba(255,90,95,.4)}
+
+/* ---------- account, friends, invites ---------- */
+.acct{position:absolute;right:16px;top:calc(14px + env(safe-area-inset-top,0px));display:flex;align-items:center;gap:8px;z-index:2}
+.acct img,.fr-av{width:30px;height:30px;border-radius:50%;object-fit:cover;background:var(--panel-hi);flex:none}
+.acct .who{font-weight:600;font-size:14px;max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gbtn{display:flex;align-items:center;gap:8px;padding:8px 14px;border-radius:20px;border:1px solid var(--line);background:#fff;color:#1f1f1f;font-weight:600;font-size:14px;cursor:pointer}
+.gbtn svg{width:18px;height:18px}
+.fr-card{width:min(620px,100%);margin:auto}
+.fr-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.fr-sec{display:flex;flex-direction:column;gap:8px;padding:12px;border:1px solid var(--line);border-radius:6px;background:var(--panel-hi)}
+.fr-sec h3{margin:0;font-family:var(--f-display);font-weight:700;letter-spacing:.16em;font-size:13px;color:var(--gold)}
+.fr-code{font-family:var(--f-display);font-weight:800;font-size:32px;letter-spacing:.3em}
+.fr-row{display:flex;align-items:center;gap:10px;min-width:0}
+.fr-row .nm{flex:1;min-width:0;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fr-row .nm small{display:block;font-weight:500;font-size:12px;color:var(--dust)}
+.fr-row input{flex:1;font-family:var(--f-display);font-weight:800;font-size:20px;letter-spacing:.25em;text-transform:uppercase}
+.fr-on{width:9px;height:9px;border-radius:50%;background:#56607a;flex:none}
+.fr-on.live{background:var(--ball);box-shadow:0 0 6px var(--ball)}
+.fr-note{font-size:13px;color:var(--dust);line-height:1.45;margin:0}
+.fr-note.bad{color:var(--strike)}.fr-note.good{color:var(--ball)}
+.fr-mini{padding:6px 10px;font-size:13px}
+#netFriends{display:flex;flex-direction:column;gap:6px;margin-top:8px}
+#toast{position:fixed;left:50%;top:calc(14px + env(safe-area-inset-top,0px));transform:translateX(-50%);z-index:30;display:flex;align-items:center;gap:12px;max-width:calc(100vw - 32px);padding:10px 12px 10px 14px;background:var(--panel-hi);border:1px solid var(--gold);border-radius:6px;box-shadow:0 10px 30px rgba(0,0,0,.5)}
+#toast .t-msg{font-weight:600;font-size:14px;min-width:0}
+
 @media (max-width:860px){
+  .rs-body{grid-template-columns:1fr}
   .menu-wrap{grid-template-columns:1fr}
   .plate{width:200px}
   .ratings b{font-size:16px}
@@ -325,6 +421,7 @@ body.skipping #batterCard,body.skipping #pitcherCard,body.skipping #call,body.sk
   </div>
   <div id="pitchInfo"><b id="piMph">0<small>MPH</small></b><span id="piType">Fastball</span></div>
   <div id="topbar">
+    <span id="netPing" class="hidden"></span>
     <button id="btnMute" title="Sound (M)" aria-label="Toggle sound"><svg viewBox="0 0 24 24"><path id="muteIcon" d="M3 9v6h4l5 5V4L7 9H3zm13.5 3A4.5 4.5 0 0014 8v8a4.5 4.5 0 002.5-4zM14 3.2v2.1a7 7 0 010 13.4v2.1A9 9 0 0014 3.2z"/></svg></button>
     <button id="btnPause" title="Pause (Esc)" aria-label="Pause"><svg viewBox="0 0 24 24"><path d="M6 5h4v14H6zm8 0h4v14h-4z"/></svg></button>
   </div>
@@ -373,6 +470,7 @@ body.skipping #batterCard,body.skipping #pitcherCard,body.skipping #call,body.sk
 </div>
 
 <div id="menu" class="screen hidden">
+  <div class="acct" id="acct"></div>
   <div class="menu-wrap">
     <div>
       <div class="brand">
@@ -387,6 +485,10 @@ body.skipping #batterCard,body.skipping #pitcherCard,body.skipping #call,body.sk
         <button data-mode="derby">Home Run Derby <small>10 outs, swing away</small></button>
         <button data-mode="spectate">CPU vs CPU <small>Sit back and watch</small></button>
       </div>
+      <div class="menu-extra">
+        <button class="ghost" id="btnRosters">Roster Builder<small>Build your own team</small></button>
+        <button class="ghost" id="btnFriends"><span>Friends<span id="frBadge"></span></span><small id="frSub">Sign in to add friends</small></button>
+      </div>
     </div>
     <div class="setup">
       <div id="netPanel" class="hidden">
@@ -394,7 +496,7 @@ body.skipping #batterCard,body.skipping #pitcherCard,body.skipping #call,body.sk
         <div class="net-row" id="netHostRow"><button class="cta" id="btnHost">HOST A GAME</button></div>
         <div class="net-or" id="netOr">or join your friend's game with their room code</div>
         <div class="net-row" id="netJoinRow"><input id="joinCode" maxlength="5" placeholder="CODE" autocomplete="off" spellcheck="false" aria-label="Room code"><button class="ghost" id="btnJoin">Join</button></div>
-        <div id="netShare" class="hidden"><div class="net-or">Send your friend this code</div><div class="net-code" id="netCode"></div><div class="net-row"><button class="ghost" id="btnCopyLink">Copy invite link</button><span class="net-link" id="netLink"></span></div></div>
+        <div id="netShare" class="hidden"><div class="net-or">Send your friend this code</div><div class="net-code" id="netCode"></div><div class="net-row"><button class="ghost" id="btnCopyLink">Copy invite link</button><span class="net-link" id="netLink"></span></div><div id="netFriends"></div></div>
         <div class="net-status" id="netStatus" role="status"></div>
       </div>
       <div class="matchup" id="matchup">
@@ -419,6 +521,27 @@ body.skipping #batterCard,body.skipping #pitcherCard,body.skipping #call,body.sk
     </div>
   </div>
 </div>
+
+<div id="rosterScreen" class="screen modal hidden">
+  <div class="rs-wrap">
+    <div class="rs-head"><h2>ROSTER BUILDER</h2><span class="rs-sync" id="rsSync"></span><button class="cta" id="rsClose">DONE</button></div>
+    <div class="rs-body">
+      <aside class="rs-side">
+        <div id="rsList" class="rs-list"></div>
+        <div class="rs-new"><select id="rsTemplate" aria-label="Start the new roster from"></select><button class="ghost" id="rsNew">+ New roster</button></div>
+      </aside>
+      <section id="rsEdit" class="rs-edit"></section>
+    </div>
+  </div>
+</div>
+
+<div id="friendsScreen" class="screen modal hidden">
+  <div class="card fr-card">
+    <div class="fr-head"><h2>FRIENDS</h2><button class="ghost" id="frClose">Close</button></div>
+    <div id="frBody" class="stack"></div>
+  </div>
+</div>
+<div id="toast" class="hidden" role="status"></div>
 
 <div id="pause" class="screen modal hidden">
   <div class="card">
@@ -699,15 +822,20 @@ function genTeam(def, idx) {
     p.pitches = ars.map((t) => ({ type: t, velo: p.velo + PITCH_TYPES[t].d + Math.round(g() * 1.2), brk: clamp(0.88 + r() * 0.3 + (def.pit - 76) * 0.01, 0.78, 1.3) }));
     team.pitchers.push(p);
   }
+  team.ovr = teamOvr(team);
+  return team;
+}
+function teamOvr(team) {
   const avg = (arr, f) => Math.round(arr.reduce((s, x) => s + f(x), 0) / arr.length);
-  team.ovr = {
+  return {
     bat: avg(team.hitters, (h) => (h.con + h.pow + h.eye) / 3),
     pit: avg(team.pitchers, (p) => p.ctl * 0.6 + (p.velo - 85) * 2.2),
     def: avg(team.hitters.filter((h) => h.pos !== 'DH'), (h) => (h.fld + h.arm) / 2),
   };
-  return team;
 }
+// built-in teams; custom rosters are added in 66-roster.js. team.key names a team in menus and online.
 const TEAMS = TEAM_DEFS.map(genTeam);
+for (const t of TEAMS) { t.key = t.id; t.ver = ''; }
 
 // pitchScale: slows pitch flight; pci: PCI size; win: timing windows (perfect, good, contact) in seconds;
 // assist: how far the PCI is pulled toward the pitch on a swing; guide: show where the pitch will cross
@@ -2079,26 +2207,16 @@ class Play {
     else if (r.isBatter && r.base === 0) r.userTarget = 1;   // the batter can't go back home
     else { r.rev = true; r.v = Math.min(r.v, 6); r.userTarget = r.base; }
   }
-  // the runner standing on, or running to, base b (1-3, 4 = home)
-  runnerFor(b) {
-    let best = null, bd = 1e9;
-    for (const r of this.R) {
-      if (r.state === 'base' && r.base === b && r.base < 4) return r;
-      if (r.state !== 'run' || heading(r) !== b) continue;
-      const rem = r.rev ? r.d : 90 - r.d;
-      if (rem < bd) { bd = rem; best = r; }
-    }
-    return best;
-  }
   // where each runner is headed right now, for the baserunning HUD
   runnerInfo() {
     const out = [];
     for (const r of this.R) {
       if (r.state !== 'run' && r.state !== 'base') continue;
-      const key = r.state === 'base' ? r.base : heading(r);
       const forcedOff = r.forced && r.state === 'base' && r.base === r.start && !this.caught;
       let to = r.userTarget;
       if (to == null || forcedOff) to = r.state === 'base' ? (forcedOff ? r.base + 1 : r.base) : heading(r);
+      // key: the base he's running to, or standing on (a runner about to leave already counts as going)
+      const key = r.state === 'base' ? (to > r.base ? Math.min(4, r.base + 1) : r.base) : heading(r);
       out.push({ id: r.pl.id, key, to, from: r.state === 'base' ? r.base : r.rev ? r.next : r.base, run: r.state === 'run', rev: r.rev, user: r.userTarget != null, forced: r.forced && !this.caught, bat: r.isBatter, m: r.m });
     }
     return out;
@@ -2225,6 +2343,8 @@ class Play {
   }
   // human-steered movement: the stick sets direction and effort, the field edges hold you in
   manualMove(f, dt, withBall = false) {
+    const rp = this.remotePos;
+    if (rp && f.m.key === rp.key) { this.followRemote(f, rp); return; }
     const mag = Math.min(1, Math.hypot(this.inp.x, this.inp.z));
     if (mag > 0.15) {
       const dx = this.inp.x / mag, dz = this.inp.z / mag;
@@ -2241,6 +2361,17 @@ class Play {
         f.anim(s && !s.b && s.y > 3 && Math.hypot(s.x - f.pos.x, s.z - f.pos.z) < 30 ? 'catchHigh' : 'ready');
       } else f.anim('ready');
     }
+  }
+  // an online guest steers this fielder on their own screen: take their position (within reason)
+  followRemote(f, rp) {
+    let dx = rp.x - f.pos.x, dz = rp.z - f.pos.z;
+    const d = Math.hypot(dx, dz);
+    if (d > 30) { dx *= 30 / d; dz *= 30 / d; }
+    const nx = f.pos.x + dx, nz = f.pos.z + dz;
+    if (inPoly(nx, nz) || Math.hypot(nx, nz) < Math.hypot(f.pos.x, f.pos.z)) { f.pos.x = nx; f.pos.z = nz; }
+    f.yaw = rp.ry; f.v = rp.v;
+    f.m.phase += Math.hypot(dx, dz) * 0.42;
+    f.anim(rp.v > 9 ? 'run' : rp.v > 0.5 ? 'jog' : 'ready');
   }
   tryHumanCatch(f) {
     if (this.ball.mode !== 'flight' || this.dead) return;
@@ -2703,7 +2834,8 @@ function kitFor(team, home) {
 }
 function getModel(pl, kind) {
   const home = G.teams[1] === pl.team;
-  const key = pl.id + (home ? 'H' : 'A') + (kind || '');
+  // a custom roster can change between games (new number, new look), so its version is part of the key
+  const key = pl.id + (home ? 'H' : 'A') + (kind || '') + (pl.team.ver || '');
   if (modelOf.has(key)) return modelOf.get(key);
   const m = makePlayer({ ...kitFor(pl.team, home), skin: pl.skin, num: pl.num, lefty: pl.throws === 'L', kind });
   m.pl = pl; m.key = `${pl.id}|${home ? 'H' : 'A'}|${kind || ''}`;
@@ -2786,7 +2918,10 @@ function batGeom(x, y) {
 function startGame(cfg) {
   G.cfg = cfg;
   G.mode = cfg.mode; G.diff = DIFFS[cfg.diff ?? 1]; G.innings = cfg.innings || 3;
-  G.teams = cfg.mode === 'derby' ? [TEAMS[cfg.home], TEAMS[cfg.away]] : [TEAMS[cfg.away], TEAMS[cfg.home]];
+  // cfg.teams = [away, home] as team specs (built-in key or a whole custom roster)
+  const specs = distinctSpecs(...(cfg.teams || [{ b: TEAMS[cfg.away || 0].key }, { b: TEAMS[cfg.home ?? 3].key }]));
+  const away = teamFromSpec(specs[0]), home = teamFromSpec(specs[1]);
+  G.teams = cfg.mode === 'derby' ? [home, away] : [away, home];
   G.lock = null;
   if (cfg.mode === 'exhibition' || cfg.mode === 'lock') { G.ctrl = ['cpu', 'cpu']; G.ctrl[cfg.side] = 'local'; }
   else if (cfg.mode === 'derby') G.ctrl = ['local', 'cpu'];
@@ -3395,6 +3530,7 @@ function launch(ev, la, spray, origin, q, byUser) {
   pci.visible = false; zoneGroup.visible = false; pitchMark.visible = false; pitchGuide.visible = false; reticle.visible = false;
   $('meter').classList.add('hidden');
   const bb = simBatted(origin, ev, la, spray);
+  netBBOut(origin, ev, la, spray);
   G.bb = bb; G.contactT = G.now; G.byUser = byUser; FL.mode = 'track';
   ballMesh.visible = true;
   hudPitchInfo();
@@ -3542,18 +3678,20 @@ function endGame(walkoff) {
     if (p && p.outs) { const ps = p.outs / 3 + p.k * 0.6 - p.r * 1.5 - p.h * 0.3; if (ps > sc) { sc = ps; line = `${Math.floor(p.outs / 3)}.${p.outs % 3} IP, ${p.k} K, ${p.r} R`; } }
     if (sc > bestScore) { bestScore = sc; best = { pl, line }; }
   }
-  $('potg').innerHTML = best ? `<div><span>PLAYER OF THE GAME</span><br><b>${best.pl.name}</b><br><span>${best.line}</span></div>` : '';
+  G.potg = best ? { name: best.pl.name, line: best.line } : null;
+  $('potg').innerHTML = G.potg ? potgHTML(G.potg) : '';
   Caster.line(walkoff ? `And the ${h.name} walk it off! What a finish!` : `That's the ballgame. ${$('finalSub').textContent}`);
   setPhase('final');
   setTimeout(() => { if (G.phase === 'final') showScreen('final'); }, walkoff ? 3200 : 1500);
 }
+function potgHTML(b) { return `<div><span>PLAYER OF THE GAME</span><br><b>${esc(b.name)}</b><br><span>${esc(b.line)}</span></div>`; }
 function linescoreHTML() {
   const n = Math.max(G.innings, G.inning);
   let h = '<tr><th></th>';
   for (let i = 1; i <= n; i++) h += `<th>${i}</th>`;
   h += '<th>R</th><th>H</th><th>E</th></tr>';
   for (let t = 0; t < 2; t++) {
-    h += `<tr><td>${G.teams[t].id}</td>`;
+    h += `<tr><td>${esc(G.teams[t].id)}</td>`;
     for (let i = 0; i < n; i++) {
       const v = G.line[t][i];
       const blank = v == null && (t === 1 && i === n - 1 && (G.phase === 'final' || G.score[1] > G.score[0]) ? 'x' : '');
@@ -3597,7 +3735,7 @@ function endDerbyResult() {
   const D = G.derby;
   if (D.outs <= 0) {
     $('finalTitle').textContent = 'DERBY COMPLETE';
-    $('finalLS').innerHTML = `<tr><th>HOME RUNS</th><th>LONGEST</th><th>BATTER</th></tr><tr><td style="text-align:center">${D.hr}</td><td>${D.longest ? D.longest + ' FT' : '–'}</td><td>${D.batter.name}</td></tr>`;
+    $('finalLS').innerHTML = `<tr><th>HOME RUNS</th><th>LONGEST</th><th>BATTER</th></tr><tr><td style="text-align:center">${D.hr}</td><td>${D.longest ? D.longest + ' FT' : '–'}</td><td>${esc(D.batter.name)}</td></tr>`;
     $('potg').innerHTML = `<div><span>FINAL TALLY</span><br><b>${D.hr} home run${D.hr === 1 ? '' : 's'}</b></div>`;
     $('finalSub').textContent = D.hr >= 10 ? 'An all-time round. The crowd is on its feet.' : D.hr >= 5 ? 'A strong showing at the plate.' : 'Tough round. Try timing the pitch a touch earlier.';
     Caster.line(`That's the round. ${D.batter.name} finishes with ${D.hr} home run${D.hr === 1 ? '' : 's'}.`);
@@ -3608,18 +3746,35 @@ function endDerbyResult() {
   enterPrePitch();
 }
 // ============================================================================
-// Online 1v1 over WebRTC (PeerJS). The host runs the whole simulation and
-// streams snapshots. The guest renders them, but times its own swings and
-// pitches on its own clock (so lag never costs a hitter) and sends inputs back.
+// Online 1v1 over WebRTC (PeerJS). The host runs the whole simulation and the
+// guest renders it. What keeps the guest's side feeling local:
+//  - snapshots go 60 times a second over a second, unreliable and unordered
+//    data channel, so a lost packet never holds up the ones behind it
+//  - the guest syncs its clock to the host's and pushes every player forward
+//    to "now" instead of drawing where he was half a round trip ago
+//  - the batted ball and throws are simulated on the guest from their launch
+//    numbers, so the ball flies smoothly at full frame rate
+//  - the fielder the guest steers moves on the guest's screen right away; the
+//    host takes the guest's position for him
+//  - swings and pitches are timed on the guest's own clock, so lag never costs a hitter
 // ============================================================================
 
-const NET = { role: null, peer: null, conn: null, code: null, open: false, dirty: false, lastSnap: 0, lastIn: 0, sentIn: '', lobby: null, snap: null, crackT: -9, mcache: new Map(), lastAbLen: 0, remoteInAt: 0 };
+const NET = {
+  role: null, peer: null, conn: null, fast: null, fastOK: false, hiT: 0, code: null, open: false, peerOpen: false, dirty: false,
+  lastSnap: 0, seq: 0, lastSeq: -1, inSeq: 0, lastInSeq: -1, lastIn: 0, sentIn: '', lobby: null, lobbySent: '', snap: null, crackT: -9,
+  mcache: new Map(), lastAbLen: 0, remoteInAt: 0, off: 0, rtt: 0, pings: [], pingT: 0, guestSpec: null,
+  pid: 0, bb: null, ball: null, pclock: { pid: -1, t: 0 }, pred: { m: null, key: null, on: false, v: 0, lastIn: -9, hold: 0 },
+  invited: null, pendingInvite: null,
+};
 const PEER_PREFIX = 'fullcount26-';
 const CODE_CHARS = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+const FAST_CHANNEL_ID = 77;
 const r2 = (x) => Math.round(x * 100) / 100;
 const r3 = (x) => Math.round(x * 1000) / 1000;
 const isHost = () => NET.role === 'host' && NET.open && G.mode === 'online';
 const isGuest = () => NET.role === 'guest' && G.mode === 'online';
+// the host's performance.now(), as best the guest can tell
+const hostNow = () => performance.now() + NET.off;
 
 // ------------------------------------------------------------ connection ----
 function netStatus(text, cls = '') { const el = $('netStatus'); el.textContent = text; el.className = 'net-status ' + cls; }
@@ -3634,16 +3789,19 @@ function netErrText(e) {
 }
 function netHost() {
   if (!netReady()) { netStatus('Online play did not load. Check your internet connection and refresh the page.', 'bad'); return; }
+  const pending = NET.pendingInvite;
   netClose();
-  NET.role = 'host';
+  NET.role = 'host'; NET.pendingInvite = pending;
   const code = Array.from({ length: 5 }, () => CODE_CHARS[(Math.random() * CODE_CHARS.length) | 0]).join('');
   NET.code = code;
   netStatus('Opening a room…');
   const peer = (NET.peer = new Peer(PEER_PREFIX + code));
   peer.on('open', () => {
+    if (NET.peer !== peer) return;
+    NET.peerOpen = true;
     $('netCode').textContent = code; $('netLink').textContent = inviteLink(code);
     netStatus('Room open. Waiting for your friend to join…');
-    renderMenu();
+    renderMenu(); cloudRender(); netRoomOpened();
   });
   peer.on('connection', (conn) => {
     if (NET.conn && NET.open) { conn.on('open', () => { conn.send({ t: 'full' }); setTimeout(() => conn.close(), 400); }); return; }
@@ -3671,37 +3829,77 @@ function netJoin(raw) {
 function netBind(conn) {
   NET.conn = conn;
   conn.on('open', () => {
-    NET.open = true;
-    if (NET.role === 'host') { netStatus('Your friend is here! Pick the matchup and press Start.', 'good'); netSendLobby(); }
-    else { conn.send({ t: 'hello' }); netStatus('Connected! Waiting for the host to start the game…', 'good'); }
-    renderMenu();
+    if (NET.conn !== conn) return;
+    NET.open = true; NET.lastInSeq = -1; NET.lastSeq = -1; NET.pings = []; NET.rtt = 0; NET.lobbySent = '';
+    netFastOpen(conn);
+    if (NET.role === 'host') { netStatus('Your friend is here! Pick your team and press Start.', 'good'); netSendLobby(); }
+    else { conn.send({ t: 'hello' }); netStatus('Connected! Pick your team. The host starts the game.', 'good'); }
+    renderMenu(); cloudRender();
   });
   conn.on('data', netOnMsg);
   conn.on('close', netLost);
   conn.on('error', netLost);
 }
+// A second channel for snapshots and inputs: unordered with no retransmits, so it
+// behaves like UDP. Both sides create it with the same id (no renegotiation needed).
+// Until a message arrives on it, everything still goes over the reliable channel.
+function netFastOpen(conn) {
+  NET.fast = null; NET.fastOK = false;
+  try {
+    const dc = conn.peerConnection.createDataChannel('fc-fast', { negotiated: true, id: FAST_CHANNEL_ID, ordered: false, maxRetransmits: 0 });
+    dc.onmessage = (e) => {
+      if (NET.fast !== dc) return;
+      NET.fastOK = true;
+      let m; try { m = JSON.parse(e.data); } catch (err) { return; }
+      netOnMsg(m);
+    };
+    NET.fast = dc;
+  } catch (e) { NET.fast = null; }
+}
 function netLost() {
   if (!NET.open) return;
-  NET.open = false; NET.conn = null;
+  NET.open = false; NET.conn = null; NET.fast = null; NET.fastOK = false;
   if (G.mode === 'online') {
     G.paused = false; $('pause').classList.add('hidden');
     hudBanner('DISCONNECTED', 'Your opponent left the game', '');
     setTimeout(() => { if (G.mode === 'online') toMenu(); }, 3500);
   }
   netStatus('The connection closed. Host or join again to play.', 'bad');
-  renderMenu();
+  renderMenu(); cloudRender();
 }
 function netClose() {
-  const { conn, peer } = NET;
-  Object.assign(NET, { role: null, peer: null, conn: null, open: false, code: null, lobby: null, snap: null });
+  const { conn, peer, fast } = NET;
+  Object.assign(NET, { role: null, peer: null, conn: null, fast: null, fastOK: false, open: false, peerOpen: false, code: null, lobby: null, lobbySent: '', blockShown: '', snap: null, guestSpec: null, bb: null, ball: null, invited: null, pendingInvite: null });
+  try { if (fast) fast.close(); } catch (e) { /* ignore */ }
   try { if (conn) conn.close(); } catch (e) { /* ignore */ }
   try { if (peer) peer.destroy(); } catch (e) { /* ignore */ }
 }
 function netSend(m) { if (NET.open && NET.conn) try { NET.conn.send(m); } catch (e) { /* channel closing */ } }
-function netSendLobby() { if (NET.role === 'host' && NET.open) netSend({ t: 'lobby', away: menu.away, home: menu.home, side: menu.side, innings: menu.innings, diff: menu.diff, ump: menu.ump }); }
+// latest-wins traffic (snapshots, stick input, pings): the fast channel when it works
+function netSendFast(m) {
+  const dc = NET.fast;
+  if (NET.fastOK && dc && dc.readyState === 'open' && dc.bufferedAmount < 65536) { try { dc.send(JSON.stringify(m)); return; } catch (e) { /* fall back */ } }
+  netSend(m);
+}
+// ---------------------------------------------------------------- lobby ----
+// Each player picks his own team (built-in or one of his custom rosters).
+// Custom rosters travel as data, so your friend doesn't need them saved.
+function netSendLobby() {
+  if (NET.role !== 'host' || !NET.open) return;
+  const m = { t: 'lobby', side: menu.side, innings: menu.innings, diff: menu.diff, ump: menu.ump, hostSpec: teamSpec(menuTeam(menu.side ? 'home' : 'away')) };
+  const s = JSON.stringify(m);
+  if (s !== NET.lobbySent) { NET.lobbySent = s; netSend(m); }
+}
+function netSendPick() { if (NET.role === 'guest' && NET.open) netSend({ t: 'pick', spec: teamSpec(menuTeam('netTeam')) }); }
+function specOK(s) {
+  if (!s || typeof s !== 'object') return null;
+  if (s.c) { const c = cleanRoster(s.c); return c ? { c } : null; }
+  return TEAMS.some((t) => t.key === s.b) ? { b: s.b } : null;
+}
 function hostStartOnline() {
-  if (!(NET.role === 'host' && NET.open)) return;
-  const cfg = { mode: 'online', away: menu.away, home: menu.home, side: menu.side, innings: menu.innings, diff: menu.diff, manual: 1, ump: menu.ump };
+  if (!(NET.role === 'host' && NET.open) || onlineBlock()) return;
+  const P = onlinePicks();
+  const cfg = { mode: 'online', teams: distinctSpecs(teamSpec(P.teams[0]), teamSpec(P.teams[1])), side: menu.side, innings: menu.innings, diff: menu.diff, manual: 1, ump: menu.ump };
   netSend({ t: 'start', cfg });
   startGame(cfg);
 }
@@ -3709,11 +3907,30 @@ function hostStartOnline() {
 // ------------------------------------------------------------- messages ----
 function netOnMsg(m) {
   if (!m || typeof m !== 'object') return;
+  if (m.t === 'hi') return;
+  if (m.t === 'ping') { netSendFast({ t: 'pong', c: m.c, h: performance.now() }); return; }
+  if (m.t === 'pong') { netPong(m); return; }
   if (NET.role === 'host') hostOnMsg(m); else guestOnMsg(m);
 }
+// round trip time, and (for the guest) the offset from our clock to the host's
+function netPong(m) {
+  const now = performance.now(), rtt = now - m.c;
+  if (!(rtt >= 0 && rtt < 5000) || !Number.isFinite(+m.h)) return;
+  NET.pings.push({ rtt, off: +m.h + rtt / 2 - now });
+  if (NET.pings.length > 12) NET.pings.shift();
+  NET.off = NET.pings.reduce((a, b) => (b.rtt < a.rtt ? b : a)).off;   // the fastest exchange is the most trustworthy
+  NET.rtt = NET.rtt ? NET.rtt * 0.8 + rtt * 0.2 : rtt;
+}
 function hostOnMsg(m) {
-  if (m.t === 'hello') { netSendLobby(); return; }
-  if (m.t === 'in') { G.remoteIn.x = clamp(+m.x || 0, -1, 1); G.remoteIn.z = clamp(+m.z || 0, -1, 1); NET.remoteInAt = performance.now(); return; }
+  if (m.t === 'hello') { NET.lobbySent = ''; netSendLobby(); return; }
+  if (m.t === 'pick') { NET.guestSpec = specOK(m.spec); renderMenu(); return; }
+  if (m.t === 'in') {
+    if (typeof m.q === 'number') { if (m.q <= NET.lastInSeq) return; NET.lastInSeq = m.q; }
+    G.remoteIn.x = clamp(+m.x || 0, -1, 1); G.remoteIn.z = clamp(+m.z || 0, -1, 1); NET.remoteInAt = performance.now();
+    G.remotePos = typeof m.k === 'string' && Number.isFinite(+m.px) && Number.isFinite(+m.pz)
+      ? { key: m.k, x: +m.px, z: +m.pz, ry: +m.ry || 0, v: clamp(+m.v || 0, 0, 40), at: performance.now() } : null;
+    return;
+  }
   if (m.t !== 'act' || G.mode !== 'online') return;
   const pl = G.play;
   switch (m.a) {
@@ -3733,15 +3950,17 @@ function hostOnMsg(m) {
   }
 }
 function hostRestart() { netSend({ t: 'start', cfg: G.cfg }); showScreen(null); startGame(G.cfg); }
+const NET_SOUNDS = new Set(['crack', 'pop', 'thud', 'roar', 'charge', 'stretch', 'fanfare', 'say']);
 function guestOnMsg(m) {
   switch (m.t) {
-    case 'lobby': NET.lobby = m; renderMenu(); break;
+    case 'lobby': { const first = !NET.lobby; NET.lobby = { ...m, hostSpec: specOK(m.hostSpec) }; if (first) netSendPick(); renderMenu(); break; }
     case 'full': netStatus('That game already has two players.', 'bad'); netClose(); renderMenu(); break;
-    case 'start': showScreen(null); startGame({ ...m.cfg, guest: true }); break;
+    case 'start': if (m.cfg && typeof m.cfg === 'object') { showScreen(null); startGame({ ...m.cfg, teams: (m.cfg.teams || []).map((s) => specOK(s) || { b: TEAMS[0].key }), guest: true }); } break;
     case 'gs': if (G.mode === 'online') netApplyGS(m); break;
     case 's': if (G.mode === 'online') netApplySnap(m); break;
     case 'pitch': if (G.mode === 'online') guestPitch(m); break;
-    case 'ev': if (G.mode === 'online') guestEv(m.f, m.a || []); break;
+    case 'bb': if (G.mode === 'online') guestBB(m); break;
+    case 'ev': if (G.mode === 'online') guestEv(m.f, Array.isArray(m.a) ? m.a : []); break;
     case 'screen': if (G.mode === 'online') guestScreen(m); break;
     case 'pause': G.paused = !!m.v; $('pause').classList.toggle('hidden', !G.paused); break;
   }
@@ -3760,18 +3979,20 @@ function netInstallHooks() {
   { const o = absReveal; absReveal = (...a) => { o(...a); netEv('absReveal', a); }; }
   { const o = hudPitchInfo; hudPitchInfo = (info) => { const i = info || (G.P && { mph: G.P.mph, type: G.P.type }); o(i); netEv('pinfo', [i]); }; }
   { const o = Caster.line.bind(Caster); Caster.line = (...a) => { o(...a); netEv('cast', a); }; }
-  for (const k of ['crack', 'pop', 'thud', 'roar', 'charge', 'stretch', 'fanfare', 'say']) { const o = SND[k].bind(SND); SND[k] = (...a) => { o(...a); netEv('snd', [k, ...a]); }; }
+  for (const k of NET_SOUNDS) { const o = SND[k].bind(SND); SND[k] = (...a) => { o(...a); netEv('snd', [k, ...a]); }; }
   { const o = hudScore; hudScore = (...a) => { o(...a); NET.dirty = true; }; }
   { const o = hudCount; hudCount = (...a) => { o(...a); NET.dirty = true; }; }
   { const o = hudBatter; hudBatter = (...a) => { o(...a); NET.dirty = true; }; }
   { const o = hudPitcher; hudPitcher = (...a) => { o(...a); NET.dirty = true; }; }
   { const o = drawTracker; drawTracker = (...a) => { o(...a); NET.dirty = true; }; }
   { const o = drawBoards; drawBoards = (...a) => { o(...a); NET.dirty = true; }; }
-  { const o = showScreen; showScreen = (id) => { o(id); if (isHost()) netSend({ t: 'screen', id, html: screenHTML(id) }); }; }
+  // break and final cards: send the words, the guest builds the cards itself (never raw HTML)
+  { const o = showScreen; showScreen = (id) => { o(id); if (isHost()) { netSend(netGS()); NET.dirty = false; netSend({ t: 'screen', id, d: screenData(id) }); } }; }
 }
-function screenHTML(id) {
-  const ids = id === 'breakCard' ? ['breakTitle', 'breakLS', 'breakSub'] : id === 'final' ? ['finalTitle', 'finalLS', 'potg', 'finalSub'] : [];
-  return Object.fromEntries(ids.map((k) => [k, $(k).innerHTML]));
+function screenData(id) {
+  if (id === 'breakCard') return { title: $('breakTitle').textContent, sub: $('breakSub').textContent };
+  if (id === 'final') return { title: $('finalTitle').textContent, sub: $('finalSub').textContent, potg: G.potg || null };
+  return null;
 }
 function netGS() {
   return {
@@ -3790,53 +4011,83 @@ function netSnapshot() {
     const p = md.root.position;
     let prm = md.prm;
     if (prm && prm.glove) prm = { glove: [r2(prm.glove.x), r2(prm.glove.y), r2(prm.glove.z)] };
-    m.push([md.key, r2(p.x), r2(p.y), r2(p.z), r3(md.root.rotation.y), md.anim, r3(G.now - md.t0), prm, r2(md.phase), md.fielding ? 1 : 0, md.j.helmet.visible ? 1 : 0, md.batsL ? 1 : 0]);
+    m.push([md.key, r2(p.x), r2(p.y), r2(p.z), r3(md.root.rotation.y), md.anim, r3(G.now - md.t0), prm, md.fielding ? 1 : 0, md.j.helmet.visible ? 1 : 0, md.batsL ? 1 : 0]);
   }
   const b = ballMesh.position, pl = G.play, remoteField = fieldCtrl() === 'remote';
-  return {
-    t: 's', ph: G.phase, dur: G.dur, b: [r2(b.x), r2(b.y), r2(b.z), ballMesh.visible ? 1 : 0], m,
-    f: G.camFocus ? G.camFocus.map(r2) : null,
-    pl: pl && G.phase === 'live' ? {
-      prompt: pl.prompt && pl.userDef && remoteField ? 1 : 0, uf: remoteField && pl.uf ? pl.uf.m.key : null, land: remoteField ? pl.landingSpot() : null, hr: pl.hr || pl.awarded ? 1 : 0,
+  const s = { t: 's', q: ++NET.seq, ts: r2(performance.now()), ph: G.phase, dur: G.dur, b: [r2(b.x), r2(b.y), r2(b.z), ballMesh.visible ? 1 : 0], m, f: G.camFocus ? G.camFocus.map(r2) : null };
+  if (pl && G.phase === 'live') {
+    const B = pl.ball, th = B.thr;
+    s.pl = {
+      pid: NET.pid, pt: r3(pl.t), prompt: pl.prompt && pl.userDef && remoteField ? 1 : 0, uf: remoteField && pl.uf ? pl.uf.m.key : null,
+      land: remoteField ? pl.landingSpot() : null, hr: pl.hr || pl.awarded ? 1 : 0,
+      // where the ball is, as something the guest can compute for itself every frame
+      bm: B.mode === 'flight' ? 'f' : B.mode === 'held' && B.holder ? ['h', B.holder.m.key]
+        : B.mode === 'throw' && th ? ['t', th.from.toArray().map(r2), th.to.toArray().map(r2), r3(th.t0), r3(th.T), r2(th.arc)] : null,
       run: runCtrl() === 'remote' ? pl.runnerInfo().map((r) => [r.id, r.key, r.to, r.from, r.run ? 1 : 0, r.rev ? 1 : 0, r.user ? 1 : 0, r.m.key]) : null,
-    } : null,
-  };
+    };
+  }
+  return s;
 }
 function netPitchOut() {
   if (!isHost()) return;
   const P = G.P;
   netSend({ t: 'pitch', rel: [P.rel.x, P.rel.y, P.rel.z], v0: [P.v0.x, P.v0.y, P.v0.z], a: [P.a.x, P.a.y, P.a.z], T: P.T, mph: P.mph, type: P.type, tc: G.tc, tPlate: G.tPlate, tCatch: G.tCatch, cross: G.cross, isStrike: G.isStrike });
 }
+// a ball was put in play: the guest runs the same flight model, so only the launch travels
+function netBBOut(origin, ev, la, spray) {
+  if (!isHost()) return;
+  NET.pid++;
+  netSend({ t: 'bb', pid: NET.pid, o: [origin.x, origin.y, origin.z], ev, la, spray });
+}
 function netTick() {
+  if (!NET.open) return;
+  const now = performance.now();
+  // say hi on the fast channel until the other side hears us
+  if (NET.fast && !NET.fastOK && NET.fast.readyState === 'open' && now - NET.hiT > 250) { NET.hiT = now; try { NET.fast.send('{"t":"hi"}'); } catch (e) { /* not ready */ } }
+  if (now - NET.pingT > (NET.pings.length < 6 ? 250 : 2000)) { NET.pingT = now; netSendFast({ t: 'ping', c: now }); }
+  pingHUD();
   if (!isHost()) return;
   if (NET.dirty) { NET.dirty = false; netSend(netGS()); }
-  const now = performance.now();
-  if (now - NET.lastSnap >= 33) { NET.lastSnap = now; netSend(netSnapshot()); }
-  if (now - NET.remoteInAt > 500) { G.remoteIn.x = 0; G.remoteIn.z = 0; }
+  const busy = G.phase === 'live' || G.phase === 'pitch' || G.phase === 'windup' || G.phase === 'postPlay';
+  if (now - NET.lastSnap >= (busy ? 14 : 50)) { NET.lastSnap = now; netSendFast(netSnapshot()); }
+  if (now - NET.remoteInAt > 500) { G.remoteIn.x = 0; G.remoteIn.z = 0; G.remotePos = null; }
+}
+function pingHUD() {
+  const el = $('netPing'), show = G.mode === 'online' && NET.open && NET.rtt > 0;
+  el.classList.toggle('hidden', !show);
+  if (!show || performance.now() - (pingHUD.t || 0) < 1000) return;
+  pingHUD.t = performance.now();
+  const ms = Math.round(NET.rtt);
+  el.textContent = `${ms} ms`;
+  el.className = ms < 80 ? 'good' : ms < 160 ? 'ok' : 'bad';
+  el.title = `Round trip to your opponent${NET.fastOK ? '' : ' (fast channel not available, using the reliable one)'}`;
 }
 
 // ------------------------------------------------------------ guest side ----
 function guestStart() {
   setPhase('wait');
   G.fielders = []; G.fByRole = {}; G.swing = null; G.P = null; G.localPitch = false; G.lastP = null; G.batter = null;
-  NET.lastAbLen = 0; NET.snap = null;
+  Object.assign(NET, { lastAbLen: 0, snap: null, lastSeq: -1, bb: null, ball: null, pclock: { pid: -1, t: 0 } });
+  NET.pred = { m: null, key: null, on: false, v: 0, lastIn: -9, hold: 0 };
+  NET.mcache.clear();
   for (const m of MODELS) { m.root.visible = false; m.net = null; }
   wideCam(true);
   setHint('Joining the game&hellip;');
   drawBoards();
 }
 function modelByKey(key) {
-  if (/^U\d$/.test(key)) return G.umps[+key[1]];
+  if (typeof key !== 'string') return null;
+  if (/^U\d$/.test(key)) return G.umps[+key[1]] || null;
   if (NET.mcache.has(key)) return NET.mcache.get(key);
   const [id, , kind] = key.split('|');
-  const pl = PBYID[id]; if (!pl) return null;
-  const m = getModel(pl, kind || undefined);
+  const pl = PBYID[id]; if (!pl || !G.teams || !G.teams.includes(pl.team)) return null;
+  const m = getModel(pl, kind === 'catcher' ? 'catcher' : undefined);
   NET.mcache.set(key, m);
   return m;
 }
 function netPrm(m, prm) {
-  if (prm && Array.isArray(prm.glove)) { m.gv = m.gv || new V3(); m.gv.set(prm.glove[0], prm.glove[1], prm.glove[2]); return { glove: m.gv }; }
-  return prm;
+  if (prm && Array.isArray(prm.glove)) { m.gv = m.gv || new V3(); m.gv.set(+prm.glove[0] || 0, +prm.glove[1] || 0, +prm.glove[2] || 0); return { glove: m.gv }; }
+  return prm && typeof prm === 'object' ? prm : null;
 }
 function netApplyGS(s) {
   Object.assign(G, { inning: s.inning, half: s.half, outs: s.outs, balls: s.balls, strikes: s.strikes, score: s.score, line: s.line, hits: s.hits, errs: s.errs, order: s.order, pen: s.pen, batSide: s.batSide, abPitches: s.abPitches || [], lastP: s.lastP });
@@ -3862,23 +4113,52 @@ function netApplyGS(s) {
   }
 }
 function netApplySnap(s) {
+  if (typeof s.q === 'number') { if (s.q <= NET.lastSeq) return; NET.lastSeq = s.q; }   // late and out of order: a newer one already arrived
+  const ts = +s.ts || hostNow(), age = clamp((hostNow() - ts) / 1000, 0, 0.25);
   NET.snap = s;
   if (s.ph !== G.phase) guestPhase(s.ph);
   G.dur = s.dur; G.camFocus = s.f;
-  const seen = new Set();
+  const seen = new Set(), P = NET.pred;
   const freezeBatter = !!G.swing && (G.localPitch || G.phase === 'pitch' || G.phase === 'windup');
   for (const e of s.m) {
     const m = modelByKey(e[0]); if (!m) continue;
     seen.add(m);
-    if (!m.root.visible || !m.net) { m.net = m.net || { p: new V3(), ry: 0 }; m.netSnap = true; }
+    let n = m.net;
+    if (!n || !m.root.visible) n = m.net = { x: e[1], y: e[2], z: e[3], vx: 0, vz: 0, ry: e[4], ts, snap: true };
+    else {
+      const dts = (ts - n.ts) / 1000, dx = e[1] - n.x, dz = e[3] - n.z;
+      if (Math.hypot(dx, dz) > 14) { n.vx = 0; n.vz = 0; n.snap = true; }   // teleported: new batter, new pitch
+      else if (dts > 0.004 && dts < 0.3) {
+        let vx = dx / dts, vz = dz / dts; const sp = Math.hypot(vx, vz);
+        if (sp > 40) { vx *= 40 / sp; vz *= 40 / sp; }
+        n.vx = lerp(n.vx, vx, 0.6); n.vz = lerp(n.vz, vz, 0.6);
+      }
+      n.x = e[1]; n.y = e[2]; n.z = e[3]; n.ry = e[4]; n.ts = ts;
+    }
+    n.anim = e[5];
     m.root.visible = true;
-    m.net.p.set(e[1], e[2], e[3]); m.net.ry = e[4];
-    if (!(freezeBatter && m === G.batterModel)) { m.anim = e[5]; m.t0 = G.now - e[6]; m.prm = netPrm(m, e[7]); m.phase = e[8]; }
-    m.fielding = !!e[9]; m.batsL = !!e[11];
-    if (m.kind === 'player') setHelmet(m, !!e[10]);
+    const mine = (freezeBatter && m === G.batterModel) || (P.on && m === P.m);
+    if (!mine) {
+      // animation clock: where the host's is now, not when this was sent
+      const at = e[6] + age;
+      if (m.anim !== e[5] || Math.abs(G.now - m.t0 - at) > 0.08) { m.anim = e[5]; m.t0 = G.now - at; }
+      m.prm = netPrm(m, e[7]);
+    }
+    m.fielding = !!e[8]; m.batsL = !!e[10];
+    if (m.kind === 'player') setHelmet(m, !!e[9]);
   }
-  for (const m of MODELS) if (m.root.visible && !seen.has(m)) m.root.visible = false;
-  if (!G.localPitch) { ballMesh.position.set(s.b[0], s.b[1], s.b[2]); ballMesh.visible = !!s.b[3]; }
+  for (const m of MODELS) if (m.root.visible && !seen.has(m)) { m.root.visible = false; m.net = null; }
+  // the ball outside of live play: where the host had it, with a velocity to push it to "now"
+  const b = s.b, nb = NET.ball;
+  if (nb && Math.hypot(b[0] - nb.x, b[1] - nb.y, b[2] - nb.z) < 20 && ts > nb.ts) {
+    const dts = Math.max(0.005, (ts - nb.ts) / 1000);
+    NET.ball = { x: b[0], y: b[1], z: b[2], vx: (b[0] - nb.x) / dts, vy: (b[1] - nb.y) / dts, vz: (b[2] - nb.z) / dts, ts, vis: !!b[3] };
+  } else NET.ball = { x: b[0], y: b[1], z: b[2], vx: 0, vy: 0, vz: 0, ts, vis: !!b[3] };
+  // the play clock: the host's time into the current play
+  if (s.pl) {
+    const est = s.pl.pt + age, C = NET.pclock;
+    if (C.pid !== s.pl.pid || Math.abs(C.t - est) > 0.25) { C.pid = s.pl.pid; C.t = est; } else C.t += (est - C.t) * 0.15;
+  }
 }
 function guestPhase(ph) {
   G.phase = ph; G.pt = 0;
@@ -3891,7 +4171,7 @@ function guestPhase(ph) {
     case 'windup': reticle.visible = false; break;
     case 'live':
       pci.visible = false; zoneGroup.visible = false; pitchGuide.visible = false; pitchMark.visible = false; $('meter').classList.add('hidden');
-      G.contactT = G.now; G.bb = { hr: false, la: 20 };
+      G.contactT = G.now; G.bb = NET.bb ? NET.bb.bb : { hr: false, la: 20 };
       setHint(liveHint());
       break;
     case 'postPitch': case 'postFoul': G.recOn = false; break;
@@ -3908,6 +4188,12 @@ function guestPitch(m) {
   G.pitchT0 = G.now; G.localPitch = true; G.tookSent = false;
   ballMesh.visible = true; reticle.visible = false; pitchMark.visible = false; trailReset();
   if (G.swing && !G.swing.calc) G.swing.calc = calcUserContact(G.swing);
+}
+function guestBB(m) {
+  if (!Array.isArray(m.o) || m.o.length !== 3) return;
+  const ev = clamp(+m.ev || 0, 0, 130), la = clamp(+m.la || 0, -90, 90), sp = clamp(+m.spray || 0, -360, 360);
+  NET.bb = { pid: m.pid, bb: simBatted(new V3(+m.o[0] || 0, +m.o[1] || 0, +m.o[2] || 0), ev, la, sp) };
+  G.bb = NET.bb.bb;
 }
 function guestPitchTick() {
   const t = G.now - G.pitchT0, sw = G.swing;
@@ -3935,36 +4221,98 @@ function guestEv(f, a) {
     case 'cast': Caster.line(...a); break;
     case 'fw': fireworks(...a); break;
     case 'excite': excite(...a); break;
-    case 'snd': { const [k, ...r] = a; if (k === 'crack' && G.now - NET.crackT < 1.5) return; if (typeof SND[k] === 'function') SND[k](...r); break; }
+    case 'snd': { const [k, ...r] = a; if (k === 'crack' && G.now - NET.crackT < 1.5) return; if (NET_SOUNDS.has(k)) SND[k](...r); break; }
     case 'showFeedback': showFeedback(...a); break;
     case 'fbstats': updateFeedbackStats(...a); break;
-    case 'pinfo': hudPitchInfo(...a); break;
+    case 'pinfo': if (a[0] && PITCH_TYPES[a[0].type]) hudPitchInfo(...a); break;
     case 'absShow': absShow(...a); break;
     case 'absReveal': absReveal(...a); break;
   }
 }
 function guestScreen(m) {
-  for (const [k, v] of Object.entries(m.html || {})) { const el = $(k); if (el) el.innerHTML = v; }
-  if (m.id === 'final') setPhase('final');
-  showScreen(m.id);
+  const d = m.d || {};
+  if (m.id === 'breakCard') { $('breakTitle').textContent = String(d.title || ''); $('breakSub').textContent = String(d.sub || ''); $('breakLS').innerHTML = linescoreHTML(); }
+  if (m.id === 'final') {
+    setPhase('final');
+    $('finalTitle').textContent = String(d.title || 'FINAL'); $('finalSub').textContent = String(d.sub || '');
+    $('finalLS').innerHTML = linescoreHTML(); $('potg').innerHTML = d.potg ? potgHTML(d.potg) : '';
+  }
+  if ([null, 'breakCard', 'final'].includes(m.id)) showScreen(m.id);
+}
+// the fielder you steer moves on your screen right away (the same running model the
+// host uses); the host takes this position for him
+const fieldRole = (pl) => (pl.pos === 'SP' || pl.pos === 'RP' ? 'P' : pl.pos);
+function guestPredict(dt) {
+  const P = NET.pred, pl = NET.snap && NET.snap.pl;
+  const key = G.phase === 'live' && pl && pl.uf && userFields() && !pl.hr && !trotOn() ? pl.uf : null;
+  const m = key ? modelByKey(key) : null;
+  if (m !== P.m) Object.assign(P, { m, key, on: false, v: 0 });
+  if (!m || !m.net) return null;
+  const v = fieldVec(), mag = Math.min(1, Math.hypot(v.x, v.z));
+  if (m.net.anim === 'dive' || m.net.anim === 'throw' || G.now < P.hold) { P.on = false; return null; }
+  if (mag > 0.15) { P.on = true; P.lastIn = G.now; } else if (P.on && G.now - P.lastIn > 0.6) P.on = false;
+  if (!P.on) return null;
+  const who = m.pl, role = fieldRole(who), isOF = role === 'LF' || role === 'CF' || role === 'RF';
+  const speed = 20 + (who.spd ?? 50) * 0.08, acc = (isOF ? 12.5 : role === 'P' || role === 'C' ? 15 : 21) * 1.5;
+  const p = m.root.position;
+  if (mag > 0.15) {
+    const dx = v.x / mag, dz = v.z / mag;
+    P.v = Math.min(speed * mag, P.v + acc * dt);
+    const nx = p.x + dx * P.v * dt, nz = p.z + dz * P.v * dt;
+    if (inPoly(nx, nz) || Math.hypot(nx, nz) < Math.hypot(p.x, p.z)) { p.x = nx; p.z = nz; } else P.v *= 0.5;
+    m.root.rotation.y += angDiff(m.root.rotation.y, Math.atan2(dx, dz)) * Math.min(1, dt * 14);
+    m.phase += P.v * dt * 0.42;
+    setAnim(m, P.v > 9 ? 'run' : 'jog');
+  } else { P.v = Math.max(0, P.v - 45 * dt); setAnim(m, 'ready'); }
+  p.y = groundY(p.x, p.z);
+  return m;
+}
+// ball on the guest: computed here every frame whenever we can, so it never stutters
+function guestBall() {
+  if (G.localPitch) return;
+  const s = NET.snap; if (!s) return;
+  const pl = G.phase === 'live' ? s.pl : null, t = NET.pclock.t;
+  if (pl && pl.bm) {
+    const bm = pl.bm;
+    if (bm === 'f' && NET.bb && NET.bb.pid === pl.pid) {
+      const S = NET.bb.bb.S, k = S[clamp(Math.floor(t / BB_DT), 0, S.length - 1)];
+      ballMesh.position.set(k.x, k.y, k.z); ballMesh.visible = true; return;
+    }
+    if (bm[0] === 'h') { const hm = modelByKey(bm[1]); if (hm && hm.root.visible) { handWorld(hm, hm.lefty ? 'R' : 'L', ballMesh.position); ballMesh.visible = true; return; } }
+    if (bm[0] === 't' && Array.isArray(bm[1]) && Array.isArray(bm[2])) {
+      const [, f, to, t0, T, arc] = bm, u = clamp((t - t0) / Math.max(0.05, T), 0, 1);
+      ballMesh.position.set(lerp(f[0], to[0], u), lerp(f[1], to[1], u) + Math.sin(u * Math.PI) * arc, lerp(f[2], to[2], u));
+      ballMesh.visible = true; return;
+    }
+  }
+  const nb = NET.ball; if (!nb) return;
+  const age = clamp((hostNow() - nb.ts) / 1000, 0, 0.1);
+  ballMesh.position.set(nb.x + nb.vx * age, nb.y + nb.vy * age, nb.z + nb.vz * age); ballMesh.visible = nb.vis;
 }
 function guestUpdate(dt) {
-  G.now += dt; G.pt += dt;
+  G.now += dt; G.pt += dt; NET.pclock.t += dt;
   if (G.replay) { updateReplay(dt); return; }
   aimUpdate(dt);
   if (G.phase === 'prePitch' && userPitches() && G.pitchUI.state !== 'done') updatePitchUI();
   if (G.localPitch && G.P) guestPitchTick();
-  const k = 1 - Math.exp(-dt * 16);
+  const pm = guestPredict(dt), hn = hostNow(), kp = 1 - Math.exp(-dt * 25), kr = 1 - Math.exp(-dt * 20);
   for (const m of MODELS) {
-    if (!m.root.visible || !m.net) continue;
-    if (m.netSnap) { m.root.position.copy(m.net.p); m.root.rotation.y = m.net.ry; m.netSnap = false; }
-    else { m.root.position.lerp(m.net.p, k); m.root.rotation.y += angDiff(m.root.rotation.y, m.net.ry) * k; }
+    if (!m.root.visible || !m.net || m === pm) continue;
+    const n = m.net, age = clamp((hn - n.ts) / 1000, 0, 0.12), p = m.root.position;
+    const tx = n.x + n.vx * age, tz = n.z + n.vz * age, ox = p.x, oz = p.z;
+    if (n.snap) { p.set(tx, n.y, tz); m.root.rotation.y = n.ry; n.snap = false; continue; }
+    p.x += (tx - ox) * kp; p.z += (tz - oz) * kp; p.y = n.y;
+    m.root.rotation.y += angDiff(m.root.rotation.y, n.ry) * kr;
+    m.phase += Math.hypot(p.x - ox, p.z - oz) * 0.42;   // legs cycle with how far he moved on screen
   }
   if (G.phase === 'live' || G.phase === 'postPlay') playCam();
   else if (G.phase === 'final') menuCam(dt * 0.6);
   if (G.phase === 'live' && userFields()) {
-    const v = fieldVec(), key = v.x.toFixed(2) + ',' + v.z.toFixed(2), now = performance.now();
-    if ((key !== NET.sentIn && now - NET.lastIn > 45) || now - NET.lastIn > 250) { NET.sentIn = key; NET.lastIn = now; netSend({ t: 'in', x: v.x, z: v.z }); }
+    const v = fieldVec(), now = performance.now(), msg = { t: 'in', q: ++NET.inSeq, x: r3(v.x), z: r3(v.z) };
+    if (pm) Object.assign(msg, { k: NET.pred.key, px: r2(pm.root.position.x), pz: r2(pm.root.position.z), ry: r3(pm.root.rotation.y), v: r2(NET.pred.v) });
+    const key = msg.x + ',' + msg.z + (pm ? ',' + msg.px + ',' + msg.pz : '');
+    if ((pm && now - NET.lastIn > 14) || (key !== NET.sentIn && now - NET.lastIn > 30) || now - NET.lastIn > 250) { NET.sentIn = key; NET.lastIn = now; netSendFast(msg); }
+    else NET.inSeq--;
   }
   const pl = G.phase === 'live' && NET.snap ? NET.snap.pl : null;
   const ufm = pl && pl.uf ? modelByKey(pl.uf) : null;
@@ -3974,9 +4322,615 @@ function guestUpdate(dt) {
   if (landMark.visible) landMark.position.set(pl.land[0], 0.1, pl.land[1]);
   $('throwPrompt').classList.toggle('hidden', !(pl && pl.prompt));
   runnerHUD(!!(pl && userRuns() && !pl.hr));
-  dressFrame();
   for (const m of MODELS) updateModel(m, G.now);
+  guestBall();
+  dressFrame();
   if (G.recOn) recFrame();
+}
+// ============================================================================
+// Custom rosters: build your own team on a point budget. Rosters are saved on
+// this device, and to your Google account when you're signed in (67-cloud.js).
+// A roster is plain data (a "def"); buildCustomTeam turns it into the same team
+// shape genTeam makes, so the rest of the game can't tell the difference.
+// ============================================================================
+
+const RATING_MIN = 40, RATING_MAX = 99, VELO_MIN = 86, VELO_MAX = 100;
+const HIT_KEYS = [
+  ['con', 'CON', 'Contact: a bigger PCI and squarer contact'],
+  ['pow', 'POW', 'Power: exit velocity off the bat'],
+  ['eye', 'EYE', 'Eye: lays off pitches outside the zone'],
+  ['spd', 'SPD', 'Speed: on the bases and in the field'],
+  ['arm', 'ARM', 'Arm: throw speed and accuracy'],
+  ['fld', 'FLD', 'Fielding: fewer errors, better dives'],
+];
+const PIT_KEYS = [
+  ['velo', 'VELO', 'Fastball velocity in mph'],
+  ['ctl', 'CTL', 'Control: how close he hits his spot'],
+  ['stuff', 'STF', 'Stuff: how much his pitches move'],
+  ['stam', 'STA', 'Stamina: pitches before he tires'],
+];
+const PITCH_MAX = [5, 4, 4, 4];   // the starter can carry five pitches, relievers four
+// Every rating starts at 40 for free. Each point above that costs 1, points above 70 cost 2
+// and points above 85 cost 3, so stars are expensive. The budget is about what the
+// built-in teams are worth, so a balanced custom team plays like an average club.
+const ROSTER_BUDGET = 3100;
+function ratingCost(v) { v = clamp(Math.round(v), RATING_MIN, RATING_MAX); return v - RATING_MIN + Math.max(0, v - 70) + Math.max(0, v - 85); }
+const veloRating = (mph) => RATING_MIN + ((mph - VELO_MIN) * (RATING_MAX - RATING_MIN)) / (VELO_MAX - VELO_MIN);
+const stuffToBrk = (s) => 0.8 + ((s - RATING_MIN) / (RATING_MAX - RATING_MIN)) * 0.45;
+function hitterCost(h) { return HIT_KEYS.reduce((s, [k]) => s + ratingCost(h[k]), 0); }
+function pitcherCost(p) { return ratingCost(veloRating(p.velo)) + ratingCost(p.ctl) + ratingCost(p.stuff) + ratingCost(p.stam); }
+function rosterCost(d) { return d.hitters.reduce((s, h) => s + hitterCost(h), 0) + d.pitchers.reduce((s, p) => s + pitcherCost(p), 0); }
+function hitterOvr(h) { return Math.round((h.con * 1.2 + h.pow * 1.2 + h.eye * 0.8 + h.spd * 0.6 + h.arm * 0.5 + h.fld * 0.7) / 5); }
+function pitcherOvr(p) { return Math.round((veloRating(p.velo) * 1.1 + p.ctl * 1.2 + p.stuff * 1.0 + p.stam * 0.3) / 3.6); }
+const randId = (n = 8) => Array.from({ length: n }, () => 'abcdefghijkmnpqrstuvwxyz23456789'[(Math.random() * 32) | 0]).join('');
+
+// Rosters arrive from storage, the cloud and online opponents: never trust one, clamp everything.
+function cleanRoster(r) {
+  if (!r || typeof r !== 'object') return null;
+  const str = (s, n, d) => String(s ?? '').replace(/[\u0000-\u001f<>]/g, '').replace(/\s+/g, ' ').trim().slice(0, n) || d;
+  const hex = (c, d) => (/^#[0-9a-f]{6}$/i.test(c) ? c.toLowerCase() : d);
+  const rat = (v, d = 60) => clamp(Math.round(Number.isFinite(+v) ? +v : d), RATING_MIN, RATING_MAX);
+  const no = (v, d) => (Number.isFinite(+v) && v !== '' ? clamp(Math.round(+v), 0, 99) : d);
+  const skin = (s) => (SKINS.includes(s) ? s : SKINS[1]);
+  const hand = (v, ok, d) => (ok.includes(v) ? v : d);
+  const d = {
+    v: 1, id: /^X[a-z0-9]{4,16}$/i.test(r.id) ? r.id : 'X' + randId(), updated: Number.isFinite(+r.updated) ? +r.updated : Date.now(),
+    city: str(r.city, 18, 'Hometown'), name: str(r.name, 18, 'Sluggers'),
+    abbr: String(r.abbr || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 4) || 'CUS',
+    c1: hex(r.c1, '#2b4c7e'), c2: hex(r.c2, '#f2c14e'), hitters: [], order: [], pitchers: [],
+  };
+  if (d.abbr.length < 2) d.abbr = (d.abbr + 'X').slice(0, 2);
+  const src = Array.isArray(r.hitters) ? r.hitters : [];
+  POS_LIST.forEach((pos, i) => {
+    const h = src.find((x) => x && x.pos === pos) || {};
+    const o = { pos, name: str(h.name, 24, `${pos} Player`), num: no(h.num, i + 1), bats: hand(h.bats, ['R', 'L', 'S'], 'R'), throws: hand(h.throws, ['R', 'L'], 'R'), skin: skin(h.skin) };
+    for (const [k] of HIT_KEYS) o[k] = rat(h[k]);
+    d.hitters.push(o);
+  });
+  const seen = new Set();
+  for (const p of Array.isArray(r.order) ? r.order : []) if (POS_LIST.includes(p) && !seen.has(p)) { seen.add(p); d.order.push(p); }
+  for (const p of POS_LIST) if (!seen.has(p)) d.order.push(p);
+  const ps = Array.isArray(r.pitchers) ? r.pitchers : [];
+  for (let i = 0; i < 4; i++) {
+    const p = ps[i] || {};
+    let pitches = [];
+    for (const t of Array.isArray(p.pitches) ? p.pitches : []) if (PITCH_TYPES[t] && !pitches.includes(t)) pitches.push(t);
+    pitches = pitches.slice(0, PITCH_MAX[i]);
+    for (const t of ['FF', 'SL', 'CH']) if (pitches.length < 2 && !pitches.includes(t)) pitches.push(t);
+    d.pitchers.push({
+      name: str(p.name, 24, i ? `Reliever ${i}` : 'Starter'), num: no(p.num, 40 + i), throws: hand(p.throws, ['R', 'L'], 'R'), skin: skin(p.skin),
+      velo: clamp(Math.round(Number.isFinite(+p.velo) ? +p.velo : 93), VELO_MIN, VELO_MAX), ctl: rat(p.ctl), stuff: rat(p.stuff), stam: rat(p.stam, i ? 45 : 85), pitches,
+    });
+  }
+  return d;
+}
+function randomName(used) { for (;;) { const n = pick(FIRST) + ' ' + pick(LAST); if (!used.has(n)) { used.add(n); return n; } } }
+function newRoster() {
+  const used = new Set(), nums = [...Array(78).keys()].map((i) => i + 1).sort(() => Math.random() - 0.5);
+  return cleanRoster({
+    id: 'X' + randId(), updated: Date.now(), city: 'Hometown', name: 'Sluggers', abbr: 'HMT', c1: '#2b4c7e', c2: '#f2c14e',
+    hitters: POS_LIST.map((pos, i) => ({ pos, name: randomName(used), num: nums[i], bats: Math.random() < 0.3 ? 'L' : 'R', throws: 'R', skin: pick(SKINS), con: 60, pow: 60, eye: 60, spd: 60, arm: 60, fld: 60 })),
+    pitchers: [0, 1, 2, 3].map((i) => ({ name: randomName(used), num: nums[9 + i], throws: Math.random() < 0.3 ? 'L' : 'R', skin: pick(SKINS), velo: 93, ctl: 60, stuff: 60, stam: i ? 45 : 85, pitches: i ? ['FF', 'SL', 'CH'] : ['FF', 'SL', 'CU', 'CH'] })),
+  });
+}
+// a built-in team as a roster: a template to start from, and how mirror matchups work online
+function teamToDef(t, id) {
+  return cleanRoster({
+    id: id || 'X' + randId(), updated: Date.now(), city: t.city, name: t.name, abbr: t.id, c1: t.c1, c2: t.c2,
+    hitters: t.hitters.map((h) => ({ ...h, team: undefined })), order: t.lineup.map((h) => h.pos),
+    pitchers: t.pitchers.map((p) => ({ name: p.name, num: p.num, throws: p.throws, skin: p.skin, velo: p.velo, ctl: p.ctl, stam: p.stam, pitches: p.pitches.map((x) => x.type),
+      stuff: Math.round(RATING_MIN + ((p.pitches.reduce((s, x) => s + x.brk, 0) / p.pitches.length - 0.8) / 0.45) * (RATING_MAX - RATING_MIN)) })),
+  });
+}
+const _teamCache = new Map();
+function buildCustomTeam(def) {
+  const d = cleanRoster(def), sig = JSON.stringify(d);
+  if (_teamCache.has(sig)) return _teamCache.get(sig);
+  const team = { id: d.abbr, key: 'X:' + d.id, ver: String(d.updated), city: d.city, name: d.name, c1: d.c1, c2: d.c2, custom: true, roster: d, hitters: [], pitchers: [] };
+  const pid = (s) => d.id + '-' + s;
+  for (const h of d.hitters) {
+    const o = { id: pid(h.pos), name: h.name, num: h.num, pos: h.pos, bats: h.bats, throws: h.throws, skin: h.skin, team };
+    for (const [k] of HIT_KEYS) o[k] = h[k];
+    team.hitters.push(o);
+  }
+  team.lineup = d.order.map((pos) => team.hitters.find((h) => h.pos === pos));
+  d.pitchers.forEach((p, i) => {
+    const brk = stuffToBrk(p.stuff);
+    team.pitchers.push({
+      id: pid('P' + i), name: p.name, num: p.num, pos: i ? 'RP' : 'SP', throws: p.throws, bats: p.throws, skin: p.skin, team,
+      velo: p.velo, ctl: p.ctl, stam: p.stam, spd: 45, arm: 72, fld: 62, con: 22, pow: 15, eye: 25,
+      pitches: p.pitches.map((t) => ({ type: t, velo: p.velo + PITCH_TYPES[t].d, brk })),
+    });
+  });
+  team.ovr = teamOvr(team);
+  team.cost = rosterCost(d);
+  for (const p of [...team.hitters, ...team.pitchers]) PBYID[p.id] = p;
+  _teamCache.set(sig, team);
+  return team;
+}
+
+// ---------------------------------------------------------- my rosters ----
+let ROSTERS = [];
+try { ROSTERS = (JSON.parse(localStorage.getItem('fullcount.rosters') || '[]') || []).map(cleanRoster).filter(Boolean); } catch (e) { ROSTERS = []; }
+function saveRostersLocal() { try { localStorage.setItem('fullcount.rosters', JSON.stringify(ROSTERS)); } catch (e) { /* storage full or blocked */ } }
+// every team you can pick: the eight built-in clubs, then your rosters
+function allTeams() { return [...TEAMS, ...ROSTERS.map(buildCustomTeam)]; }
+const _remoteTeams = new Map();
+function teamByKey(key) {
+  const t = TEAMS.find((x) => x.key === key);
+  if (t) return t;
+  const r = ROSTERS.find((x) => 'X:' + x.id === key);
+  if (r) return buildCustomTeam(r);
+  return _remoteTeams.get(key) || null;
+}
+// how a team travels in a game config or over the network
+function teamSpec(t) { return t.custom ? { c: t.roster } : { b: t.key }; }
+function teamFromSpec(s) {
+  if (s && s.c) { const t = buildCustomTeam(s.c); _remoteTeams.set(t.key, t); return t; }
+  return TEAMS.find((x) => x.key === (s && s.b)) || TEAMS[0];
+}
+// two copies of the same team (a mirror match online): rename the second one's players
+function distinctSpecs(a, b) {
+  const ta = teamFromSpec(a), tb = teamFromSpec(b);
+  if (ta.key !== tb.key) return [a, b];
+  const d = ta.custom ? { ...ta.roster } : teamToDef(ta, 'X' + ta.key.replace(/[^a-z0-9]/gi, '') + 'zz');
+  d.id = (d.id + 'b').slice(0, 17);
+  return [a, { c: d }];
+}
+
+// --------------------------------------------------------------- editor ----
+const RS = { sel: null, saveT: 0 };
+function rsCur() { return ROSTERS.find((r) => r.id === RS.sel) || null; }
+function openRosters() {
+  if (!RS.sel || !rsCur()) RS.sel = ROSTERS.length ? ROSTERS[0].id : null;
+  $('rosterScreen').classList.remove('hidden');
+  rsRenderList(); rsRenderEdit();
+}
+function closeRosters() { rsFlush(); $('rosterScreen').classList.add('hidden'); renderMenu(); }
+// persist soon after an edit: locally right away, to the cloud a beat later
+function rsTouched(full) {
+  const d = rsCur(); if (!d) return;
+  d.updated = Date.now();
+  saveRostersLocal();
+  clearTimeout(RS.saveT); RS.saveT = setTimeout(rsFlush, 1200); RS.dirty = d.id;
+  rsPoints(); rsListCard(d);
+  if (full) rsRenderEdit();
+}
+function rsFlush() { clearTimeout(RS.saveT); if (RS.dirty) { const d = ROSTERS.find((r) => r.id === RS.dirty); RS.dirty = null; if (d && typeof Cloud !== 'undefined') Cloud.saveRoster(d); } }
+function rsSyncText() {
+  if (typeof Cloud === 'undefined' || Cloud.state === 'off') return 'Saved on this device';
+  if (Cloud.user) return `Saved to your Google account (${Cloud.user.displayName || 'signed in'})`;
+  return 'Saved on this device. Sign in with Google to keep your rosters everywhere.';
+}
+function rsBadge(d, cls = '') { return `<div class="badge ${cls}" style="background:${d.c1};color:${d.c2};border-color:${d.c2}">${esc(d.abbr)}</div>`; }
+function rsListCard(d) {
+  const el = $('rsList').querySelector(`[data-id="${d.id}"]`); if (!el) return;
+  const t = buildCustomTeam(d);
+  el.innerHTML = `${rsBadge(d, 'xs')}<div><b>${esc(d.city)} ${esc(d.name)}</b><span>BAT ${t.ovr.bat} · PIT ${t.ovr.pit} · DEF ${t.ovr.def}</span></div>`;
+}
+function rsRenderList() {
+  $('rsList').innerHTML = ROSTERS.length ? ROSTERS.map((d) => `<button class="rs-card ${d.id === RS.sel ? 'on' : ''}" data-id="${d.id}"></button>`).join('') : '<div class="rs-empty">No rosters yet. Make one!</div>';
+  for (const d of ROSTERS) rsListCard(d);
+  $('rsSync').textContent = rsSyncText();
+  $('rsTemplate').innerHTML = '<option value="">Blank roster (all 60s)</option>' + TEAMS.map((t) => `<option value="${t.key}">Copy the ${esc(t.city)} ${esc(t.name)}</option>`).join('');
+}
+function rsPoints() {
+  const d = rsCur(); if (!d) return;
+  const used = rosterCost(d), left = ROSTER_BUDGET - used;
+  $('rsPts').innerHTML = `<b>${used.toLocaleString()}</b> / ${ROSTER_BUDGET.toLocaleString()} points used &middot; <span class="${left < 0 ? 'over' : ''}">${left < 0 ? `${(-left).toLocaleString()} over the cap` : `${left.toLocaleString()} left`}</span>`;
+  $('rsBar').style.width = clamp(used / ROSTER_BUDGET, 0, 1) * 100 + '%';
+  $('rsBar').classList.toggle('over', left < 0);
+  for (const tr of $('rsEdit').querySelectorAll('tr[data-h]')) { const h = d.hitters.find((x) => x.pos === tr.dataset.h); tr.querySelector('.ovr').textContent = hitterOvr(h); tr.querySelector('.cost').textContent = hitterCost(h); }
+  for (const tr of $('rsEdit').querySelectorAll('tr[data-p]')) { const p = d.pitchers[+tr.dataset.p]; tr.querySelector('.ovr').textContent = pitcherOvr(p); tr.querySelector('.cost').textContent = pitcherCost(p); }
+  const b = $('rsEdit').querySelector('.rs-ident .badge'); if (b) b.outerHTML = rsBadge(d);
+}
+function rsRenderEdit() {
+  const d = rsCur(), el = $('rsEdit');
+  if (!d) { el.innerHTML = '<div class="rs-empty big">Pick a roster on the left, or make a new one.</div>'; return; }
+  const sel = (k, v, opts) => `<select data-k="${k}">${opts.map((o) => `<option ${o === v ? 'selected' : ''}>${o}</option>`).join('')}</select>`;
+  const numIn = (k, v, lo = RATING_MIN, hi = RATING_MAX) => `<input type="number" class="rt" data-k="${k}" min="${lo}" max="${hi}" value="${v}">`;
+  const hRows = d.order.map((pos, i) => {
+    const h = d.hitters.find((x) => x.pos === pos);
+    return `<tr data-h="${pos}"><td class="ord"><button data-mv="-1" title="Move up" ${i ? '' : 'disabled'}>&#9650;</button><b>${i + 1}</b><button data-mv="1" title="Move down" ${i < 8 ? '' : 'disabled'}>&#9660;</button></td>`
+      + `<td class="pos">${pos}</td><td><input class="nm" data-k="name" maxlength="24" value="${esc(h.name)}"></td><td><input type="number" class="no" data-k="num" min="0" max="99" value="${h.num}"></td>`
+      + `<td>${sel('bats', h.bats, ['R', 'L', 'S'])}</td><td>${sel('throws', h.throws, ['R', 'L'])}</td>`
+      + HIT_KEYS.map(([k]) => `<td>${numIn(k, h[k])}</td>`).join('') + `<td class="ovr"></td><td class="cost"></td></tr>`;
+  }).join('');
+  const pRows = d.pitchers.map((p, i) => `<tr data-p="${i}"><td class="pos">${i ? 'RP' + i : 'SP'}</td><td><input class="nm" data-k="name" maxlength="24" value="${esc(p.name)}"></td><td><input type="number" class="no" data-k="num" min="0" max="99" value="${p.num}"></td><td>${sel('throws', p.throws, ['R', 'L'])}</td>`
+    + PIT_KEYS.map(([k]) => `<td>${k === 'velo' ? numIn(k, p.velo, VELO_MIN, VELO_MAX) : numIn(k, p[k])}</td>`).join('')
+    + `<td class="chips">${Object.keys(PITCH_TYPES).map((t) => `<button class="chip ${p.pitches.includes(t) ? 'on' : ''}" data-pitch="${t}" title="${PITCH_TYPES[t].name}" style="--pc:${PITCH_TYPES[t].col}">${PITCH_TYPES[t].short}</button>`).join('')}</td><td class="ovr"></td><td class="cost"></td></tr>`).join('');
+  el.innerHTML = `
+    <div class="rs-ident">${rsBadge(d)}
+      <label>City<input data-f="city" maxlength="18" value="${esc(d.city)}"></label>
+      <label>Team name<input data-f="name" maxlength="18" value="${esc(d.name)}"></label>
+      <label class="short">Abbr.<input data-f="abbr" maxlength="4" value="${esc(d.abbr)}"></label>
+      <label class="short">Colors<span class="cols"><input type="color" data-f="c1" value="${d.c1}" aria-label="Primary color"><input type="color" data-f="c2" value="${d.c2}" aria-label="Secondary color"></span></label>
+    </div>
+    <div class="rs-points"><div class="rs-track"><i id="rsBar"></i></div><div id="rsPts"></div></div>
+    <p class="rs-help">Every rating starts at 40. Raising one costs 1 point a step, 2 above 70 and 3 above 85. Spend your ${ROSTER_BUDGET.toLocaleString()} points however you like: a lineup of stars and a weak bullpen, or a team with no holes. Hover a column for what it does.</p>
+    <h3>LINEUP <small>batting order top to bottom</small></h3>
+    <div class="rs-scroll"><table class="rs-table"><thead><tr><th>#</th><th>POS</th><th>NAME</th><th>NO.</th><th title="Bats">B</th><th title="Throws">T</th>${HIT_KEYS.map(([, l, tip]) => `<th title="${tip}">${l}</th>`).join('')}<th>OVR</th><th>PTS</th></tr></thead><tbody>${hRows}</tbody></table></div>
+    <h3>PITCHING STAFF <small>pick 2&ndash;${PITCH_MAX[0]} pitches for the starter, 2&ndash;${PITCH_MAX[1]} for relievers</small></h3>
+    <div class="rs-scroll"><table class="rs-table"><thead><tr><th>ROLE</th><th>NAME</th><th>NO.</th><th title="Throws">T</th>${PIT_KEYS.map(([, l, tip]) => `<th title="${tip}">${l}</th>`).join('')}<th>PITCHES</th><th>OVR</th><th>PTS</th></tr></thead><tbody>${pRows}</tbody></table></div>
+    <div class="row-actions rs-actions"><button class="ghost" data-act="names">Random names</button><button class="ghost" data-act="even">Spend points evenly</button><button class="ghost" data-act="reset">Reset ratings to 60</button><button class="ghost" data-act="dup">Duplicate</button><button class="ghost danger" data-act="del">Delete roster</button></div>`;
+  rsPoints();
+}
+// raise or lower a rating, but never past the point cap
+function rsSetRating(obj, k, v, isVelo) {
+  const d = rsCur(), lo = isVelo ? VELO_MIN : RATING_MIN, hi = isVelo ? VELO_MAX : RATING_MAX;
+  v = clamp(Math.round(v), lo, hi);
+  const old = obj[k];
+  obj[k] = v;
+  while (obj[k] > old && rosterCost(d) > ROSTER_BUDGET) obj[k]--;
+  return obj[k];
+}
+// spread whatever is left over the whole roster, one point at a time, cheapest ratings first
+function rsSpendEvenly(d) {
+  const slots = [];
+  for (const h of d.hitters) for (const [k] of HIT_KEYS) slots.push([h, k, RATING_MAX]);
+  for (const p of d.pitchers) for (const k of ['ctl', 'stuff', 'stam']) slots.push([p, k, RATING_MAX]);
+  for (let guard = 0; guard < 6000; guard++) {
+    let best = null;
+    for (const s of slots) if (s[0][s[1]] < s[2] && (!best || s[0][s[1]] < best[0][best[1]])) best = s;
+    if (!best) break;
+    best[0][best[1]]++;
+    if (rosterCost(d) > ROSTER_BUDGET) { best[0][best[1]]--; break; }
+  }
+}
+function buildRosterUI() {
+  $('rsClose').addEventListener('click', closeRosters);
+  $('rsNew').addEventListener('click', () => {
+    const tk = $('rsTemplate').value, src = tk ? TEAMS.find((t) => t.key === tk) : null;
+    const d = src ? teamToDef(src) : newRoster();
+    if (src) { d.city = src.city; d.name = src.name + ' II'; }
+    ROSTERS.push(d); RS.sel = d.id; RS.dirty = d.id; saveRostersLocal(); rsFlush();
+    rsRenderList(); rsRenderEdit();
+  });
+  $('rsList').addEventListener('click', (e) => { const b = e.target.closest('.rs-card'); if (!b) return; rsFlush(); RS.sel = b.dataset.id; rsRenderList(); rsRenderEdit(); });
+  const ed = $('rsEdit');
+  const onEdit = (e, commit) => {
+    const d = rsCur(), t = e.target; if (!d || !t.dataset) return;
+    if (t.dataset.f) {
+      const f = t.dataset.f;
+      if (f === 'c1' || f === 'c2') d[f] = t.value;
+      else if (commit || f !== 'abbr') d[f] = t.value;
+      if (commit) { const c = cleanRoster(d); d.city = c.city; d.name = c.name; d.abbr = c.abbr; if (t.value !== d[f]) t.value = d[f]; }
+      rsTouched(); return;
+    }
+    const k = t.dataset.k; if (!k) return;
+    const tr = t.closest('tr'), obj = tr.dataset.h ? d.hitters.find((x) => x.pos === tr.dataset.h) : d.pitchers[+tr.dataset.p];
+    if (k === 'name') { obj.name = t.value.replace(/[<>]/g, '').slice(0, 24); if (commit) { obj.name = obj.name.trim() || obj.name; } rsTouched(); return; }
+    if (t.tagName === 'SELECT') { obj[k] = t.value; rsTouched(); return; }
+    if (t.value === '' || !Number.isFinite(+t.value)) return;
+    if (k === 'num') { obj.num = clamp(Math.round(+t.value), 0, 99); if (commit) t.value = obj.num; rsTouched(); return; }
+    const isVelo = k === 'velo', lo = isVelo ? VELO_MIN : RATING_MIN;
+    if (!commit && +t.value < lo) return;   // still typing
+    const got = rsSetRating(obj, k, +t.value, isVelo);
+    if (commit || got !== +t.value) t.value = got;
+    if (got < +t.value) { $('rsBar').parentElement.classList.remove('flash'); void $('rsBar').offsetWidth; $('rsBar').parentElement.classList.add('flash'); }
+    rsTouched();
+  };
+  ed.addEventListener('input', (e) => onEdit(e, false));
+  ed.addEventListener('change', (e) => onEdit(e, true));
+  ed.addEventListener('click', (e) => {
+    const d = rsCur(); if (!d) return;
+    const b = e.target.closest('button'); if (!b) return;
+    if (b.dataset.mv) {
+      const pos = b.closest('tr').dataset.h, i = d.order.indexOf(pos), j = i + +b.dataset.mv;
+      if (j < 0 || j > 8) return;
+      [d.order[i], d.order[j]] = [d.order[j], d.order[i]]; rsTouched(true); return;
+    }
+    if (b.dataset.pitch) {
+      const i = +b.closest('tr').dataset.p, p = d.pitchers[i], t = b.dataset.pitch;
+      if (p.pitches.includes(t)) { if (p.pitches.length > 2) p.pitches = p.pitches.filter((x) => x !== t); }
+      else if (p.pitches.length < PITCH_MAX[i]) p.pitches.push(t);
+      for (const c of b.parentElement.querySelectorAll('.chip')) c.classList.toggle('on', p.pitches.includes(c.dataset.pitch));
+      rsTouched(); return;
+    }
+    const act = b.dataset.act;
+    if (act === 'names') { const used = new Set(); for (const x of [...d.hitters, ...d.pitchers]) x.name = randomName(used); rsTouched(true); }
+    else if (act === 'reset') { for (const h of d.hitters) for (const [k] of HIT_KEYS) h[k] = 60; for (const p of d.pitchers) { p.ctl = 60; p.stuff = 60; p.velo = 93; } rsTouched(true); }
+    else if (act === 'even') { rsSpendEvenly(d); rsTouched(true); }
+    else if (act === 'dup') { const c = cleanRoster({ ...JSON.parse(JSON.stringify(d)), id: 'X' + randId(), name: d.name + ' 2', updated: Date.now() }); ROSTERS.push(c); RS.sel = c.id; RS.dirty = c.id; saveRostersLocal(); rsFlush(); rsRenderList(); rsRenderEdit(); }
+    else if (act === 'del') {
+      if (b.dataset.sure !== '1') { b.dataset.sure = '1'; b.textContent = 'Click again to delete'; setTimeout(() => { b.dataset.sure = ''; b.textContent = 'Delete roster'; }, 3000); return; }
+      ROSTERS = ROSTERS.filter((r) => r.id !== d.id); saveRostersLocal();
+      if (typeof Cloud !== 'undefined') Cloud.deleteRoster(d.id);
+      RS.sel = ROSTERS.length ? ROSTERS[0].id : null; rsRenderList(); rsRenderEdit();
+    }
+  });
+}
+// cloud rosters arrived after sign-in: keep the newest copy of each, upload the ones only this device has
+function mergeRosters(list) {
+  const up = [];
+  for (const raw of list) {
+    const c = cleanRoster(raw); if (!c) continue;
+    const i = ROSTERS.findIndex((r) => r.id === c.id);
+    if (i < 0) ROSTERS.push(c); else if (c.updated > ROSTERS[i].updated) ROSTERS[i] = c;
+  }
+  for (const r of ROSTERS) if (!list.some((x) => x && x.id === r.id && +x.updated >= r.updated)) up.push(r);
+  saveRostersLocal();
+  if (!$('rosterScreen').classList.contains('hidden')) { rsRenderList(); rsRenderEdit(); }
+  renderMenu();
+  return up;
+}
+// ============================================================================
+// Google sign-in, cloud rosters and friends (Firebase Auth + Firestore).
+// All optional: with no config in firebase-config.js the game plays the same
+// and rosters stay on this device. Setup steps are in the README.
+//
+// Firestore layout (rules in firestore.rules):
+//   users/{uid}                 public profile: name, photo, friend code, lastSeen
+//   users/{uid}/rosters/{id}    your rosters (only you can read them)
+//   users/{uid}/friends/{uid}   your friends list
+//   users/{uid}/inbox/{fromUid} friend requests and game invites sent to you
+//   codes/{code}                friend code -> uid
+// ============================================================================
+
+const FB_VER = '10.12.2';
+const INVITE_TTL = 15 * 60 * 1000;
+const Cloud = {
+  state: 'loading',   // 'loading' | 'off' (not set up) | 'ready' | 'error'
+  user: null, profile: null, friends: [], fprof: new Map(), fwatch: new Map(), inbox: [], unsub: [], beat: 0, err: '',
+  A: null, F: null, auth: null, db: null,
+  async init() {
+    let cfg = null;
+    try { cfg = (await import('./firebase-config.js')).default; } catch (e) { /* no config next to the page */ }
+    if (!cfg || !cfg.apiKey || !cfg.projectId) { this.state = 'off'; cloudRender(); return; }
+    try {
+      const base = `https://www.gstatic.com/firebasejs/${FB_VER}/`;
+      const [app, A, F] = await Promise.all([import(base + 'firebase-app.js'), import(base + 'firebase-auth.js'), import(base + 'firebase-firestore.js')]);
+      const fa = app.initializeApp(cfg);
+      Object.assign(this, { A, F, auth: A.getAuth(fa), db: F.getFirestore(fa), state: 'ready' });
+      A.onAuthStateChanged(this.auth, (u) => this.onUser(u).catch((e) => this.fail(e)));
+      A.getRedirectResult(this.auth).catch((e) => this.fail(e));
+    } catch (e) { console.warn(e); this.state = 'error'; this.err = 'Could not load Google sign-in. Check your connection and refresh.'; }
+    cloudRender();
+  },
+  fail(e) { console.warn('[cloud]', e); this.err = cloudErrText(e); cloudRender(); },
+  async signIn() {
+    if (this.state !== 'ready') return;
+    const p = new this.A.GoogleAuthProvider();
+    p.setCustomParameters({ prompt: 'select_account' });
+    this.err = '';
+    try { await this.A.signInWithPopup(this.auth, p); } catch (e) {
+      if (['auth/popup-blocked', 'auth/operation-not-supported-in-this-environment'].includes(e.code)) this.A.signInWithRedirect(this.auth, p).catch((e2) => this.fail(e2));
+      else if (!['auth/popup-closed-by-user', 'auth/cancelled-popup-request'].includes(e.code)) this.fail(e);
+    }
+  },
+  signOut() { if (this.auth) this.A.signOut(this.auth).catch((e) => this.fail(e)); },
+  stopWatching() {
+    for (const f of this.unsub) try { f(); } catch (e) { /* already gone */ }
+    for (const f of this.fwatch.values()) try { f(); } catch (e) { /* already gone */ }
+    this.unsub = []; this.fwatch.clear(); this.fprof.clear(); clearInterval(this.beat);
+  },
+  async onUser(u) {
+    this.stopWatching();
+    Object.assign(this, { user: u, profile: null, friends: [], inbox: [], err: '' });
+    cloudRender();
+    if (!u) return;
+    const { F, db } = this, me = F.doc(db, 'users', u.uid);
+    const snap = await F.getDoc(me);
+    const code = (snap.exists() && snap.data().code) || (await this.claimCode(u.uid));
+    const name = String(u.displayName || 'Player').slice(0, 40), photo = String(u.photoURL || '').slice(0, 500);
+    await F.setDoc(me, { name, photo, code, lastSeen: F.serverTimestamp() }, { merge: true });
+    if (this.user !== u) return;
+    this.profile = { uid: u.uid, name, photo, code };
+    this.beat = setInterval(() => F.setDoc(me, { lastSeen: F.serverTimestamp() }, { merge: true }).catch(() => {}), 60000);
+    // rosters: keep the newest copy of each between this device and the account
+    const rs = await F.getDocs(F.collection(db, 'users', u.uid, 'rosters'));
+    const list = [];
+    rs.forEach((d) => { try { list.push(JSON.parse(d.data().json)); } catch (e) { /* skip a broken one */ } });
+    for (const r of mergeRosters(list)) this.saveRoster(r);
+    this.unsub.push(F.onSnapshot(F.collection(db, 'users', u.uid, 'friends'), (qs) => {
+      this.friends = qs.docs.map((d) => ({ uid: d.id, ...d.data() }));
+      this.watchFriends(); cloudRender();
+    }, (e) => this.fail(e)));
+    this.unsub.push(F.onSnapshot(F.collection(db, 'users', u.uid, 'inbox'), (qs) => {
+      const seen = new Set(this.inbox.map(msgKey));
+      this.inbox = qs.docs.map((d) => ({ id: d.id, ...d.data() }));
+      for (const m of this.inbox) if (!seen.has(msgKey(m)) && m.type === 'invite' && inviteFresh(m)) inviteToast(m);
+      cloudRender();
+    }, (e) => this.fail(e)));
+    cloudRender();
+  },
+  // each friend's profile, live: name, picture and when they were last on
+  watchFriends() {
+    const { F, db } = this, want = new Set(this.friends.map((f) => f.uid));
+    for (const [uid, stop] of this.fwatch) if (!want.has(uid)) { stop(); this.fwatch.delete(uid); this.fprof.delete(uid); }
+    for (const uid of want) {
+      if (this.fwatch.has(uid) || this.fwatch.size >= 50) continue;
+      this.fwatch.set(uid, F.onSnapshot(F.doc(db, 'users', uid), (d) => { if (d.exists()) this.fprof.set(uid, d.data()); cloudRender(); }, () => {}));
+    }
+  },
+  async claimCode(uid) {
+    const { F, db } = this;
+    for (let i = 0; i < 12; i++) {
+      const code = Array.from({ length: 6 }, () => CODE_CHARS[(Math.random() * CODE_CHARS.length) | 0]).join('');
+      try { await F.setDoc(F.doc(db, 'codes', code), { uid }); return code; } catch (e) { /* taken: the rules won't let anyone overwrite a code */ }
+    }
+    throw new Error('Could not make a friend code. Try again.');
+  },
+  saveRoster(d) {
+    if (!this.user) return;
+    const { F, db } = this;
+    F.setDoc(F.doc(db, 'users', this.user.uid, 'rosters', d.id), { json: JSON.stringify(d), updated: d.updated }).catch((e) => this.fail(e));
+  },
+  deleteRoster(id) {
+    if (!this.user) return;
+    const { F, db } = this;
+    F.deleteDoc(F.doc(db, 'users', this.user.uid, 'rosters', id)).catch((e) => this.fail(e));
+  },
+  async addFriend(raw) {
+    const { F, db } = this, code = String(raw || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+    if (!this.profile) throw new Error('Sign in first.');
+    if (code.length !== 6) throw new Error('Friend codes are 6 characters.');
+    if (code === this.profile.code) throw new Error("That's your own code.");
+    const c = await F.getDoc(F.doc(db, 'codes', code));
+    if (!c.exists()) throw new Error('No player has that code. Double-check it.');
+    const uid = c.data().uid, p = await F.getDoc(F.doc(db, 'users', uid)), d = p.exists() ? p.data() : {};
+    await this.befriend(uid, d);
+    await this.send(uid, { type: 'friend' });
+    return d.name || 'your friend';
+  },
+  befriend(uid, d) {
+    const { F, db } = this;
+    return F.setDoc(F.doc(db, 'users', this.user.uid, 'friends', uid), { name: String(d.name || 'Player').slice(0, 40), photo: String(d.photo || '').slice(0, 500), code: String(d.code || '').slice(0, 8), since: F.serverTimestamp() });
+  },
+  removeFriend(uid) { const { F, db } = this; return F.deleteDoc(F.doc(db, 'users', this.user.uid, 'friends', uid)); },
+  // one inbox slot per sender: a newer request or invite replaces the last one
+  send(uid, extra) {
+    const { F, db } = this, p = this.profile;
+    return F.setDoc(F.doc(db, 'users', uid, 'inbox', p.uid), { from: p.uid, name: p.name, photo: p.photo, code: p.code, room: '', ts: F.serverTimestamp(), ...extra });
+  },
+  dismiss(m) { const { F, db } = this; return F.deleteDoc(F.doc(db, 'users', this.user.uid, 'inbox', m.id)).catch((e) => this.fail(e)); },
+};
+const msgKey = (m) => `${m.from}|${m.type}|${m.room || ''}`;
+const tsMs = (t) => (t && typeof t.toMillis === 'function' ? t.toMillis() : 0);
+function inviteFresh(m) { const t = tsMs(m.ts); return !t || Date.now() - t < INVITE_TTL; }
+function friendOnline(uid) { const p = Cloud.fprof.get(uid); return !!p && Date.now() - tsMs(p.lastSeen) < 150000; }
+function safeImg(u) { return /^https:\/\/[^\s"'<>]+$/.test(u || '') ? u : ''; }
+function avatar(u, cls = 'fr-av') { const s = safeImg(u); return s ? `<img class="${cls}" src="${esc(s)}" alt="" referrerpolicy="no-referrer">` : `<span class="${cls}"></span>`; }
+function ago(ms) {
+  if (!ms) return 'Not seen yet';
+  const m = Math.round((Date.now() - ms) / 60000);
+  return m < 60 ? `Last on ${Math.max(1, m)} min ago` : m < 1440 ? `Last on ${Math.round(m / 60)} h ago` : `Last on ${Math.round(m / 1440)} d ago`;
+}
+function cloudErrText(e) {
+  const c = (e && e.code) || '';
+  if (c === 'auth/unauthorized-domain') return "This site isn't on the Firebase authorized domains list yet (see the README).";
+  if (c === 'auth/network-request-failed' || c === 'unavailable') return 'Network problem. Check your connection.';
+  if (c === 'permission-denied' || c === 'firestore/permission-denied') return 'The server refused that. Make sure the Firestore rules from firestore.rules are published.';
+  return (e && e.message) || 'Something went wrong.';
+}
+
+// ------------------------------------------------------------------- UI ----
+const G_LOGO = '<svg viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9 3.5l6.7-6.7C35.6 2.4 30.2 0 24 0 14.6 0 6.6 5.4 2.7 13.3l7.8 6C12.4 13.7 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.1 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.4c-.5 2.9-2.2 5.3-4.6 6.9l7.5 5.8c4.4-4 6.8-10 6.8-17.2z"/><path fill="#FBBC05" d="M10.5 28.7A14.5 14.5 0 0 1 9.5 24c0-1.6.3-3.2.8-4.7l-7.8-6A24 24 0 0 0 0 24c0 3.9.9 7.5 2.6 10.7l7.9-6z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.5-5.8c-2.1 1.4-4.8 2.3-8.4 2.3-6.3 0-11.6-4.2-13.5-10l-7.9 6C6.6 42.6 14.6 48 24 48z"/></svg>';
+const signInBtn = (label = 'Sign in with Google') => `<button class="gbtn" data-act="signin">${G_LOGO}${label}</button>`;
+function renderAccount() {
+  const el = $('acct'); if (!el) return;
+  const C = Cloud;
+  if (C.state === 'ready' && C.user) el.innerHTML = `${avatar(C.user.photoURL)}<span class="who">${esc(C.user.displayName || 'Signed in')}</span><button class="ghost fr-mini" data-act="signout">Sign out</button>`;
+  else if (C.state === 'ready') el.innerHTML = signInBtn();
+  else el.innerHTML = '';
+  const n = C.inbox.filter((m) => m.type !== 'invite' || inviteFresh(m)).length;
+  $('frBadge').innerHTML = n ? `<span class="dot">${n}</span>` : '';
+  const on = C.friends.filter((f) => friendOnline(f.uid)).length;
+  $('frSub').textContent = C.state === 'off' ? 'Accounts not set up yet' : C.state !== 'ready' ? (C.state === 'loading' ? 'Loading…' : 'Unavailable') : !C.user ? 'Sign in to add friends' : C.friends.length ? `${on} of ${C.friends.length} online` : 'Add friends with a code';
+}
+function renderFriends() {
+  if ($('friendsScreen').classList.contains('hidden')) return;
+  // don't rebuild the panel under someone typing a code; catch up when they leave the box
+  if (document.activeElement && document.activeElement.id === 'frAddCode') { renderFriends.later = true; return; }
+  renderFriends.later = false;
+  const C = Cloud, body = $('frBody');
+  const err = C.err ? `<p class="fr-note bad">${esc(C.err)}</p>` : '';
+  if (C.state === 'off') {
+    body.innerHTML = `<p class="fr-note">Google sign-in isn't set up for this copy of the game yet, so friends and cloud saves are off. Your rosters are still saved on this device.</p><p class="fr-note">Running your own copy? Add your Firebase config to <b>firebase-config.js</b>; the README walks through it in about five minutes.</p>`;
+    return;
+  }
+  if (C.state !== 'ready') { body.innerHTML = `<p class="fr-note">${C.state === 'loading' ? 'Loading…' : esc(C.err || 'Sign-in is unavailable right now.')}</p>`; return; }
+  if (!C.user) { body.innerHTML = `${err}<p class="fr-note">Sign in with Google to save your rosters to your account, add friends, and invite them to a 1v1.</p><div>${signInBtn()}</div>`; return; }
+  if (!C.profile) { body.innerHTML = `${err}<p class="fr-note">Setting up your account…</p>`; return; }
+  const inbox = C.inbox.filter((m) => m.type !== 'invite' || inviteFresh(m));
+  const isFriend = (uid) => C.friends.some((f) => f.uid === uid);
+  const reqs = inbox.map((m) => `<div class="fr-row">${avatar(m.photo)}<span class="nm">${esc(m.name || 'A player')}<small>${m.type === 'invite' ? 'invited you to a 1v1' : 'added you as a friend'}</small></span>`
+    + (m.type === 'invite' ? `<button class="cta fr-mini" data-act="join" data-id="${esc(m.id)}">JOIN</button>` : isFriend(m.from) ? '' : `<button class="ghost fr-mini" data-act="accept" data-id="${esc(m.id)}">Add back</button>`)
+    + `<button class="ghost fr-mini" data-act="dismiss" data-id="${esc(m.id)}">Dismiss</button></div>`).join('');
+  const sorted = [...C.friends].sort((a, b) => friendOnline(b.uid) - friendOnline(a.uid) || String(a.name).localeCompare(String(b.name)));
+  const friends = sorted.map((f) => {
+    const p = C.fprof.get(f.uid) || f, live = friendOnline(f.uid);
+    return `<div class="fr-row"><i class="fr-on ${live ? 'live' : ''}"></i>${avatar(p.photo)}<span class="nm">${esc(p.name || 'Player')}<small>${live ? 'Online now' : ago(tsMs(p.lastSeen))}</small></span>`
+      + `<button class="cta fr-mini" data-act="invite" data-uid="${esc(f.uid)}">INVITE TO 1V1</button><button class="ghost fr-mini" data-act="remove" data-uid="${esc(f.uid)}" title="Remove friend">&times;</button></div>`;
+  }).join('');
+  const add = $('frAddCode') ? $('frAddCode').value : '';
+  body.innerHTML = `${err}
+    <div class="fr-sec"><h3>YOUR FRIEND CODE</h3><div class="fr-row"><span class="fr-code">${esc(C.profile.code)}</span><button class="ghost fr-mini" data-act="copy">Copy</button></div><p class="fr-note">Give this to a friend so they can add you.</p></div>
+    <div class="fr-sec"><h3>ADD A FRIEND</h3><div class="fr-row"><input id="frAddCode" maxlength="6" placeholder="CODE" autocomplete="off" spellcheck="false" aria-label="Friend code" value="${esc(add)}"><button class="ghost" data-act="add">Add</button></div><p class="fr-note" id="frAddMsg"></p></div>
+    ${reqs ? `<div class="fr-sec"><h3>REQUESTS &amp; INVITES</h3>${reqs}</div>` : ''}
+    <div class="fr-sec"><h3>FRIENDS (${C.friends.length})</h3>${friends || '<p class="fr-note">No friends yet. Add one with their code.</p>'}</div>`;
+}
+// invite list in the online lobby while you're hosting
+function renderNetFriends() {
+  const el = $('netFriends'); if (!el) return;
+  const C = Cloud, show = NET.role === 'host' && !NET.open && NET.code && C.user && C.friends.length;
+  if (!show) { el.innerHTML = ''; return; }
+  const list = [...C.friends].sort((a, b) => friendOnline(b.uid) - friendOnline(a.uid)).slice(0, 8);
+  el.innerHTML = '<div class="net-or">or invite a friend</div>' + list.map((f) => {
+    const p = C.fprof.get(f.uid) || f, sent = NET.invited && NET.invited.has(f.uid);
+    return `<div class="fr-row"><i class="fr-on ${friendOnline(f.uid) ? 'live' : ''}"></i><span class="nm">${esc(p.name || 'Player')}</span><button class="ghost fr-mini" data-act="invite" data-uid="${esc(f.uid)}" ${sent ? 'disabled' : ''}>${sent ? 'Invited' : 'Invite'}</button></div>`;
+  }).join('');
+}
+function cloudRender() { renderAccount(); renderFriends(); renderNetFriends(); }
+function openFriends() { $('friendsScreen').classList.remove('hidden'); renderFriends(); }
+function closeFriends() { $('friendsScreen').classList.add('hidden'); }
+// invite a friend: host a room first if you aren't already, then send them the code
+async function inviteFriend(uid) {
+  if (!Cloud.user || !uid) return;
+  if (!(NET.role === 'host' && NET.code && NET.peerOpen)) {
+    closeFriends();
+    if (G.mode !== 'menu') toMenu();
+    menu.mode = 'online'; NET.pendingInvite = uid;
+    if (NET.role !== 'host') netHost(); else renderMenu();
+    return;
+  }
+  try {
+    await Cloud.send(uid, { type: 'invite', room: NET.code });
+    (NET.invited = NET.invited || new Set()).add(uid);
+    const f = Cloud.friends.find((x) => x.uid === uid);
+    netStatus(`Invite sent to ${(f && f.name) || 'your friend'}. Waiting for them to join…`, 'good');
+  } catch (e) { Cloud.fail(e); }
+  cloudRender();
+}
+// the room opened (60-net): send an invite that was waiting on it
+function netRoomOpened() { if (NET.pendingInvite) { const uid = NET.pendingInvite; NET.pendingInvite = null; inviteFriend(uid); } }
+function joinInvite(m) {
+  hideToast(); closeFriends();
+  if (!m || !m.room) return;
+  if (Cloud.user) Cloud.dismiss(m);
+  if (G.mode !== 'menu') toMenu();
+  menu.mode = 'online'; $('joinCode').value = m.room; renderMenu();
+  netJoin(m.room);
+}
+let toastT = 0;
+function inviteToast(m) {
+  const el = $('toast');
+  el.innerHTML = `${avatar(m.photo)}<span class="t-msg"><b>${esc(m.name || 'A friend')}</b> invited you to a 1v1</span><button class="cta fr-mini" data-act="join" data-id="${esc(m.id)}">JOIN</button><button class="ghost fr-mini" data-act="later">Later</button>`;
+  el.classList.remove('hidden');
+  SND.init(); if (SND.ctx) SND.tick();
+  clearTimeout(toastT); toastT = setTimeout(hideToast, 30000);
+}
+function hideToast() { $('toast').classList.add('hidden'); }
+function buildCloudUI() {
+  $('btnFriends').addEventListener('click', openFriends);
+  $('frClose').addEventListener('click', closeFriends);
+  const onAct = async (e) => {
+    const b = e.target.closest('[data-act]'); if (!b) return;
+    const act = b.dataset.act, C = Cloud, msg = () => C.inbox.find((m) => m.id === b.dataset.id);
+    if (act === 'signin') C.signIn();
+    else if (act === 'signout') C.signOut();
+    else if (act === 'later') hideToast();
+    else if (act === 'join') joinInvite(msg());
+    else if (act === 'dismiss') { const m = msg(); if (m) C.dismiss(m); }
+    else if (act === 'accept') { const m = msg(); if (m) { try { await C.befriend(m.from, m); await C.dismiss(m); } catch (err) { C.fail(err); } } }
+    else if (act === 'invite') inviteFriend(b.dataset.uid);
+    else if (act === 'remove') {
+      if (b.dataset.sure !== '1') { b.dataset.sure = '1'; b.textContent = 'Remove?'; setTimeout(() => { b.dataset.sure = ''; b.innerHTML = '&times;'; }, 3000); return; }
+      C.removeFriend(b.dataset.uid).catch((err) => C.fail(err));
+    } else if (act === 'copy') {
+      try { await navigator.clipboard.writeText(C.profile.code); b.textContent = 'Copied'; } catch (err) { b.textContent = 'Copy failed'; }
+    } else if (act === 'add') {
+      const out = $('frAddMsg');
+      out.className = 'fr-note'; out.textContent = 'Looking…';
+      try { const name = await C.addFriend($('frAddCode').value); $('frAddCode').value = ''; renderFriends(); const o = $('frAddMsg'); o.className = 'fr-note good'; o.textContent = `Added ${name}. They'll get a request to add you back.`; }
+      catch (err) { out.className = 'fr-note bad'; out.textContent = err.code ? cloudErrText(err) : err.message; }
+    }
+  };
+  for (const id of ['frBody', 'acct', 'toast', 'netFriends']) $(id).addEventListener('click', onAct);
+  $('frBody').addEventListener('keydown', (e) => { if (e.key === 'Enter' && e.target.id === 'frAddCode') $('frBody').querySelector('[data-act="add"]').click(); });
+  $('frBody').addEventListener('focusout', () => setTimeout(() => { if (renderFriends.later) renderFriends(); }, 300));
+  setInterval(() => { if (Cloud.user) cloudRender(); }, 30000);   // presence dots age out
+  Cloud.init();
 }
 // ============================================================================
 // Presentation: cameras, HUD, videoboards, input, replays, menus, main loop
@@ -4011,7 +4965,9 @@ function playCam() {
   const cut = G.prevCam === 'pitch' || G.prevCam === 'cf';
   G.prevCam = 'play';
   let fx, fy, fz;
-  if (isGuest() && G.camFocus) [fx, fy, fz] = G.camFocus;
+  // the guest flies the ball itself, so it follows its own ball (the host's focus only for a home run trot)
+  if (isGuest() && G.camFocus && NET.snap && NET.snap.pl && NET.snap.pl.hr) [fx, fy, fz] = G.camFocus;
+  else if (isGuest()) { const b = ballMesh.position; fx = b.x; fy = b.y; fz = b.z; }
   else {
     const b = ballMesh.position, pl = G.play;
     fx = b.x; fz = b.z; fy = b.y;
@@ -4607,7 +5563,11 @@ function updateFireworks(dt) {
 function updateLive(dt) {
   const pl = G.play, fc = fieldCtrl();
   if (fc === 'local') { const v = fieldVec(); pl.setInput(v.x, v.z); }
-  else if (fc === 'remote') pl.setInput(G.remoteIn.x, G.remoteIn.z);
+  else if (fc === 'remote') {
+    pl.setInput(G.remoteIn.x, G.remoteIn.z);
+    const rp = G.remotePos;
+    pl.remotePos = rp && performance.now() - rp.at < 300 ? rp : null;
+  }
   pl.update(dt);
   ballMesh.position.copy(pl.ball.pos);
   for (const r of pl.R) {
@@ -4747,14 +5707,16 @@ function fieldVec() {
   const L = Math.hypot(x, z); if (L > 1) { x /= L; z /= L; }
   return { x, z };
 }
-function actThrow(b) { if (isGuest()) netSend({ t: 'act', a: 'throw', base: b }); else if (G.play) G.play.userThrow(b); }
-function actDive() { if (isGuest()) netSend({ t: 'act', a: 'dive' }); else if (G.play) G.play.userDive(); }
+function actThrow(b) { if (isGuest()) { netSend({ t: 'act', a: 'throw', base: b }); NET.pred.hold = G.now + 0.5; } else if (G.play) G.play.userThrow(b); }
+function actDive() { if (isGuest()) { netSend({ t: 'act', a: 'dive' }); NET.pred.hold = G.now + 1.2; } else if (G.play) G.play.userDive(); }
 function actSwitch() { if (isGuest()) netSend({ t: 'act', a: 'switch' }); else if (G.play) G.play.userSwitch(); }
 function actRun(kind, which = null) { if (isGuest()) netSend({ t: 'act', a: 'run', kind, which }); else if (G.play) G.play.runCmd(kind, which); }
 const trotOn = () => (isGuest() ? !!(NET.snap && NET.snap.pl && NET.snap.pl.hr) : !!(G.play && (G.play.hr || G.play.awarded)));
 window.addEventListener('keydown', (e) => {
-  if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT')) return;
   const k = e.key.toLowerCase();
+  if (k === 'escape' && !$('rosterScreen').classList.contains('hidden')) { closeRosters(); return; }
+  if (k === 'escape' && !$('friendsScreen').classList.contains('hidden')) { closeFriends(); return; }
+  if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA')) return;
   if (k === 'escape' || (k === 'p' && G.phase !== 'menu')) { togglePause(); return; }
   if (G.phase === 'menu' || G.phase === 'boot' || G.paused) return;
   if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' ', 'tab'].includes(k)) e.preventDefault();
@@ -4901,20 +5863,40 @@ function togglePause(force, remote) {
 }
 
 // ------------------------------------------------------------------ menus ----
-const menu = { mode: 'exhibition', away: 0, home: 3, side: 1, innings: 3, diff: 1, manual: 1, batter: 3, lockPick: 'h3', ump: 1, view: 2, lockField: 1, lockSkip: 1, batCam: settings.batCam || 0 };
+const menu = { mode: 'exhibition', away: 'HAW', home: 'COM', side: 1, innings: 3, diff: 1, manual: 1, batter: 3, lockPick: 'h3', ump: 1, view: 2, lockField: 1, lockSkip: 1, batCam: settings.batCam || 0, netTeam: 'COM' };
 try { Object.assign(menu, JSON.parse(localStorage.getItem('fullcount.menu') || '{}')); } catch (e) { /* ignore */ }
 menu.batCam = settings.batCam || 0;   // the pause screen can change it too; settings wins
-function teamPickHTML(label, idx, key) {
-  const t = TEAMS[idx];
+// teams used to be saved as an index into the built-in list
+for (const k of ['away', 'home', 'netTeam']) if (typeof menu[k] === 'number') menu[k] = (TEAMS[menu[k]] || TEAMS[0]).key;
+// a team the menu remembers may have been deleted since
+function menuTeam(k) { const t = teamByKey(menu[k]); if (t) return t; menu[k] = (k === 'away' ? TEAMS[0] : TEAMS[3]).key; return teamByKey(menu[k]); }
+function cycleTeam(k, d, avoid) {
+  const list = allTeams();
+  let i = list.findIndex((t) => t.key === menu[k]);
+  for (let n = 0; n < list.length; n++) { i = (i + d + list.length) % list.length; if (list[i].key !== avoid) break; }
+  menu[k] = list[i].key;
+}
+function teamPickHTML(label, t, key, mine = true) {
+  if (!t) return `<div class="tp-label">${label}</div><div class="tp-row"><div class="badge wait">?</div></div><div class="team-name"><small>WAITING</small>Your friend picks</div>`;
+  const tag = t.custom ? `<span class="tp-custom" title="Custom roster">CUSTOM${t.cost > ROSTER_BUDGET ? ' &middot; OVER CAP' : ''}</span>` : '';
   return `<div class="tp-label">${label}</div>
-  <div class="tp-row"><button class="arrow" data-k="${key}" data-d="-1" aria-label="Previous team">&lsaquo;</button>
-  <div class="badge" style="background:${t.c1};color:${t.c2};border-color:${t.c2}">${t.id}</div>
-  <button class="arrow" data-k="${key}" data-d="1" aria-label="Next team">&rsaquo;</button></div>
-  <div class="team-name"><small>${t.city.toUpperCase()}</small>${t.name}</div>
-  <div class="team-ovr"><span>BAT <b>${t.ovr.bat}</b></span><span>PIT <b>${t.ovr.pit}</b></span><span>DEF <b>${t.ovr.def}</b></span></div>`;
+  <div class="tp-row"><button class="arrow" data-k="${key}" data-d="-1" aria-label="Previous team" ${mine ? '' : 'style="visibility:hidden"'}>&lsaquo;</button>
+  <div class="badge" style="background:${t.c1};color:${t.c2};border-color:${t.c2}">${esc(t.id)}</div>
+  <button class="arrow" data-k="${key}" data-d="1" aria-label="Next team" ${mine ? '' : 'style="visibility:hidden"'}>&rsaquo;</button></div>
+  <div class="team-name"><small>${esc(t.city.toUpperCase())}</small>${esc(t.name)}</div>
+  <div class="team-ovr"><span>BAT <b>${t.ovr.bat}</b></span><span>PIT <b>${t.ovr.pit}</b></span><span>DEF <b>${t.ovr.def}</b></span></div>${tag}`;
 }
 function lockOptions(team) {
   return [...team.lineup.map((h, i) => [`h${i}`, `${h.name} · ${h.pos} · ${i + 1}${['st', 'nd', 'rd'][i] || 'th'} in the order`]), ['p0', `${team.pitchers[0].name} · Starting pitcher`]];
+}
+// online: the two picks shown in the matchup, as [away, home] teams plus which one is mine to change
+function onlinePicks() {
+  if (NET.role === 'guest') {
+    const L = NET.lobby, mySide = L ? 1 - L.side : 1, mine = menuTeam('netTeam'), theirs = L && L.hostSpec ? teamFromSpec(L.hostSpec) : null;
+    return { teams: mySide ? [theirs, mine] : [mine, theirs], mySide };
+  }
+  const mySide = menu.side, mine = menuTeam(mySide ? 'home' : 'away'), theirs = NET.guestSpec ? teamFromSpec(NET.guestSpec) : null;
+  return { teams: mySide ? [theirs, mine] : [mine, theirs], mySide };
 }
 function renderMenu() {
   const m = menu.mode, derby = m === 'derby', spec = m === 'spectate', lock = m === 'lock', online = m === 'online';
@@ -4927,9 +5909,14 @@ function renderMenu() {
   $('netOr').classList.toggle('hidden', online && (NET.open || host));
   $('netJoinRow').classList.toggle('hidden', online && (NET.open || host));
   $('matchup').classList.toggle('hidden', !showTeams);
-  $('pickA').innerHTML = teamPickHTML(derby ? 'BP PITCHER FROM' : 'AWAY', L.away, 'away');
-  $('pickH').innerHTML = teamPickHTML(derby ? 'YOUR TEAM' : 'HOME', L.home, 'home');
-  $('pickA').classList.toggle('readonly', guest); $('pickH').classList.toggle('readonly', guest);
+  if (online && showTeams) {
+    const P = onlinePicks();
+    $('pickA').innerHTML = teamPickHTML(P.mySide === 0 ? 'AWAY · YOU' : 'AWAY · FRIEND', P.teams[0], 'away', P.mySide === 0);
+    $('pickH').innerHTML = teamPickHTML(P.mySide === 1 ? 'HOME · YOU' : 'HOME · FRIEND', P.teams[1], 'home', P.mySide === 1);
+  } else if (showTeams) {
+    $('pickA').innerHTML = teamPickHTML(derby ? 'BP PITCHER FROM' : 'AWAY', menuTeam('away'), 'away');
+    $('pickH').innerHTML = teamPickHTML(derby ? 'YOUR TEAM' : 'HOME', menuTeam('home'), 'home');
+  }
   $('pickA').classList.toggle('hidden', derby); $('vsLabel').classList.toggle('hidden', derby);
   $('optSide').classList.toggle('hidden', derby || spec || !showTeams);
   $('optSide').querySelector('span').textContent = lock ? 'YOUR TEAM' : 'YOU PLAY AS';
@@ -4950,42 +5937,59 @@ function renderMenu() {
     for (const b of seg.querySelectorAll('button')) b.classList.toggle('on', +b.dataset.v === +v);
   }
   const sel = $('derbyBatter');
-  sel.innerHTML = TEAMS[menu.home].lineup.map((h, i) => `<option value="${i}">${h.name} · ${h.pos} · POW ${h.pow}</option>`).join('');
+  sel.innerHTML = menuTeam('home').lineup.map((h, i) => `<option value="${i}">${esc(h.name)} · ${h.pos} · POW ${h.pow}</option>`).join('');
   sel.value = String(menu.batter);
   if (lock) {
-    const team = TEAMS[menu.side === 1 ? menu.home : menu.away];
-    $('lockPick').innerHTML = lockOptions(team).map(([v, t]) => `<option value="${v}">${t}</option>`).join('');
+    const team = menuTeam(menu.side === 1 ? 'home' : 'away');
+    $('lockPick').innerHTML = lockOptions(team).map(([v, t]) => `<option value="${v}">${esc(t)}</option>`).join('');
     $('lockPick').value = menu.lockPick;
     if ($('lockPick').value !== menu.lockPick) { menu.lockPick = 'h3'; $('lockPick').value = 'h3'; }
   }
   const play = $('btnPlay');
+  const block = host && NET.open ? onlineBlock() : '';
   play.classList.toggle('hidden', online && !host);
-  play.disabled = host && !NET.open;
+  play.disabled = (host && !NET.open) || !!block;
+  play.title = block;
   play.textContent = derby ? 'START DERBY' : spec ? 'WATCH GAME' : lock ? 'PLAY AS ' + (lock ? lockName() : '') : online ? (NET.open ? 'START ONLINE GAME' : 'WAITING FOR FRIEND') : 'PLAY BALL';
+  if (host && NET.open && block !== (NET.blockShown || '')) { NET.blockShown = block; netStatus(block || 'Ready! Press Start when you are.', block ? 'bad' : 'good'); }
   try { localStorage.setItem('fullcount.menu', JSON.stringify(menu)); } catch (e) { /* ignore */ }
   if (host && NET.open) netSendLobby();
+  if (typeof renderAccount === 'function') renderAccount();
+}
+// why the host can't start the online game yet ('' when it's fine)
+function onlineBlock() {
+  const P = onlinePicks();
+  if (!P.teams[1 - P.mySide]) return 'Waiting for your friend to pick a team…';
+  if (P.teams.some((t) => t.custom && t.cost > ROSTER_BUDGET)) return 'A custom roster is over the point cap. Fix it in the Roster Builder first.';
+  return '';
 }
 function lockName() {
-  const team = TEAMS[menu.side === 1 ? menu.home : menu.away];
+  const team = menuTeam(menu.side === 1 ? 'home' : 'away');
   const p = menu.lockPick[0] === 'p' ? team.pitchers[0] : team.lineup[+menu.lockPick.slice(1)] || team.lineup[3];
   return lastName(p.name).toUpperCase();
 }
+function derbyBatterDefault() { const lu = menuTeam('home').lineup; menu.batter = lu.indexOf(lu.reduce((a, c) => (c.pow > a.pow ? c : a))); }
 function buildMenu() {
-  if (menu.home === menu.away) menu.away = (menu.home + 1) % TEAMS.length;
+  if (menu.home === menu.away) cycleTeam('away', 1, menu.home);
   $('matchup').addEventListener('click', (e) => {
-    const b = e.target.closest('.arrow'); if (!b || NET.role === 'guest') return;
-    const k = b.dataset.k, other = k === 'away' ? 'home' : 'away';
-    let v = (menu[k] + +b.dataset.d + TEAMS.length) % TEAMS.length;
-    if (v === menu[other] && menu.mode !== 'derby') v = (v + +b.dataset.d + TEAMS.length) % TEAMS.length;
-    menu[k] = v;
-    if (k === 'home') { const lu = TEAMS[v].lineup; menu.batter = lu.indexOf(lu.reduce((a, c) => (c.pow > a.pow ? c : a))); }
+    const b = e.target.closest('.arrow'); if (!b) return;
+    const k = b.dataset.k, d = +b.dataset.d;
+    if (menu.mode === 'online') {
+      const P = onlinePicks();
+      if ((k === 'home' ? 1 : 0) !== P.mySide) return;
+      if (NET.role === 'guest') { cycleTeam('netTeam', d); netSendPick(); }
+      else cycleTeam(k, d);
+      renderMenu(); return;
+    }
+    cycleTeam(k, d, menu.mode === 'derby' ? null : menu[k === 'away' ? 'home' : 'away']);
+    if (k === 'home') derbyBatterDefault();
     renderMenu();
   });
   $('modes').addEventListener('click', (e) => {
     const b = e.target.closest('button'); if (!b) return;
     if (menu.mode === 'online' && b.dataset.mode !== 'online') { netClose(); netStatus(''); }
     menu.mode = b.dataset.mode;
-    if (menu.mode === 'derby') { const lu = TEAMS[menu.home].lineup; menu.batter = lu.indexOf(lu.reduce((a, c) => (c.pow > a.pow ? c : a))); }
+    if (menu.mode === 'derby') derbyBatterDefault();
     renderMenu();
   });
   for (const seg of document.querySelectorAll('.seg[data-key]')) seg.addEventListener('click', (e) => {
@@ -5008,8 +6012,8 @@ function buildMenu() {
   $('btnPlay').addEventListener('click', () => {
     SND.init();
     if (menu.mode === 'online') { hostStartOnline(); return; }
-    let away = menu.away; if (menu.mode === 'derby' && away === menu.home) away = (menu.home + 1) % TEAMS.length;
-    startGame({ mode: menu.mode, away, home: menu.home, side: menu.side, innings: menu.innings, diff: menu.diff, manual: menu.manual, batter: menu.batter, lockPick: menu.lockPick, ump: menu.ump, view: menu.view, lockField: menu.lockField, lockSkip: menu.lockSkip });
+    const teams = [teamSpec(menuTeam('away')), teamSpec(menuTeam('home'))];
+    startGame({ mode: menu.mode, teams, side: menu.side, innings: menu.innings, diff: menu.diff, manual: menu.manual, batter: menu.batter, lockPick: menu.lockPick, ump: menu.ump, view: menu.view, lockField: menu.lockField, lockSkip: menu.lockSkip });
   });
   const openHelp = () => { $('help').classList.remove('hidden'); };
   $('btnHow').addEventListener('click', openHelp);
@@ -5161,7 +6165,10 @@ function frameStep(dt) {
 function boot() {
   makeUmps();
   netInstallHooks();
+  buildRosterUI();
+  $('btnRosters').addEventListener('click', openRosters);
   buildMenu();
+  buildCloudUI();
   ballMesh.visible = false;
   setPhase('menu'); G.mode = 'menu';
   menuCam(0, true);
@@ -5178,7 +6185,7 @@ function boot() {
 }
 // Debug handle: lets a test harness advance the simulation without waiting on animation frames.
 window.__fullcount = {
-  G, TEAMS, settings, NET, keys, BAT_CAMS, Play, Runner, BASES, simBatted, V3, getModel,
+  G, TEAMS, settings, NET, keys, BAT_CAMS, Play, Runner, BASES, simBatted, V3, getModel, ballMesh, rosterCost, teamToDef, cleanRoster, buildCustomTeam, Cloud, cloudRender, inviteToast, get ROSTERS() { return ROSTERS; },
   step(sec, dt = 1 / 60) {
     const n = Math.round(sec / dt);
     for (let i = 0; i < n && !G.paused; i++) { if (isGuest()) guestUpdate(dt); else update(dt); netTick(); }

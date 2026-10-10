@@ -63,7 +63,8 @@ function kitFor(team, home) {
 }
 function getModel(pl, kind) {
   const home = G.teams[1] === pl.team;
-  const key = pl.id + (home ? 'H' : 'A') + (kind || '');
+  // a custom roster can change between games (new number, new look), so its version is part of the key
+  const key = pl.id + (home ? 'H' : 'A') + (kind || '') + (pl.team.ver || '');
   if (modelOf.has(key)) return modelOf.get(key);
   const m = makePlayer({ ...kitFor(pl.team, home), skin: pl.skin, num: pl.num, lefty: pl.throws === 'L', kind });
   m.pl = pl; m.key = `${pl.id}|${home ? 'H' : 'A'}|${kind || ''}`;
@@ -146,7 +147,10 @@ function batGeom(x, y) {
 function startGame(cfg) {
   G.cfg = cfg;
   G.mode = cfg.mode; G.diff = DIFFS[cfg.diff ?? 1]; G.innings = cfg.innings || 3;
-  G.teams = cfg.mode === 'derby' ? [TEAMS[cfg.home], TEAMS[cfg.away]] : [TEAMS[cfg.away], TEAMS[cfg.home]];
+  // cfg.teams = [away, home] as team specs (built-in key or a whole custom roster)
+  const specs = distinctSpecs(...(cfg.teams || [{ b: TEAMS[cfg.away || 0].key }, { b: TEAMS[cfg.home ?? 3].key }]));
+  const away = teamFromSpec(specs[0]), home = teamFromSpec(specs[1]);
+  G.teams = cfg.mode === 'derby' ? [home, away] : [away, home];
   G.lock = null;
   if (cfg.mode === 'exhibition' || cfg.mode === 'lock') { G.ctrl = ['cpu', 'cpu']; G.ctrl[cfg.side] = 'local'; }
   else if (cfg.mode === 'derby') G.ctrl = ['local', 'cpu'];
@@ -755,6 +759,7 @@ function launch(ev, la, spray, origin, q, byUser) {
   pci.visible = false; zoneGroup.visible = false; pitchMark.visible = false; pitchGuide.visible = false; reticle.visible = false;
   $('meter').classList.add('hidden');
   const bb = simBatted(origin, ev, la, spray);
+  netBBOut(origin, ev, la, spray);
   G.bb = bb; G.contactT = G.now; G.byUser = byUser; FL.mode = 'track';
   ballMesh.visible = true;
   hudPitchInfo();
@@ -902,18 +907,20 @@ function endGame(walkoff) {
     if (p && p.outs) { const ps = p.outs / 3 + p.k * 0.6 - p.r * 1.5 - p.h * 0.3; if (ps > sc) { sc = ps; line = `${Math.floor(p.outs / 3)}.${p.outs % 3} IP, ${p.k} K, ${p.r} R`; } }
     if (sc > bestScore) { bestScore = sc; best = { pl, line }; }
   }
-  $('potg').innerHTML = best ? `<div><span>PLAYER OF THE GAME</span><br><b>${best.pl.name}</b><br><span>${best.line}</span></div>` : '';
+  G.potg = best ? { name: best.pl.name, line: best.line } : null;
+  $('potg').innerHTML = G.potg ? potgHTML(G.potg) : '';
   Caster.line(walkoff ? `And the ${h.name} walk it off! What a finish!` : `That's the ballgame. ${$('finalSub').textContent}`);
   setPhase('final');
   setTimeout(() => { if (G.phase === 'final') showScreen('final'); }, walkoff ? 3200 : 1500);
 }
+function potgHTML(b) { return `<div><span>PLAYER OF THE GAME</span><br><b>${esc(b.name)}</b><br><span>${esc(b.line)}</span></div>`; }
 function linescoreHTML() {
   const n = Math.max(G.innings, G.inning);
   let h = '<tr><th></th>';
   for (let i = 1; i <= n; i++) h += `<th>${i}</th>`;
   h += '<th>R</th><th>H</th><th>E</th></tr>';
   for (let t = 0; t < 2; t++) {
-    h += `<tr><td>${G.teams[t].id}</td>`;
+    h += `<tr><td>${esc(G.teams[t].id)}</td>`;
     for (let i = 0; i < n; i++) {
       const v = G.line[t][i];
       const blank = v == null && (t === 1 && i === n - 1 && (G.phase === 'final' || G.score[1] > G.score[0]) ? 'x' : '');
@@ -957,7 +964,7 @@ function endDerbyResult() {
   const D = G.derby;
   if (D.outs <= 0) {
     $('finalTitle').textContent = 'DERBY COMPLETE';
-    $('finalLS').innerHTML = `<tr><th>HOME RUNS</th><th>LONGEST</th><th>BATTER</th></tr><tr><td style="text-align:center">${D.hr}</td><td>${D.longest ? D.longest + ' FT' : '–'}</td><td>${D.batter.name}</td></tr>`;
+    $('finalLS').innerHTML = `<tr><th>HOME RUNS</th><th>LONGEST</th><th>BATTER</th></tr><tr><td style="text-align:center">${D.hr}</td><td>${D.longest ? D.longest + ' FT' : '–'}</td><td>${esc(D.batter.name)}</td></tr>`;
     $('potg').innerHTML = `<div><span>FINAL TALLY</span><br><b>${D.hr} home run${D.hr === 1 ? '' : 's'}</b></div>`;
     $('finalSub').textContent = D.hr >= 10 ? 'An all-time round. The crowd is on its feet.' : D.hr >= 5 ? 'A strong showing at the plate.' : 'Tough round. Try timing the pitch a touch earlier.';
     Caster.line(`That's the round. ${D.batter.name} finishes with ${D.hr} home run${D.hr === 1 ? '' : 's'}.`);

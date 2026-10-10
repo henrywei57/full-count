@@ -8,7 +8,7 @@ mkdir -p dist
 {
   cat src/page.html
   printf '<script type="module">\n'
-  cat src/10-core.js src/20-world.js src/30-players.js src/40-physics.js src/50-play.js src/60-game.js src/65-net.js src/70-ui.js
+  cat src/10-core.js src/20-world.js src/30-players.js src/40-physics.js src/50-play.js src/60-game.js src/65-net.js src/66-roster.js src/67-cloud.js src/70-ui.js
   printf '</script>\n'
 } > dist/artifact.html
 {

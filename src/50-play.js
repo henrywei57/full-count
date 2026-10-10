@@ -248,26 +248,16 @@ class Play {
     else if (r.isBatter && r.base === 0) r.userTarget = 1;   // the batter can't go back home
     else { r.rev = true; r.v = Math.min(r.v, 6); r.userTarget = r.base; }
   }
-  // the runner standing on, or running to, base b (1-3, 4 = home)
-  runnerFor(b) {
-    let best = null, bd = 1e9;
-    for (const r of this.R) {
-      if (r.state === 'base' && r.base === b && r.base < 4) return r;
-      if (r.state !== 'run' || heading(r) !== b) continue;
-      const rem = r.rev ? r.d : 90 - r.d;
-      if (rem < bd) { bd = rem; best = r; }
-    }
-    return best;
-  }
   // where each runner is headed right now, for the baserunning HUD
   runnerInfo() {
     const out = [];
     for (const r of this.R) {
       if (r.state !== 'run' && r.state !== 'base') continue;
-      const key = r.state === 'base' ? r.base : heading(r);
       const forcedOff = r.forced && r.state === 'base' && r.base === r.start && !this.caught;
       let to = r.userTarget;
       if (to == null || forcedOff) to = r.state === 'base' ? (forcedOff ? r.base + 1 : r.base) : heading(r);
+      // key: the base he's running to, or standing on (a runner about to leave already counts as going)
+      const key = r.state === 'base' ? (to > r.base ? Math.min(4, r.base + 1) : r.base) : heading(r);
       out.push({ id: r.pl.id, key, to, from: r.state === 'base' ? r.base : r.rev ? r.next : r.base, run: r.state === 'run', rev: r.rev, user: r.userTarget != null, forced: r.forced && !this.caught, bat: r.isBatter, m: r.m });
     }
     return out;
@@ -394,6 +384,8 @@ class Play {
   }
   // human-steered movement: the stick sets direction and effort, the field edges hold you in
   manualMove(f, dt, withBall = false) {
+    const rp = this.remotePos;
+    if (rp && f.m.key === rp.key) { this.followRemote(f, rp); return; }
     const mag = Math.min(1, Math.hypot(this.inp.x, this.inp.z));
     if (mag > 0.15) {
       const dx = this.inp.x / mag, dz = this.inp.z / mag;
@@ -410,6 +402,17 @@ class Play {
         f.anim(s && !s.b && s.y > 3 && Math.hypot(s.x - f.pos.x, s.z - f.pos.z) < 30 ? 'catchHigh' : 'ready');
       } else f.anim('ready');
     }
+  }
+  // an online guest steers this fielder on their own screen: take their position (within reason)
+  followRemote(f, rp) {
+    let dx = rp.x - f.pos.x, dz = rp.z - f.pos.z;
+    const d = Math.hypot(dx, dz);
+    if (d > 30) { dx *= 30 / d; dz *= 30 / d; }
+    const nx = f.pos.x + dx, nz = f.pos.z + dz;
+    if (inPoly(nx, nz) || Math.hypot(nx, nz) < Math.hypot(f.pos.x, f.pos.z)) { f.pos.x = nx; f.pos.z = nz; }
+    f.yaw = rp.ry; f.v = rp.v;
+    f.m.phase += Math.hypot(dx, dz) * 0.42;
+    f.anim(rp.v > 9 ? 'run' : rp.v > 0.5 ? 'jog' : 'ready');
   }
   tryHumanCatch(f) {
     if (this.ball.mode !== 'flight' || this.dead) return;

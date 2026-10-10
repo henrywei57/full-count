@@ -31,7 +31,9 @@ function playCam() {
   const cut = G.prevCam === 'pitch' || G.prevCam === 'cf';
   G.prevCam = 'play';
   let fx, fy, fz;
-  if (isGuest() && G.camFocus) [fx, fy, fz] = G.camFocus;
+  // the guest flies the ball itself, so it follows its own ball (the host's focus only for a home run trot)
+  if (isGuest() && G.camFocus && NET.snap && NET.snap.pl && NET.snap.pl.hr) [fx, fy, fz] = G.camFocus;
+  else if (isGuest()) { const b = ballMesh.position; fx = b.x; fy = b.y; fz = b.z; }
   else {
     const b = ballMesh.position, pl = G.play;
     fx = b.x; fz = b.z; fy = b.y;
@@ -627,7 +629,11 @@ function updateFireworks(dt) {
 function updateLive(dt) {
   const pl = G.play, fc = fieldCtrl();
   if (fc === 'local') { const v = fieldVec(); pl.setInput(v.x, v.z); }
-  else if (fc === 'remote') pl.setInput(G.remoteIn.x, G.remoteIn.z);
+  else if (fc === 'remote') {
+    pl.setInput(G.remoteIn.x, G.remoteIn.z);
+    const rp = G.remotePos;
+    pl.remotePos = rp && performance.now() - rp.at < 300 ? rp : null;
+  }
   pl.update(dt);
   ballMesh.position.copy(pl.ball.pos);
   for (const r of pl.R) {
@@ -767,14 +773,16 @@ function fieldVec() {
   const L = Math.hypot(x, z); if (L > 1) { x /= L; z /= L; }
   return { x, z };
 }
-function actThrow(b) { if (isGuest()) netSend({ t: 'act', a: 'throw', base: b }); else if (G.play) G.play.userThrow(b); }
-function actDive() { if (isGuest()) netSend({ t: 'act', a: 'dive' }); else if (G.play) G.play.userDive(); }
+function actThrow(b) { if (isGuest()) { netSend({ t: 'act', a: 'throw', base: b }); NET.pred.hold = G.now + 0.5; } else if (G.play) G.play.userThrow(b); }
+function actDive() { if (isGuest()) { netSend({ t: 'act', a: 'dive' }); NET.pred.hold = G.now + 1.2; } else if (G.play) G.play.userDive(); }
 function actSwitch() { if (isGuest()) netSend({ t: 'act', a: 'switch' }); else if (G.play) G.play.userSwitch(); }
 function actRun(kind, which = null) { if (isGuest()) netSend({ t: 'act', a: 'run', kind, which }); else if (G.play) G.play.runCmd(kind, which); }
 const trotOn = () => (isGuest() ? !!(NET.snap && NET.snap.pl && NET.snap.pl.hr) : !!(G.play && (G.play.hr || G.play.awarded)));
 window.addEventListener('keydown', (e) => {
-  if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT')) return;
   const k = e.key.toLowerCase();
+  if (k === 'escape' && !$('rosterScreen').classList.contains('hidden')) { closeRosters(); return; }
+  if (k === 'escape' && !$('friendsScreen').classList.contains('hidden')) { closeFriends(); return; }
+  if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA')) return;
   if (k === 'escape' || (k === 'p' && G.phase !== 'menu')) { togglePause(); return; }
   if (G.phase === 'menu' || G.phase === 'boot' || G.paused) return;
   if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' ', 'tab'].includes(k)) e.preventDefault();
@@ -921,20 +929,40 @@ function togglePause(force, remote) {
 }
 
 // ------------------------------------------------------------------ menus ----
-const menu = { mode: 'exhibition', away: 0, home: 3, side: 1, innings: 3, diff: 1, manual: 1, batter: 3, lockPick: 'h3', ump: 1, view: 2, lockField: 1, lockSkip: 1, batCam: settings.batCam || 0 };
+const menu = { mode: 'exhibition', away: 'HAW', home: 'COM', side: 1, innings: 3, diff: 1, manual: 1, batter: 3, lockPick: 'h3', ump: 1, view: 2, lockField: 1, lockSkip: 1, batCam: settings.batCam || 0, netTeam: 'COM' };
 try { Object.assign(menu, JSON.parse(localStorage.getItem('fullcount.menu') || '{}')); } catch (e) { /* ignore */ }
 menu.batCam = settings.batCam || 0;   // the pause screen can change it too; settings wins
-function teamPickHTML(label, idx, key) {
-  const t = TEAMS[idx];
+// teams used to be saved as an index into the built-in list
+for (const k of ['away', 'home', 'netTeam']) if (typeof menu[k] === 'number') menu[k] = (TEAMS[menu[k]] || TEAMS[0]).key;
+// a team the menu remembers may have been deleted since
+function menuTeam(k) { const t = teamByKey(menu[k]); if (t) return t; menu[k] = (k === 'away' ? TEAMS[0] : TEAMS[3]).key; return teamByKey(menu[k]); }
+function cycleTeam(k, d, avoid) {
+  const list = allTeams();
+  let i = list.findIndex((t) => t.key === menu[k]);
+  for (let n = 0; n < list.length; n++) { i = (i + d + list.length) % list.length; if (list[i].key !== avoid) break; }
+  menu[k] = list[i].key;
+}
+function teamPickHTML(label, t, key, mine = true) {
+  if (!t) return `<div class="tp-label">${label}</div><div class="tp-row"><div class="badge wait">?</div></div><div class="team-name"><small>WAITING</small>Your friend picks</div>`;
+  const tag = t.custom ? `<span class="tp-custom" title="Custom roster">CUSTOM${t.cost > ROSTER_BUDGET ? ' &middot; OVER CAP' : ''}</span>` : '';
   return `<div class="tp-label">${label}</div>
-  <div class="tp-row"><button class="arrow" data-k="${key}" data-d="-1" aria-label="Previous team">&lsaquo;</button>
-  <div class="badge" style="background:${t.c1};color:${t.c2};border-color:${t.c2}">${t.id}</div>
-  <button class="arrow" data-k="${key}" data-d="1" aria-label="Next team">&rsaquo;</button></div>
-  <div class="team-name"><small>${t.city.toUpperCase()}</small>${t.name}</div>
-  <div class="team-ovr"><span>BAT <b>${t.ovr.bat}</b></span><span>PIT <b>${t.ovr.pit}</b></span><span>DEF <b>${t.ovr.def}</b></span></div>`;
+  <div class="tp-row"><button class="arrow" data-k="${key}" data-d="-1" aria-label="Previous team" ${mine ? '' : 'style="visibility:hidden"'}>&lsaquo;</button>
+  <div class="badge" style="background:${t.c1};color:${t.c2};border-color:${t.c2}">${esc(t.id)}</div>
+  <button class="arrow" data-k="${key}" data-d="1" aria-label="Next team" ${mine ? '' : 'style="visibility:hidden"'}>&rsaquo;</button></div>
+  <div class="team-name"><small>${esc(t.city.toUpperCase())}</small>${esc(t.name)}</div>
+  <div class="team-ovr"><span>BAT <b>${t.ovr.bat}</b></span><span>PIT <b>${t.ovr.pit}</b></span><span>DEF <b>${t.ovr.def}</b></span></div>${tag}`;
 }
 function lockOptions(team) {
   return [...team.lineup.map((h, i) => [`h${i}`, `${h.name} · ${h.pos} · ${i + 1}${['st', 'nd', 'rd'][i] || 'th'} in the order`]), ['p0', `${team.pitchers[0].name} · Starting pitcher`]];
+}
+// online: the two picks shown in the matchup, as [away, home] teams plus which one is mine to change
+function onlinePicks() {
+  if (NET.role === 'guest') {
+    const L = NET.lobby, mySide = L ? 1 - L.side : 1, mine = menuTeam('netTeam'), theirs = L && L.hostSpec ? teamFromSpec(L.hostSpec) : null;
+    return { teams: mySide ? [theirs, mine] : [mine, theirs], mySide };
+  }
+  const mySide = menu.side, mine = menuTeam(mySide ? 'home' : 'away'), theirs = NET.guestSpec ? teamFromSpec(NET.guestSpec) : null;
+  return { teams: mySide ? [theirs, mine] : [mine, theirs], mySide };
 }
 function renderMenu() {
   const m = menu.mode, derby = m === 'derby', spec = m === 'spectate', lock = m === 'lock', online = m === 'online';
@@ -947,9 +975,14 @@ function renderMenu() {
   $('netOr').classList.toggle('hidden', online && (NET.open || host));
   $('netJoinRow').classList.toggle('hidden', online && (NET.open || host));
   $('matchup').classList.toggle('hidden', !showTeams);
-  $('pickA').innerHTML = teamPickHTML(derby ? 'BP PITCHER FROM' : 'AWAY', L.away, 'away');
-  $('pickH').innerHTML = teamPickHTML(derby ? 'YOUR TEAM' : 'HOME', L.home, 'home');
-  $('pickA').classList.toggle('readonly', guest); $('pickH').classList.toggle('readonly', guest);
+  if (online && showTeams) {
+    const P = onlinePicks();
+    $('pickA').innerHTML = teamPickHTML(P.mySide === 0 ? 'AWAY · YOU' : 'AWAY · FRIEND', P.teams[0], 'away', P.mySide === 0);
+    $('pickH').innerHTML = teamPickHTML(P.mySide === 1 ? 'HOME · YOU' : 'HOME · FRIEND', P.teams[1], 'home', P.mySide === 1);
+  } else if (showTeams) {
+    $('pickA').innerHTML = teamPickHTML(derby ? 'BP PITCHER FROM' : 'AWAY', menuTeam('away'), 'away');
+    $('pickH').innerHTML = teamPickHTML(derby ? 'YOUR TEAM' : 'HOME', menuTeam('home'), 'home');
+  }
   $('pickA').classList.toggle('hidden', derby); $('vsLabel').classList.toggle('hidden', derby);
   $('optSide').classList.toggle('hidden', derby || spec || !showTeams);
   $('optSide').querySelector('span').textContent = lock ? 'YOUR TEAM' : 'YOU PLAY AS';
@@ -970,42 +1003,59 @@ function renderMenu() {
     for (const b of seg.querySelectorAll('button')) b.classList.toggle('on', +b.dataset.v === +v);
   }
   const sel = $('derbyBatter');
-  sel.innerHTML = TEAMS[menu.home].lineup.map((h, i) => `<option value="${i}">${h.name} · ${h.pos} · POW ${h.pow}</option>`).join('');
+  sel.innerHTML = menuTeam('home').lineup.map((h, i) => `<option value="${i}">${esc(h.name)} · ${h.pos} · POW ${h.pow}</option>`).join('');
   sel.value = String(menu.batter);
   if (lock) {
-    const team = TEAMS[menu.side === 1 ? menu.home : menu.away];
-    $('lockPick').innerHTML = lockOptions(team).map(([v, t]) => `<option value="${v}">${t}</option>`).join('');
+    const team = menuTeam(menu.side === 1 ? 'home' : 'away');
+    $('lockPick').innerHTML = lockOptions(team).map(([v, t]) => `<option value="${v}">${esc(t)}</option>`).join('');
     $('lockPick').value = menu.lockPick;
     if ($('lockPick').value !== menu.lockPick) { menu.lockPick = 'h3'; $('lockPick').value = 'h3'; }
   }
   const play = $('btnPlay');
+  const block = host && NET.open ? onlineBlock() : '';
   play.classList.toggle('hidden', online && !host);
-  play.disabled = host && !NET.open;
+  play.disabled = (host && !NET.open) || !!block;
+  play.title = block;
   play.textContent = derby ? 'START DERBY' : spec ? 'WATCH GAME' : lock ? 'PLAY AS ' + (lock ? lockName() : '') : online ? (NET.open ? 'START ONLINE GAME' : 'WAITING FOR FRIEND') : 'PLAY BALL';
+  if (host && NET.open && block !== (NET.blockShown || '')) { NET.blockShown = block; netStatus(block || 'Ready! Press Start when you are.', block ? 'bad' : 'good'); }
   try { localStorage.setItem('fullcount.menu', JSON.stringify(menu)); } catch (e) { /* ignore */ }
   if (host && NET.open) netSendLobby();
+  if (typeof renderAccount === 'function') renderAccount();
+}
+// why the host can't start the online game yet ('' when it's fine)
+function onlineBlock() {
+  const P = onlinePicks();
+  if (!P.teams[1 - P.mySide]) return 'Waiting for your friend to pick a team…';
+  if (P.teams.some((t) => t.custom && t.cost > ROSTER_BUDGET)) return 'A custom roster is over the point cap. Fix it in the Roster Builder first.';
+  return '';
 }
 function lockName() {
-  const team = TEAMS[menu.side === 1 ? menu.home : menu.away];
+  const team = menuTeam(menu.side === 1 ? 'home' : 'away');
   const p = menu.lockPick[0] === 'p' ? team.pitchers[0] : team.lineup[+menu.lockPick.slice(1)] || team.lineup[3];
   return lastName(p.name).toUpperCase();
 }
+function derbyBatterDefault() { const lu = menuTeam('home').lineup; menu.batter = lu.indexOf(lu.reduce((a, c) => (c.pow > a.pow ? c : a))); }
 function buildMenu() {
-  if (menu.home === menu.away) menu.away = (menu.home + 1) % TEAMS.length;
+  if (menu.home === menu.away) cycleTeam('away', 1, menu.home);
   $('matchup').addEventListener('click', (e) => {
-    const b = e.target.closest('.arrow'); if (!b || NET.role === 'guest') return;
-    const k = b.dataset.k, other = k === 'away' ? 'home' : 'away';
-    let v = (menu[k] + +b.dataset.d + TEAMS.length) % TEAMS.length;
-    if (v === menu[other] && menu.mode !== 'derby') v = (v + +b.dataset.d + TEAMS.length) % TEAMS.length;
-    menu[k] = v;
-    if (k === 'home') { const lu = TEAMS[v].lineup; menu.batter = lu.indexOf(lu.reduce((a, c) => (c.pow > a.pow ? c : a))); }
+    const b = e.target.closest('.arrow'); if (!b) return;
+    const k = b.dataset.k, d = +b.dataset.d;
+    if (menu.mode === 'online') {
+      const P = onlinePicks();
+      if ((k === 'home' ? 1 : 0) !== P.mySide) return;
+      if (NET.role === 'guest') { cycleTeam('netTeam', d); netSendPick(); }
+      else cycleTeam(k, d);
+      renderMenu(); return;
+    }
+    cycleTeam(k, d, menu.mode === 'derby' ? null : menu[k === 'away' ? 'home' : 'away']);
+    if (k === 'home') derbyBatterDefault();
     renderMenu();
   });
   $('modes').addEventListener('click', (e) => {
     const b = e.target.closest('button'); if (!b) return;
     if (menu.mode === 'online' && b.dataset.mode !== 'online') { netClose(); netStatus(''); }
     menu.mode = b.dataset.mode;
-    if (menu.mode === 'derby') { const lu = TEAMS[menu.home].lineup; menu.batter = lu.indexOf(lu.reduce((a, c) => (c.pow > a.pow ? c : a))); }
+    if (menu.mode === 'derby') derbyBatterDefault();
     renderMenu();
   });
   for (const seg of document.querySelectorAll('.seg[data-key]')) seg.addEventListener('click', (e) => {
@@ -1028,8 +1078,8 @@ function buildMenu() {
   $('btnPlay').addEventListener('click', () => {
     SND.init();
     if (menu.mode === 'online') { hostStartOnline(); return; }
-    let away = menu.away; if (menu.mode === 'derby' && away === menu.home) away = (menu.home + 1) % TEAMS.length;
-    startGame({ mode: menu.mode, away, home: menu.home, side: menu.side, innings: menu.innings, diff: menu.diff, manual: menu.manual, batter: menu.batter, lockPick: menu.lockPick, ump: menu.ump, view: menu.view, lockField: menu.lockField, lockSkip: menu.lockSkip });
+    const teams = [teamSpec(menuTeam('away')), teamSpec(menuTeam('home'))];
+    startGame({ mode: menu.mode, teams, side: menu.side, innings: menu.innings, diff: menu.diff, manual: menu.manual, batter: menu.batter, lockPick: menu.lockPick, ump: menu.ump, view: menu.view, lockField: menu.lockField, lockSkip: menu.lockSkip });
   });
   const openHelp = () => { $('help').classList.remove('hidden'); };
   $('btnHow').addEventListener('click', openHelp);
@@ -1181,7 +1231,10 @@ function frameStep(dt) {
 function boot() {
   makeUmps();
   netInstallHooks();
+  buildRosterUI();
+  $('btnRosters').addEventListener('click', openRosters);
   buildMenu();
+  buildCloudUI();
   ballMesh.visible = false;
   setPhase('menu'); G.mode = 'menu';
   menuCam(0, true);
@@ -1198,7 +1251,7 @@ function boot() {
 }
 // Debug handle: lets a test harness advance the simulation without waiting on animation frames.
 window.__fullcount = {
-  G, TEAMS, settings, NET, keys, BAT_CAMS, Play, Runner, BASES, simBatted, V3, getModel,
+  G, TEAMS, settings, NET, keys, BAT_CAMS, Play, Runner, BASES, simBatted, V3, getModel, ballMesh, rosterCost, teamToDef, cleanRoster, buildCustomTeam, Cloud, cloudRender, inviteToast, get ROSTERS() { return ROSTERS; },
   step(sec, dt = 1 / 60) {
     const n = Math.round(sec / dt);
     for (let i = 0; i < n && !G.paused; i++) { if (isGuest()) guestUpdate(dt); else update(dt); netTick(); }

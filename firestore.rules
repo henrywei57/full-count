@@ -1,0 +1,41 @@
+rules_version = '2';
+// Paste into Firebase console > Firestore Database > Rules, then Publish.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function isMe(uid) { return signedIn() && request.auth.uid == uid; }
+    function shortStr(v, n) { return v is string && v.size() <= n; }
+
+    // public profile: anyone signed in can see your name, picture, friend code and when you were last on
+    match /users/{uid} {
+      allow read: if signedIn();
+      allow write: if isMe(uid)
+        && request.resource.data.keys().hasOnly(['name', 'photo', 'code', 'lastSeen'])
+        && shortStr(request.resource.data.name, 40) && shortStr(request.resource.data.photo, 500) && shortStr(request.resource.data.code, 8);
+
+      // your rosters and friends list: only you
+      match /rosters/{rid} {
+        allow read, delete: if isMe(uid);
+        allow write: if isMe(uid) && shortStr(request.resource.data.json, 30000);
+      }
+      match /friends/{fid} {
+        allow read, write: if isMe(uid);
+      }
+      // friend requests and game invites: one slot per sender, written only as yourself
+      match /inbox/{fromUid} {
+        allow read, delete: if isMe(uid);
+        allow create, update: if signedIn() && fromUid == request.auth.uid
+          && request.resource.data.from == request.auth.uid
+          && request.resource.data.type in ['friend', 'invite']
+          && shortStr(request.resource.data.name, 40) && shortStr(request.resource.data.photo, 500)
+          && shortStr(request.resource.data.code, 8) && shortStr(request.resource.data.room, 8);
+      }
+    }
+
+    // friend code -> player; a code can be claimed once and never taken over
+    match /codes/{code} {
+      allow read: if signedIn();
+      allow create: if signedIn() && request.resource.data.uid == request.auth.uid && code.size() == 6;
+    }
+  }
+}
