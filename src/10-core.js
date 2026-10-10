@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 
 // ============================================================================
-// Core utilities, field geometry, rosters, audio and commentary
+// Core utilities, field geometry, pitch types, audio and commentary
 // Units are feet. Home plate is the origin, center field is toward -Z,
 // first base toward +X. Spray angle 0 = straight away center, + toward right.
 // ============================================================================
@@ -20,14 +20,6 @@ const G_ACC = 32.17;
 const UP = new V3(0, 1, 0);
 const DOWN = new V3(0, -1, 0);
 
-function mulberry32(a) {
-  return function () {
-    a |= 0; a = (a + 0x6D2B79F5) | 0;
-    let t = Math.imul(a ^ (a >>> 15), 1 | a);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
 // keyframe interpolation with smoothstep easing between keys
 function kf(t, keys) {
   if (t <= keys[0][0]) return keys[0][1];
@@ -114,89 +106,13 @@ const FASTBALLS = new Set(['FF', 'SI']);
 const BREAKING = new Set(['SL', 'SW', 'CU', 'KC', 'FC']);
 
 // ---------------------------------------------------------------- teams ----
-const TEAM_DEFS = [
-  { id: 'HAW', city: 'Harbor City', name: 'Hawks', c1: '#13294b', c2: '#f26a21', bat: 78, pit: 76, def: 74 },
-  { id: 'RAT', city: 'Mesa', name: 'Rattlers', c1: '#7a1f2b', c2: '#e0b973', bat: 74, pit: 80, def: 73 },
-  { id: 'LUM', city: 'Northport', name: 'Lumberjacks', c1: '#1e4d2b', c2: '#e3b23c', bat: 81, pit: 72, def: 73 },
-  { id: 'COM', city: 'Capital', name: 'Comets', c1: '#b3122e', c2: '#dfe6f5', bat: 76, pit: 77, def: 78 },
-  { id: 'GAT', city: 'Bayou', name: 'Gators', c1: '#0d6e6e', c2: '#f2c14e', bat: 72, pit: 79, def: 80 },
-  { id: 'FRG', city: 'Steel City', name: 'Forge', c1: '#1b1b1f', c2: '#f2b51b', bat: 80, pit: 74, def: 71 },
-  { id: 'VAQ', city: 'Rio Grande', name: 'Vaqueros', c1: '#7b3f14', c2: '#7fd6c9', bat: 75, pit: 75, def: 79 },
-  { id: 'PKS', city: 'Summit', name: 'Peaks', c1: '#1f6fb2', c2: '#e8f3ff', bat: 77, pit: 78, def: 75 },
-];
+// The clubs are real (src/12-mlb.js, built by tools/mlb-import.mjs; teams in 14-teams.js).
+// These made-up names are only for blank rosters in the Roster Builder.
 const FIRST = ['Marcus', 'Diego', 'Tyler', 'Kenji', 'Andre', 'Luis', 'Jalen', 'Cole', 'Mateo', 'Owen', 'Rafael', 'Darius', 'Hunter', 'Yuki', 'Elijah', 'Santiago', 'Brady', 'Malik', 'Nolan', 'Javier', 'Cameron', 'Isaiah', 'Trevor', 'Kai', 'Wesley', 'Dominic', 'Reggie', 'Felix', 'Logan', 'Emilio', 'Grant', 'Tomas', 'Xavier', 'Shane', 'Hector', 'Bryce', 'Jonah', 'Andres', 'Caleb', 'Rico', 'Damon', 'Ian', 'Victor', 'Austin', 'Gabe', 'Theo', 'Ramon', 'Miles', 'Oscar', 'Ezra', 'Quinn', 'Silas', 'Joaquin', 'Desmond', 'Ty', 'Royce', 'Callum', 'Nico', 'Tobias', 'Ahmad'];
 const LAST = ['Vale', 'Okafor', 'Brennan', 'Whitlock', 'Holloway', 'Pruitt', 'Marsh', 'Kowalski', 'Fairbanks', 'Ibarra', 'Lindqvist', 'Thorne', 'Quintero', 'Hargrove', 'Calloway', 'Strand', 'Ocampo', 'Fujimoto', 'Ashby', 'Bellamy', 'Duquette', 'Kessler', 'Abernathy', 'Lark', 'Winslow', 'Gallardo', 'Draper', 'Nakamura', 'Corbin', 'Hale', 'Bishop', 'Kemper', 'Sutton', 'Ferris', 'Oduya', 'Haskins', 'Prentice', 'Cordero', 'Maddox', 'Iwata', 'Carrow', 'Solano', 'Teague', 'Mercer', 'Banda', 'Aldana', 'Pike', 'Rutledge', 'Esparza', 'Okonjo', 'Linwood', 'Del Toro', 'Halvorsen', 'Quarles', 'Ybarra', 'Coyle', 'Barrientos', 'Nwosu', 'Kimura', 'Stroud', 'Pellegrini', 'Archuleta', 'Tolliver', 'Vance', 'Huxley'];
 const POS_LIST = ['C', '1B', '2B', '3B', 'SS', 'LF', 'CF', 'RF', 'DH'];
-const PROFILE = {
-  C: { con: -3, pow: 2, eye: 0, spd: -16, arm: 8, fld: 4 },
-  '1B': { con: 2, pow: 10, eye: 3, spd: -10, arm: -8, fld: -2 },
-  '2B': { con: 4, pow: -6, eye: 2, spd: 6, arm: -2, fld: 6 },
-  '3B': { con: 0, pow: 5, eye: 0, spd: -3, arm: 10, fld: 4 },
-  SS: { con: 1, pow: -3, eye: 0, spd: 8, arm: 10, fld: 10 },
-  LF: { con: 2, pow: 5, eye: 1, spd: 2, arm: -4, fld: -4 },
-  CF: { con: 2, pow: -2, eye: 1, spd: 14, arm: 3, fld: 10 },
-  RF: { con: 0, pow: 6, eye: 0, spd: 3, arm: 12, fld: 2 },
-  DH: { con: 3, pow: 12, eye: 4, spd: -8, arm: -10, fld: -15 },
-};
 const SKINS = ['#f1c7a5', '#e3b08c', '#c98a63', '#a96c48', '#8a5536', '#6b4029', '#f5d4bb', '#d9a07a'];
 
-function genTeam(def, idx) {
-  const r = mulberry32(9137 + idx * 7919);
-  const g = () => { let u = 0, v = 0; while (!u) u = r(); while (!v) v = r(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); };
-  const used = new Set(), nums = new Set();
-  const nm = () => { for (;;) { const n = FIRST[(r() * FIRST.length) | 0] + ' ' + LAST[(r() * LAST.length) | 0]; if (!used.has(n)) { used.add(n); return n; } } };
-  const num = () => { for (;;) { const n = 1 + ((r() * 78) | 0); if (!nums.has(n)) { nums.add(n); return n; } } };
-  const rt = (base, d, sd = 8) => clamp(Math.round(base + d + g() * sd), 38, 99);
-  const skin = () => SKINS[(r() * SKINS.length) | 0];
-  const team = { ...def, idx, hitters: [], pitchers: [] };
-  for (const pos of POS_LIST) {
-    const P = PROFILE[pos];
-    const bats = r() < 0.32 ? 'L' : r() < 0.07 ? 'S' : 'R';
-    team.hitters.push({
-      id: def.id + '-' + pos, name: nm(), num: num(), pos, bats, throws: (bats === 'L' && ['1B', 'LF', 'RF', 'DH', 'CF'].includes(pos) && r() < 0.6) ? 'L' : 'R',
-      con: rt(def.bat, P.con), pow: rt(def.bat, P.pow, 10), eye: rt(def.bat, P.eye), spd: rt(70, P.spd, 10),
-      arm: rt(def.def, P.arm), fld: rt(def.def, P.fld), skin: skin(), team,
-    });
-  }
-  // batting order
-  const hs = [...team.hitters];
-  const take = (score) => { hs.sort((a, b) => score(b) - score(a)); return hs.shift(); };
-  const order = [
-    take((h) => h.spd * 0.6 + h.con * 0.7 + h.eye * 0.3),
-    take((h) => h.con + h.eye * 0.5),
-    take((h) => h.con * 0.8 + h.pow),
-    take((h) => h.pow * 1.2 + h.con * 0.4),
-    take((h) => h.pow + h.con * 0.5),
-  ];
-  hs.sort((a, b) => b.con + b.pow - (a.con + a.pow));
-  team.lineup = order.concat(hs);
-  // pitching staff: one starter, three relievers
-  const pool = ['SL', 'CU', 'CH', 'FC', 'SW', 'FS', 'KC'];
-  for (let i = 0; i < 4; i++) {
-    const sp = i === 0, L = r() < 0.3;
-    const p = {
-      id: def.id + '-P' + i, name: nm(), num: num(), pos: sp ? 'SP' : 'RP', throws: L ? 'L' : 'R', bats: L ? 'L' : 'R',
-      velo: clamp(Math.round((sp ? 93.5 : 95.5) + (def.pit - 76) * 0.25 + g() * 1.8), 89, 101),
-      ctl: rt(def.pit, sp ? 2 : -2), stam: sp ? rt(90, 0, 5) : rt(42, 0, 6),
-      spd: 45, arm: 72, fld: 62, con: 22, pow: 15, eye: 25, skin: skin(), team,
-    };
-    const fast = r() < 0.75 ? 'FF' : 'SI';
-    const ars = [fast];
-    if (sp && fast === 'FF' && r() < 0.4) ars.push('SI');
-    const n = sp ? 4 + (r() < 0.35 ? 1 : 0) : 3;
-    while (ars.length < n) {
-      const t = pool[(r() * pool.length) | 0];
-      if (ars.includes(t)) continue;
-      if ((t === 'KC' && ars.includes('CU')) || (t === 'CU' && ars.includes('KC'))) continue;
-      if ((t === 'SW' && ars.includes('SL')) || (t === 'SL' && ars.includes('SW'))) continue;
-      ars.push(t);
-    }
-    p.pitches = ars.map((t) => ({ type: t, velo: p.velo + PITCH_TYPES[t].d + Math.round(g() * 1.2), brk: clamp(0.88 + r() * 0.3 + (def.pit - 76) * 0.01, 0.78, 1.3) }));
-    team.pitchers.push(p);
-  }
-  team.ovr = teamOvr(team);
-  return team;
-}
 function teamOvr(team) {
   const avg = (arr, f) => Math.round(arr.reduce((s, x) => s + f(x), 0) / arr.length);
   return {
@@ -205,9 +121,6 @@ function teamOvr(team) {
     def: avg(team.hitters.filter((h) => h.pos !== 'DH'), (h) => (h.fld + h.arm) / 2),
   };
 }
-// built-in teams; custom rosters are added in 66-roster.js. team.key names a team in menus and online.
-const TEAMS = TEAM_DEFS.map(genTeam);
-for (const t of TEAMS) { t.key = t.id; t.ver = ''; }
 
 // pitchScale: slows pitch flight; pci: PCI size; win: timing windows (perfect, good, contact) in seconds;
 // assist: how far the PCI is pulled toward the pitch on a swing; guide: show where the pitch will cross
@@ -217,8 +130,7 @@ const DIFFS = [
   { name: 'All-Star', pitchScale: 1.2, pci: 1.2, win: [0.019, 0.042, 0.09], assist: 0.15, guide: 0, cpuCtl: 1.0, cpuBat: 0, cpuEye: 1.0, meter: 1.2 },
   { name: 'Hall of Fame', pitchScale: 1.0, pci: 1.0, win: [0.014, 0.032, 0.072], assist: 0, guide: 0, cpuCtl: 0.85, cpuBat: 0.08, cpuEye: 1.12, meter: 1.4 },
 ];
-const PBYID = {};
-for (const t of TEAMS) for (const p of [...t.hitters, ...t.pitchers]) PBYID[p.id] = p;
+const PBYID = {};   // player id -> player, filled in by 14-teams.js and each game's teams
 
 const settings = { sound: true, voice: true, zone: true, manual: true, guide: true, batCam: 0 };
 try { const s = JSON.parse(localStorage.getItem('fullcount.settings') || '{}'); Object.assign(settings, s); } catch (e) { /* storage unavailable */ }

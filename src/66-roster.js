@@ -2,7 +2,7 @@
 // Custom rosters: build your own team on a point budget. Rosters are saved on
 // this device, and to your Google account when you're signed in (67-cloud.js).
 // A roster is plain data (a "def"); buildCustomTeam turns it into the same team
-// shape genTeam makes, so the rest of the game can't tell the difference.
+// shape as the built-in clubs (14-teams.js), so the rest of the game can't tell the difference.
 // ============================================================================
 
 const RATING_MIN = 40, RATING_MAX = 99, VELO_MIN = 86, VELO_MAX = 100;

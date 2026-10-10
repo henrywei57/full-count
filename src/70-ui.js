@@ -986,13 +986,13 @@ function togglePause(force, remote) {
 }
 
 // ------------------------------------------------------------------ menus ----
-const menu = { mode: 'exhibition', away: 'HAW', home: 'COM', side: 1, innings: 3, diff: 1, manual: 1, batter: 3, lockPick: 'h3', ump: 1, view: 2, lockField: 1, lockSkip: 1, batCam: settings.batCam || 0, netTeam: 'COM', drill: 0, tutLesson: -1 };
+const menu = { mode: 'exhibition', away: 'NYY', home: 'LAD', side: 1, innings: 3, diff: 1, manual: 1, batter: 3, lockPick: 'h3', ump: 1, view: 2, lockField: 1, lockSkip: 1, batCam: settings.batCam || 0, netTeam: 'LAD', drill: 0, tutLesson: -1 };
 try { Object.assign(menu, JSON.parse(localStorage.getItem('fullcount.menu') || '{}')); } catch (e) { /* ignore */ }
 menu.batCam = settings.batCam || 0;   // the pause screen can change it too; settings wins
 // teams used to be saved as an index into the built-in list
 for (const k of ['away', 'home', 'netTeam']) if (typeof menu[k] === 'number') menu[k] = (TEAMS[menu[k]] || TEAMS[0]).key;
 // a team the menu remembers may have been deleted since
-function menuTeam(k) { const t = teamByKey(menu[k]); if (t) return t; menu[k] = (k === 'away' ? TEAMS[0] : TEAMS[3]).key; return teamByKey(menu[k]); }
+function menuTeam(k) { const t = teamByKey(menu[k]); if (t) return t; menu[k] = (teamByKey(k === 'away' ? 'NYY' : 'LAD') || TEAMS[k === 'away' ? 0 : 1]).key; return teamByKey(menu[k]); }
 function cycleTeam(k, d, avoid) {
   const list = allTeams();
   let i = list.findIndex((t) => t.key === menu[k]);
