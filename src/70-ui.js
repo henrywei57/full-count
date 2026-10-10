@@ -35,6 +35,18 @@ function playCam() {
 // strike-zone view (you can't see the plate from the batter's eyes).
 const _eye = new V3(), _look = new V3(), _fwd = new V3();
 let fpvHidden = null, fpvOn = false;
+// free look: 'track' follows the play automatically; 'free' is wherever you point the mouse / right stick
+const FL = { mode: 'track', yaw: 0, pitch: 0 };
+function lookDelta(dx, dy) {
+  if (!fpvOn) return;
+  if (FL.mode !== 'free') {
+    const lx = camRig.look.x - camRig.pos.x, ly = camRig.look.y - camRig.pos.y, lz = camRig.look.z - camRig.pos.z;
+    FL.yaw = Math.atan2(lx, lz); FL.pitch = Math.atan2(ly, Math.hypot(lx, lz)); FL.mode = 'free';
+  }
+  FL.yaw -= dx * 0.0028; FL.pitch = clamp(FL.pitch - dy * 0.0028, -1.3, 1.3);
+}
+function lookRecenter() { FL.mode = 'track'; }
+function exitPointerLock() { if (document.pointerLockElement) try { document.exitPointerLock(); } catch (e) { /* not locked */ } }
 function fpvActive() { return G.mode === 'lock' && G.fpv && !G.replay && ['prePitch', 'windup', 'pitch', 'postPitch', 'postFoul', 'live', 'postPlay', 'absReview'].includes(G.phase); }
 function lockRole() {
   if (G.half === 1 - G.lockSide) {
@@ -59,14 +71,15 @@ function fpvHide(m) {
   if (m) setModelLayer(m, 1);
 }
 function fpvCam() {
-  if (!fpvActive()) { fpvHide(null); fpvOn = false; return false; }
+  if (!fpvActive()) { fpvHide(null); fpvOn = false; exitPointerLock(); return false; }
   const L = lockRole();
-  if (L.role === 'bat') { fpvHide(null); fpvOn = false; return false; }
+  if (L.role === 'bat') { fpvHide(null); fpvOn = false; exitPointerLock(); return false; }
   let fov = 64;
   if (L.role === 'dugout') {
     fpvHide(null);
+    // at the dugout rail, in front of the wall, looking in at the field
     const sgn = G.lockSide === 1 ? 1 : -1;
-    _eye.set(sgn * 106, 2.6, -41); _look.set(0, 3, -48); fov = 55;
+    _eye.set(sgn * Math.SQRT1_2 * 100, 4.8, Math.SQRT1_2 * -40); _look.set(0, 3, -55); fov = 55;
   } else {
     const m = L.m;
     fpvHide(m);
@@ -83,6 +96,14 @@ function fpvCam() {
     else if (L.role === 'field' && L.f.role === 'C') { _look.set(0, 5.5, -58); fov = 48; }
     else if (L.role === 'field') { _look.set(0, 3.2, 0); fov = 44; if (G.phase === 'pitch') _look.lerp(b, 0.25); }
     else _look.set(0, 3, 0);
+  }
+  if (FL.mode === 'free') {
+    if (userPitches()) FL.mode = 'track';
+    else {
+      const cp = Math.cos(FL.pitch);
+      _look.set(_eye.x + Math.sin(FL.yaw) * cp * 60, _eye.y + Math.sin(FL.pitch) * 60, _eye.z + Math.cos(FL.yaw) * cp * 60);
+      camRig.look.copy(_look);
+    }
   }
   if (!fpvOn) { camRig.look.copy(_look); camRig.fov = fov; }
   camRig.pos.copy(_eye); camRig.tp.copy(_eye); camRig.tl.copy(_look); camRig.tf = fov; camRig.rate = 9;
@@ -350,6 +371,38 @@ function requestChallenge() {
   if (c && c.who === 'local') startChallenge(c.side);
 }
 
+// first person: the base most directly in front of you while you hold the ball
+function aimBase() {
+  const pl = G.play;
+  if (!fpvOn || !pl || G.phase !== 'live') return 0;
+  const f = pl.ball.holder;
+  if (!f || f !== pl.uf || !pl.humanHolder(f) || f.throwing) return 0;
+  const fx = camRig.look.x - camRig.pos.x, fz = camRig.look.z - camRig.pos.z, L = Math.hypot(fx, fz) || 1;
+  let best = 0, bestA = 0.62;
+  for (let b = 1; b <= 4; b++) {
+    const bp = BASES[b], dx = bp.x - f.pos.x, dz = bp.z - f.pos.z, d = Math.hypot(dx, dz);
+    if (d < 6) continue;
+    const a = Math.acos(clamp((dx * fx + dz * fz) / (d * L), -1, 1));
+    if (a < bestA) { bestA = a; best = b; }
+  }
+  return best;
+}
+const BASE_NAMES = { 1: 'first', 2: 'second', 3: 'third', 4: 'home' };
+function throwAtLook() { const b = aimBase(); if (b) { actThrow(b); return true; } return false; }
+function updateAimMarker() {
+  const ab = G.phase === 'live' ? aimBase() : 0;
+  const pl = G.play, holding = fpvOn && G.phase === 'live' && pl && pl.ball.holder && pl.ball.holder === pl.uf && pl.humanHolder(pl.uf);
+  $('crosshair').classList.toggle('hidden', !holding);
+  $('crosshair').classList.toggle('on', !!ab);
+  baseMark.visible = !!ab;
+  if (ab) { baseMark.position.set(BASES[ab].x, 0.15, BASES[ab].z); if (G.aimShown !== ab) { G.aimShown = ab; setHint(`<kbd>Space</kbd> or click: throw to ${BASE_NAMES[ab]} &middot; look at a base to aim`); } }
+  else if (G.aimShown) { G.aimShown = 0; setHint(G.phase === 'live' ? liveHint() : ''); }
+}
+function updateLockUI() {
+  const show = G.mode === 'lock' && !G.simAB && !G.replay && ['prePitch', 'windup', 'pitch', 'postPitch', 'live', 'postPlay', 'postFoul'].includes(G.phase);
+  $('simBtn').classList.toggle('hidden', !show);
+}
+
 // ------------------------------------------------------------ runner map ----
 // live mini diamond: where every runner, fielder and the ball are right now
 function drawMiniMap() {
@@ -359,7 +412,8 @@ function drawMiniMap() {
   el.classList.toggle('hidden', !show);
   if (!show) return;
   const g = el.getContext('2d'), s = 1.02, ox = 150, oy = 262;
-  const P = (x, z) => [clamp(ox + x * s, 10, 290), clamp(oy + z * s, 10, 290)];
+  // far-away objects are pulled in to the map edge along their real direction
+  const P = (x, z) => { const vx = x * s, vz = z * s; const k = Math.min(1, 138 / Math.max(1e-6, Math.abs(vx)), 250 / Math.max(1e-6, -vz), 28 / Math.max(1e-6, vz)); return [ox + vx * k, oy + vz * k]; };
   g.clearRect(0, 0, 300, 300);
   g.fillStyle = 'rgba(54,120,58,0.35)'; g.beginPath(); g.moveTo(ox, oy); g.arc(ox, oy, 205, -Math.PI * 0.75, -Math.PI * 0.25); g.closePath(); g.fill();
   const c = [0, 1, 2, 3].map((i) => P(BASES[i].x, BASES[i].z));
@@ -441,7 +495,7 @@ function updateLive(dt) {
   landMark.visible = !!land; if (land) landMark.position.set(land[0], 0.1, land[1]);
   $('runHelp').classList.toggle('hidden', !(userRuns() && !pl.hr && !pl.awarded && !pl.done));
   if (!fpvActive()) playCam();
-  if (pl.done) { setHint(''); ctrlRing.visible = false; landMark.visible = false; $('runHelp').classList.add('hidden'); finishPlay(); }
+  if (pl.done) { setHint(''); ctrlRing.visible = false; landMark.visible = false; baseMark.visible = false; G.aimShown = 0; $('runHelp').classList.add('hidden'); finishPlay(); }
 }
 function onPlayEvent(e) {
   const homeBats = G.half === 1;
@@ -509,10 +563,27 @@ let mouseMoved = false, lastPointer = 'mouse';
 const raycaster = new THREE.Raycaster(), platePlane = new THREE.Plane(new V3(0, 0, 1), 0), _hit = new V3();
 const keys = new Set();
 function setMouse(e) { mouseNDC.set((e.clientX / window.innerWidth) * 2 - 1, -(e.clientY / window.innerHeight) * 2 + 1); mouseMoved = true; lastPointer = e.pointerType || 'mouse'; }
-canvasEl.addEventListener('pointermove', setMouse);
+canvasEl.addEventListener('pointermove', (e) => {
+  setMouse(e);
+  if (!fpvOn || G.paused) return;
+  const locked = document.pointerLockElement === canvasEl;
+  if (locked || (e.buttons && !userPitches())) lookDelta(e.movementX || 0, e.movementY || 0);
+});
 canvasEl.addEventListener('contextmenu', (e) => e.preventDefault());
 canvasEl.addEventListener('pointerdown', (e) => {
   SND.init(); setMouse(e);
+  // first person: grab the mouse for looking around; right-click re-centers on the play
+  if (fpvOn && !userPitches()) {
+    e.preventDefault();
+    if (e.button === 2) { lookRecenter(); return; }
+    if (e.pointerType === 'mouse' && document.pointerLockElement !== canvasEl) {
+      try { const r = canvasEl.requestPointerLock(); if (r && r.catch) r.catch(() => {}); } catch (err) { /* not supported */ }
+      return;
+    }
+    if (G.phase === 'live') { if (!throwAtLook() && trotOn()) primaryAction('normal'); return; }
+    primaryAction('normal');
+    return;
+  }
   if (e.pointerType === 'touch') aimUpdate(0, true);
   primaryAction(e.button === 2 ? 'power' : e.button === 1 ? 'contact' : 'normal');
   e.preventDefault();
@@ -540,7 +611,7 @@ window.addEventListener('keydown', (e) => {
   const k = e.key.toLowerCase();
   if (k === 'escape' || (k === 'p' && G.phase !== 'menu')) { togglePause(); return; }
   if (G.phase === 'menu' || G.phase === 'boot' || G.paused) return;
-  if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' '].includes(k)) e.preventDefault();
+  if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' ', 'tab'].includes(k)) e.preventDefault();
   if (e.repeat) return;
   keys.add(k);
   SND.init();
@@ -548,6 +619,7 @@ window.addEventListener('keydown', (e) => {
     if (userFields()) {
       const tmap = { arrowright: 1, arrowup: 2, arrowleft: 3, arrowdown: 4, 1: 1, 2: 2, 3: 3, 4: 4 };
       if (k in tmap) { actThrow(tmap[k]); return; }
+      if (k === ' ' && throwAtLook()) return;
       if (k === ' ' || k === 'shift') { actDive(); return; }
       if (k === 'q') { actSwitch(); return; }
       if ('wasd'.includes(k)) return;
@@ -568,11 +640,20 @@ window.addEventListener('keydown', (e) => {
   else if (k === 'z') toggleZone();
   else if (k === 'm') toggleSound();
   else if (k === 'c') requestChallenge();
+  else if (k === 't') lookRecenter();
+  else if (k === 'tab') startSim();
+  else if (k === 'v' && G.mode === 'lock') toggleView();
 });
+function toggleView() {
+  G.fpv = !G.fpv; FL.mode = 'track';
+  if (!G.fpv) { fpvHide(null); fpvOn = false; exitPointerLock(); if (G.phase === 'live' || G.phase === 'postPlay') playCam(); else if (G.phase === 'prePitch') prePitchUI(); else cfCam(true); }
+  setHint(G.fpv ? 'First-person view &middot; <kbd>V</kbd> to switch' : 'Broadcast view &middot; <kbd>V</kbd> to switch');
+}
 window.addEventListener('keyup', (e) => keys.delete(e.key.toLowerCase()));
 window.addEventListener('blur', () => keys.clear());
 $('pitchList').addEventListener('click', (e) => { const row = e.target.closest('.pitch-row'); if (row) selectPitch(+row.dataset.i); });
 for (const b of $('throwPrompt').querySelectorAll('button')) b.addEventListener('pointerdown', (e) => { e.stopPropagation(); actThrow(+b.dataset.base); });
+$('simBtn').addEventListener('pointerdown', (e) => { e.stopPropagation(); startSim(); });
 for (const b of $('runHelp').querySelectorAll('button')) b.addEventListener('pointerdown', (e) => { e.stopPropagation(); actRun(b.dataset.run); });
 
 let gpPrev = [];
@@ -583,12 +664,16 @@ function pollGamepad() {
   const pressed = (i) => !!(gp.buttons[i] && gp.buttons[i].pressed), edge = (i) => pressed(i) && !gpPrev[i];
   const dz = (v) => (Math.abs(v) > 0.18 ? v : 0);
   const stick = { x: dz(gp.axes[0] || 0), y: -dz(gp.axes[1] || 0) };
+  const rx = dz(gp.axes[2] || 0), ry = dz(gp.axes[3] || 0);
+  if (fpvOn && (rx || ry)) lookDelta(rx * 14, ry * 10);
+  if (edge(11)) lookRecenter();
   if (edge(9)) togglePause();
+  if (G.mode === 'lock' && edge(8) && G.phase !== 'postPlay') startSim();
   if (!G.paused && G.phase !== 'menu') {
     if (gp.buttons.some((b, i) => edge(i))) SND.init();
     if (G.replay) { if (edge(0) || edge(1)) endReplay(); }
     else if (G.phase === 'live' && !trotOn() && (userFields() || userRuns())) {
-      if (userFields()) { if (edge(1)) actThrow(1); if (edge(3)) actThrow(2); if (edge(2)) actThrow(3); if (edge(0)) actThrow(4); if (edge(5) || edge(7)) actDive(); if (edge(4)) actSwitch(); }
+      if (userFields()) { if (edge(1)) actThrow(1); if (edge(3)) actThrow(2); if (edge(2)) actThrow(3); if (edge(0)) actThrow(4); if (edge(7) && !throwAtLook()) actDive(); if (edge(5)) actDive(); if (edge(4)) actSwitch(); }
       else { if (edge(5)) actRun('go'); if (edge(4)) actRun('back'); }
     } else if (userPitches() && G.phase === 'prePitch') {
       const n = curPitcher().pitches.length;
@@ -663,7 +748,7 @@ function togglePause(force, remote) {
 }
 
 // ------------------------------------------------------------------ menus ----
-const menu = { mode: 'exhibition', away: 0, home: 3, side: 1, innings: 3, diff: 1, manual: 1, batter: 3, lockPick: 'h3', ump: 1, fpv: 1 };
+const menu = { mode: 'exhibition', away: 0, home: 3, side: 1, innings: 3, diff: 1, manual: 1, batter: 3, lockPick: 'h3', ump: 1, fpv: 1, lockField: 1 };
 try { Object.assign(menu, JSON.parse(localStorage.getItem('fullcount.menu') || '{}')); } catch (e) { /* ignore */ }
 function teamPickHTML(label, idx, key) {
   const t = TEAMS[idx];
@@ -700,6 +785,7 @@ function renderMenu() {
   $('optBatter').classList.toggle('hidden', !derby);
   $('optLock').classList.toggle('hidden', !lock);
   $('optView').classList.toggle('hidden', !lock);
+  $('optLockField').classList.toggle('hidden', !lock);
   $('optUmp').classList.toggle('hidden', derby || !showTeams);
   for (const el of ['optSide', 'optInn', 'optDiff', 'optUmp']) $(el).style.pointerEvents = guest ? 'none' : '';
   for (const b of $('modes').querySelectorAll('button')) b.classList.toggle('on', b.dataset.mode === m);
@@ -762,7 +848,7 @@ function buildMenu() {
     SND.init();
     if (menu.mode === 'online') { hostStartOnline(); return; }
     let away = menu.away; if (menu.mode === 'derby' && away === menu.home) away = (menu.home + 1) % TEAMS.length;
-    startGame({ mode: menu.mode, away, home: menu.home, side: menu.side, innings: menu.innings, diff: menu.diff, manual: menu.manual, batter: menu.batter, lockPick: menu.lockPick, ump: menu.ump, fpv: menu.fpv });
+    startGame({ mode: menu.mode, away, home: menu.home, side: menu.side, innings: menu.innings, diff: menu.diff, manual: menu.manual, batter: menu.batter, lockPick: menu.lockPick, ump: menu.ump, fpv: menu.fpv, lockField: menu.lockField });
   });
   const openHelp = () => { $('help').classList.remove('hidden'); };
   $('btnHow').addEventListener('click', openHelp);
@@ -798,7 +884,7 @@ function toMenu() {
   for (const m of MODELS) m.root.visible = false;
   ballMesh.visible = false; ballShadow.visible = false; trailReset();
   pci.visible = false; reticle.visible = false; zoneGroup.visible = false; pitchMark.visible = false; pitchGuide.visible = false; ctrlRing.visible = false; landMark.visible = false;
-  fpvHide(null); fpvOn = false; $('absCard').classList.add('hidden'); $('runHelp').classList.add('hidden'); $('throwPrompt').classList.add('hidden');
+  fpvHide(null); fpvOn = false; exitPointerLock(); $('absCard').classList.add('hidden'); $('simBtn').classList.add('hidden'); $('crosshair').classList.add('hidden'); $('runHelp').classList.add('hidden'); $('throwPrompt').classList.add('hidden');
   showScreen('menu');
   renderMenu();
 }
@@ -845,10 +931,12 @@ function update(dt) {
   for (const m of MODELS) updateModel(m, G.now);
   if (G.recOn) recFrame();
   fpvCam();
+  updateAimMarker();
 }
 // Player Lock: sim quickly through everything the locked player isn't part of
 function lockFF() {
   if (G.mode !== 'lock' || G.replay) return 1;
+  if (G.simAB) return 6;
   if (userBats() || userPitches()) return 1;
   const ph = G.phase;
   if (ph === 'live') {
@@ -858,7 +946,7 @@ function lockFF() {
     return 3;
   }
   // in first person on the field, slow down so you can react to the hit
-  if (G.fpv && lockRole().role === 'field') return ph === 'prePitch' || ph === 'postPitch' || ph === 'postFoul' ? 2 : 1;
+  if (G.fpv && !G.lockFieldSim && lockRole().role === 'field') return ph === 'prePitch' || ph === 'postPitch' || ph === 'postFoul' ? 2 : 1;
   if (['prePitch', 'windup', 'pitch', 'postPitch', 'postFoul'].includes(ph)) return 5;
   if (['postPlay', 'halfIntro', 'break'].includes(ph)) return 3;
   return 1;
@@ -879,6 +967,7 @@ function frame(ts) {
   crowdU.uEx.value = lerp(crowdU.uEx.value, crowdExTarget, 1 - Math.exp(-dt * 3));
   updateFireworks(dt);
   drawMiniMap();
+  updateLockUI();
   renderer.render(scene, camera);
 }
 function boot() {
@@ -908,6 +997,7 @@ window.__fullcount = {
     camUpdate(dt); renderer.render(scene, camera);
   },
   render() { camUpdate(1 / 60); renderer.render(scene, camera); },
+  cam: () => ({ pos: camRig.pos.toArray().map((v) => +v.toFixed(1)), look: camRig.look.toArray().map((v) => +v.toFixed(1)), fl: { ...FL }, fpvOn }),
   tick(dt = 1 / 30) { if (isGuest()) guestUpdate(dt); else update(dt); netTick(); },
   setBases(list) { const lu = battingTeam().lineup; G.bases = [null, null, null, null]; for (const b of list) G.bases[b] = lu[(b + 4) % 9]; placeForPitch(); },
   // put a specific ball in play from the current pitch setup (for testing fielding / running)

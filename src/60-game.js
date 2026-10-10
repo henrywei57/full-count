@@ -22,7 +22,8 @@ const fieldingTeam = () => G.teams[1 - G.half];
 const curPitcher = () => G.pitcher[1 - G.half];
 // Who controls what: each side is 'local' (this device), 'remote' (online opponent) or 'cpu'.
 // Player Lock narrows a side's control to one player.
-const sideCtrl = (s) => (G.ctrl ? G.ctrl[s] : 'cpu');
+// Player Lock "skip": the CPU plays your part until the next batter
+const sideCtrl = (s) => (!G.ctrl ? 'cpu' : G.simAB && s === G.lockSide ? 'cpu' : G.ctrl[s]);
 function batCtrl() {
   if (!G.teams || !G.batter) return 'cpu';
   const c = sideCtrl(G.half);
@@ -38,7 +39,7 @@ function pitchCtrl() {
 function fieldCtrl() {
   if (!G.teams || G.mode === 'derby') return 'cpu';
   const c = sideCtrl(1 - G.half);
-  if (c === 'cpu' || (G.lock && !(G.fielders || []).some((f) => f.pl.id === G.lock))) return 'cpu';
+  if (c === 'cpu' || (G.lock && (G.lockFieldSim || !(G.fielders || []).some((f) => f.pl.id === G.lock)))) return 'cpu';
   return c;
 }
 function runCtrl() { if (!G.teams || G.mode === 'derby') return 'cpu'; return sideCtrl(G.half); }
@@ -157,7 +158,7 @@ function startGame(cfg) {
   }
   settings.manual = cfg.manual == null ? true : !!cfg.manual;
   G.ump = cfg.ump ?? 1; G.challenges = [2, 2]; G.challengeable = null; G.challenge = null; G.cpuChallengeAt = 0;
-  G.fpv = cfg.mode === 'lock' && cfg.fpv !== 0; G.lockSide = cfg.side ?? 1;
+  G.fpv = cfg.mode === 'lock' && cfg.fpv !== 0; G.lockSide = cfg.side ?? 1; G.simAB = false; G.lockFieldSim = cfg.mode === 'lock' && cfg.lockField === 0;
   Object.assign(G, { inning: 1, half: 0, outs: 0, balls: 0, strikes: 0, score: [0, 0], line: [[], []], hits: [0, 0], errs: [0, 0], bases: [null, null, null, null], order: [0, 0], pen: [0, 0], ff: 1, paused: false, replay: null, play: null, abEnd: null });
   G.stats = new Map(); G.pstats = new Map();
   G.pitcher = [G.teams[0].pitchers[0], G.teams[1].pitchers[0]];
@@ -238,7 +239,7 @@ function newBatter() {
   const team = battingTeam();
   const pl = G.mode === 'derby' ? G.derby.batter : team.lineup[G.order[G.half] % 9];
   maybePitchingChange();
-  G.batter = pl; G.balls = 0; G.strikes = 0; G.abPitches = []; G.abEnd = null;
+  G.batter = pl; G.balls = 0; G.strikes = 0; G.abPitches = []; G.abEnd = null; G.simAB = false;
   G.batSide = sideFor(pl);
   G.batterModel = getModel(pl);
   applyAlignment();
@@ -266,6 +267,7 @@ function enterPrePitch() {
 // per-device presentation for a new pitch (also used by an online guest)
 function prePitchUI() {
   const up = userPitches(), ub = userBats();
+  FL.mode = 'track';
   zoneGroup.visible = settings.zone && (ub || up);
   zoneGroup.getObjectByName('grid').visible = up;
   pci.visible = ub; reticle.visible = up; pitchGuide.visible = false;
@@ -282,7 +284,7 @@ function prePitchUI() {
   } else if (ub) setHint('Aim the PCI &middot; <kbd>Click</kbd> swing &middot; <kbd>Right-click</kbd> power &middot; <kbd>J</kbd> contact &middot; <kbd>B</kbd> bunt');
   else if (G.mode === 'online') setHint('Waiting for your opponent&hellip;');
   else if (G.mode === 'lock' && G.half === 1 - G.lockSide && G.fielders.some((f) => f.pl.id === G.lock)) setHint('You are in the field &middot; get within the gold ring of the ball to field it');
-  else setHint(G.mode === 'lock' ? 'Simulating until you are up&hellip;' : '');
+  else setHint(G.mode === 'lock' ? (G.simAB ? 'Skipping to the next batter&hellip;' : 'Simulating until you are up&hellip;') : '');
   if (up) pitchCam(G.prevCam !== 'pitch'); else if (ub) batCam(G.prevCam !== 'bat'); else cfCam(G.prevCam !== 'cf');
   hudPitcher();
 }
@@ -572,6 +574,24 @@ function catchPitch() {
   setupChallenge(call);
 }
 
+// ------------------------------------------------------------ lock skip ----
+// hand your player to the CPU for the rest of this at-bat and fast-forward
+function startSim() {
+  if (G.mode !== 'lock' || G.simAB || ['menu', 'final', 'break'].includes(G.phase)) return;
+  G.simAB = true;
+  if (G.phase === 'prePitch' && !G.spec) { G.spec = cpuChoosePitch(); G.cpuPitchAt = G.pt + 0.3; }
+  const pl = G.play;
+  if (pl && G.phase === 'live') {
+    pl.hf = null; pl.hrun = null; pl.userDef = false; pl.ufManual = false; pl.prompt = false; pl.queuedThrow = null; pl.uf = null;
+    if (pl.ball.mode === 'flight' && !pl.hr && !pl.dead) pl.replan();
+  }
+  pci.visible = false; reticle.visible = false; zoneGroup.visible = false; pitchGuide.visible = false;
+  $('meter').classList.add('hidden'); $('throwPrompt').classList.add('hidden'); $('runHelp').classList.add('hidden');
+  ctrlRing.visible = false; landMark.visible = false; baseMark.visible = false;
+  setHint('Skipping to the next batter&hellip;');
+  if (document.pointerLockElement) try { document.exitPointerLock(); } catch (e) { /* not locked */ }
+}
+
 // ---------------------------------------------------------- umpire & ABS ----
 const UMP_S = 0.1;
 // distance from the pitch to the edge of the zone in feet: positive inside, negative outside
@@ -721,7 +741,7 @@ function launch(ev, la, spray, origin, q, byUser) {
   pci.visible = false; zoneGroup.visible = false; pitchMark.visible = false; pitchGuide.visible = false; reticle.visible = false;
   $('meter').classList.add('hidden');
   const bb = simBatted(origin, ev, la, spray);
-  G.bb = bb; G.contactT = G.now; G.byUser = byUser;
+  G.bb = bb; G.contactT = G.now; G.byUser = byUser; FL.mode = 'track';
   ballMesh.visible = true;
   hudPitchInfo();
   if (G.mode === 'derby') { setPhase('derbyFlight'); G.derby.t0 = G.now; return; }

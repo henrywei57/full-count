@@ -499,6 +499,9 @@ const ctrlRing = new THREE.Mesh(new THREE.RingGeometry(7.0, 7.5, 48), new THREE.
 ctrlRing.rotation.x = -Math.PI / 2; ctrlRing.renderOrder = 3; ctrlRing.visible = false; scene.add(ctrlRing);
 const landMark = new THREE.Mesh(new THREE.RingGeometry(1.4, 2.0, 32), new THREE.MeshBasicMaterial({ color: 0x5aa8ff, transparent: true, opacity: 0.85, depthWrite: false }));
 landMark.rotation.x = -Math.PI / 2; landMark.renderOrder = 3; landMark.visible = false; scene.add(landMark);
+// first-person throwing: the base you're facing lights up
+const baseMark = new THREE.Mesh(new THREE.RingGeometry(2.4, 3.2, 32), new THREE.MeshBasicMaterial({ color: 0x3fd38a, transparent: true, opacity: 0.95, depthWrite: false, depthTest: false }));
+baseMark.rotation.x = -Math.PI / 2; baseMark.renderOrder = 25; baseMark.visible = false; scene.add(baseMark);
 
 // ------------------------------------------------------------ camera rig ----
 const camRig = { pos: new V3(0, 6, 10), look: new V3(0, 2.6, -40), fov: 38, tp: new V3(0, 6, 10), tl: new V3(0, 2.6, -40), tf: 38, rate: 6, shake: 0 };
