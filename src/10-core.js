@@ -213,7 +213,7 @@ const DIFFS = [
 const PBYID = {};
 for (const t of TEAMS) for (const p of [...t.hitters, ...t.pitchers]) PBYID[p.id] = p;
 
-const settings = { sound: true, voice: true, zone: true, manual: true, guide: true };
+const settings = { sound: true, voice: true, zone: true, manual: true, guide: true, batCam: 0 };
 try { const s = JSON.parse(localStorage.getItem('fullcount.settings') || '{}'); Object.assign(settings, s); } catch (e) { /* storage unavailable */ }
 function saveSettings() { try { localStorage.setItem('fullcount.settings', JSON.stringify(settings)); } catch (e) { /* ignore */ } }
 

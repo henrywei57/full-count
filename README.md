@@ -35,6 +35,10 @@ Teams, players and sponsors are fictional.
 
 The AI moves your fielder until you touch the controls. Any ball that comes inside the gold ring (7.5 ft) around your fielder is yours. In Player Lock, W runs the way the camera faces. When you field the ball, the best throw is ringed in green and the camera turns toward it; press 1–4 to throw. A live mini diamond shows where every runner, fielder and the ball are.
 
+## Batting cameras
+
+Three hitting views modeled on MLB The Show, all centered behind the plate: **Strike Zone** (low and tight, the default), **Strike Zone 2** (a step back, so you see the whole batter) and **Strike Zone High** (raised, looking down on the zone). Pick one in the menu or switch from the pause screen; your choice is saved.
+
 ## Umpires
 
 - **Human ump** – right on about 92% of called pitches; misses cluster on the edges of the zone.

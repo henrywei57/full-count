@@ -385,6 +385,7 @@ body.skipping #batterCard,body.skipping #pitcherCard,body.skipping #call,body.sk
         <div class="opt hidden" id="optLockField"><span>YOUR ROLE</span><div class="seg" data-key="lockField"><button data-v="1" class="on">Bat &amp; field</button><button data-v="0">Bat only (sim fielding)</button></div></div>
         <div class="opt hidden" id="optLockSkip"><span>NOT INVOLVED</span><div class="seg" data-key="lockSkip"><button data-v="1" class="on">Skip ahead</button><button data-v="0">Watch (fast)</button></div></div>
         <div class="opt hidden" id="optView"><span>CAMERA</span><div class="seg" data-key="view"><button data-v="2" class="on">Third person</button><button data-v="1">First person</button><button data-v="0">Broadcast</button></div></div>
+        <div class="opt" id="optBatCam"><span>BATTING CAM</span><div class="seg" data-key="batCam"><button data-v="0" class="on">Strike Zone</button><button data-v="1">Strike Zone 2</button><button data-v="2">Strike Zone High</button></div></div>
         <div class="opt" id="optThrow"><span>THROWS</span><div class="seg" data-key="manual"><button data-v="1" class="on">Manual</button><button data-v="0">Auto</button></div></div>
       </div>
       <div class="row-actions"><button class="cta" id="btnPlay">PLAY BALL</button><button class="ghost" id="btnHow">Controls</button></div>
@@ -400,6 +401,7 @@ body.skipping #batterCard,body.skipping #pitcherCard,body.skipping #call,body.sk
       <button class="ghost" id="btnHow2">Controls</button>
       <button class="ghost" id="btnVoice">Commentary voice: On</button>
       <button class="ghost" id="btnZone">Strike zone: On</button>
+      <button class="ghost" id="btnBatCam">Batting cam: Strike Zone</button>
       <button class="ghost" id="btnPen">Go to the bullpen</button>
       <button class="ghost" id="btnQuit">Quit to menu</button>
     </div>
@@ -439,6 +441,7 @@ body.skipping #batterCard,body.skipping #pitcherCard,body.skipping #call,body.sk
         <dt>Mouse / right stick</dt><dd>Player Lock: swing the camera around your player (click to grab the mouse)</dd>
         <dt>T / right-click</dt><dd>Player Lock: snap the camera back to following the play</dd>
         <dt>V</dt><dd>Player Lock: cycle third-person, first-person and broadcast cameras</dd>
+        <dt>Batting cam</dt><dd>Strike Zone, Strike Zone 2 or Strike Zone High: pick it in the menu or the pause screen</dd>
         <dt>Tab / Back</dt><dd>Player Lock: skip this at-bat (CPU plays your part)</dd>
         <dt>R</dt><dd>Instant replay after a play</dd>
         <dt>Enter</dt><dd>Skip ahead</dd>

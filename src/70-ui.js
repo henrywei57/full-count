@@ -4,7 +4,21 @@
 
 // ---------------------------------------------------------------- cameras ----
 const _c1 = new V3(), _c2 = new V3();
-function batCam(snap) { G.prevCam = 'bat'; camTo(_c1.set(0, 6.0, 16.5), _c2.set(0, 1.0, -30), 33, 5, snap); }
+// hitting cameras, after MLB The Show's: all sit dead center behind the plate.
+// Strike Zone is low and tight, Strike Zone 2 steps back to show the whole batter,
+// Strike Zone High looks down on the zone from above.
+const BAT_CAMS = [
+  { name: 'Strike Zone', pos: [0, 4.4, 13], look: [0, 0.35, -45], fov: 30 },
+  { name: 'Strike Zone 2', pos: [0, 5.6, 19], look: [0, 0.45, -45], fov: 30 },
+  { name: 'Strike Zone High', pos: [0, 10, 22], look: [0, -4.9, -40], fov: 31 },
+];
+function batCam(snap) { G.prevCam = 'bat'; const c = BAT_CAMS[settings.batCam] || BAT_CAMS[0]; camTo(_c1.set(...c.pos), _c2.set(...c.look), c.fov, 5, snap); }
+function cycleBatCam() {
+  settings.batCam = ((settings.batCam || 0) + 1) % BAT_CAMS.length; saveSettings();
+  menu.batCam = settings.batCam; batCamLabel();
+  if (G.prevCam === 'bat') batCam(true);
+}
+function batCamLabel() { $('btnBatCam').textContent = `Batting cam: ${(BAT_CAMS[settings.batCam] || BAT_CAMS[0]).name}`; }
 function pitchCam(snap) { G.prevCam = 'pitch'; const L = curPitcher().throws === 'L'; camTo(_c1.set(L ? -2.4 : 2.4, 8.4, -75), _c2.set(0, 2.9, 0), 13.5, 5, snap); }
 function cfCam(snap) { G.prevCam = 'cf'; camTo(_c1.set(-9, 42, -450), _c2.set(0, 3.4, 0), 2.7, 5, snap); }
 function wideCam(snap) { G.prevCam = 'wide'; camTo(_c1.set(-60, 130, 170), _c2.set(0, 0, -150), 50, 1.4, snap); }
@@ -835,6 +849,7 @@ function togglePause(force, remote) {
   if (isGuest() && !remote) { netSend({ t: 'act', a: 'pause', v }); return; }
   G.paused = v;
   $('pause').classList.toggle('hidden', !G.paused);
+  batCamLabel();
   if (isHost()) netSend({ t: 'pause', v });
   const me = localSide();
   const penOK = ['exhibition', 'online'].includes(G.mode) && me >= 0 && me === 1 - G.half && G.phase === 'prePitch' && G.pen[me] < 3;
@@ -843,8 +858,9 @@ function togglePause(force, remote) {
 }
 
 // ------------------------------------------------------------------ menus ----
-const menu = { mode: 'exhibition', away: 0, home: 3, side: 1, innings: 3, diff: 1, manual: 1, batter: 3, lockPick: 'h3', ump: 1, view: 2, lockField: 1, lockSkip: 1 };
+const menu = { mode: 'exhibition', away: 0, home: 3, side: 1, innings: 3, diff: 1, manual: 1, batter: 3, lockPick: 'h3', ump: 1, view: 2, lockField: 1, lockSkip: 1, batCam: settings.batCam || 0 };
 try { Object.assign(menu, JSON.parse(localStorage.getItem('fullcount.menu') || '{}')); } catch (e) { /* ignore */ }
+menu.batCam = settings.batCam || 0;   // the pause screen can change it too; settings wins
 function teamPickHTML(label, idx, key) {
   const t = TEAMS[idx];
   return `<div class="tp-label">${label}</div>
@@ -929,7 +945,13 @@ function buildMenu() {
     if (menu.mode === 'derby') { const lu = TEAMS[menu.home].lineup; menu.batter = lu.indexOf(lu.reduce((a, c) => (c.pow > a.pow ? c : a))); }
     renderMenu();
   });
-  for (const seg of document.querySelectorAll('.seg[data-key]')) seg.addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b || NET.role === 'guest') return; menu[seg.dataset.key] = +b.dataset.v; renderMenu(); });
+  for (const seg of document.querySelectorAll('.seg[data-key]')) seg.addEventListener('click', (e) => {
+    const b = e.target.closest('button'), key = seg.dataset.key;
+    if (!b || (NET.role === 'guest' && key !== 'batCam')) return;   // the batting cam is each player's own choice
+    menu[key] = +b.dataset.v;
+    if (key === 'batCam') { settings.batCam = menu.batCam; saveSettings(); }
+    renderMenu();
+  });
   $('derbyBatter').addEventListener('change', (e) => { menu.batter = +e.target.value; renderMenu(); });
   $('lockPick').addEventListener('change', (e) => { menu.lockPick = e.target.value; renderMenu(); });
   $('btnHost').addEventListener('click', () => { SND.init(); netHost(); });
@@ -955,6 +977,7 @@ function buildMenu() {
   $('btnMute').addEventListener('click', toggleSound);
   $('btnVoice').addEventListener('click', () => { settings.voice = !settings.voice; saveSettings(); $('btnVoice').textContent = `Commentary voice: ${settings.voice ? 'On' : 'Off'}`; if (!settings.voice) try { speechSynthesis.cancel(); } catch (e) { /* none */ } });
   $('btnZone').addEventListener('click', toggleZone);
+  $('btnBatCam').addEventListener('click', cycleBatCam);
   $('btnPen').addEventListener('click', () => {
     if (isGuest()) { netSend({ t: 'act', a: 'pen' }); togglePause(false); return; }
     if (bringReliever(localSide())) { togglePause(false); enterPrePitch(); hudPitcher(); }
@@ -967,6 +990,7 @@ function buildMenu() {
   });
   $('btnVoice').textContent = `Commentary voice: ${settings.voice ? 'On' : 'Off'}`;
   $('btnZone').textContent = `Strike zone: ${settings.zone ? 'On' : 'Off'}`;
+  batCamLabel();
   muteIcon();
   renderMenu();
 }
@@ -989,7 +1013,7 @@ function toMenu() {
 const LIVE_BALL = new Set(['live', 'derbyFlight', 'postPlay', 'derbyResult']);
 // shared per-frame dressing: occluder fading, ball shadow, ball trail
 function dressFrame() {
-  const ghost = G.prevCam === 'bat' && ['prePitch', 'windup', 'pitch', 'postPitch'].includes(G.phase) ? 0.28 : 1;
+  const ghost = G.prevCam === 'bat' && ['prePitch', 'windup', 'pitch', 'postPitch'].includes(G.phase) ? 0.14 : 1;
   const cm = G.fByRole.C ? G.fByRole.C.m : isGuest() ? MODELS.find((m) => m.root.visible && m.anim === 'catcher') : null;
   if (cm) setFade(cm, ghost);
   if (G.umps[0]) setFade(G.umps[0], tpUmpGhost ? 0.3 : ghost);
@@ -1111,7 +1135,7 @@ function boot() {
 }
 // Debug handle: lets a test harness advance the simulation without waiting on animation frames.
 window.__fullcount = {
-  G, TEAMS, settings, NET, keys,
+  G, TEAMS, settings, NET, keys, BAT_CAMS,
   step(sec, dt = 1 / 60) {
     const n = Math.round(sec / dt);
     for (let i = 0; i < n && !G.paused; i++) { if (isGuest()) guestUpdate(dt); else update(dt); netTick(); }
