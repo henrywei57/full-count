@@ -244,12 +244,18 @@ button:focus-visible,select:focus-visible{outline:2px solid var(--gold);outline-
 #absCanvas{display:block;width:200px;height:220px;margin:4px auto 0}
 .abs-res{font-family:var(--f-display);font-weight:800;font-size:22px;padding:6px 0 12px;letter-spacing:.08em}
 .abs-res.over{color:var(--ball)}.abs-res.stand{color:var(--strike)}
+#simVeil{position:fixed;inset:0;z-index:4;display:grid;place-items:center;padding-inline:16px;background:rgba(5,10,20,.5);-webkit-backdrop-filter:blur(12px) saturate(.7);backdrop-filter:blur(12px) saturate(.7);pointer-events:none}
+.sim-card{max-width:100%;padding:16px 26px;background:var(--panel);border-left:4px solid var(--gold);text-align:center}
+.sim-head{font-family:var(--f-display);font-weight:800;font-style:italic;font-size:30px;letter-spacing:.08em}
+.sim-head i{display:inline-block;width:6px;height:6px;margin-left:5px;border-radius:50%;background:var(--gold);animation:simDot 1s infinite}
+.sim-head i:nth-of-type(2){animation-delay:.2s}.sim-head i:nth-of-type(3){animation-delay:.4s}
+@keyframes simDot{0%,100%{opacity:.2}50%{opacity:1}}
+#simNext{margin-top:6px;font-size:15px;font-weight:600}
+.sim-foot{margin-top:6px;font-size:12px;color:var(--dust)}
+body.skipping #batterCard,body.skipping #pitcherCard,body.skipping #call,body.skipping #feedback,body.skipping #tracker,body.skipping #pitchInfo,body.skipping #hint,body.skipping #banner,body.skipping #simBtn,body.skipping #throwPrompt,body.skipping #runHelp{visibility:hidden}
 #simBtn{position:absolute;left:50%;top:calc(64px + env(safe-area-inset-top,0px));transform:translateX(-50%);pointer-events:auto;padding:6px 14px;border-radius:4px;border:1px solid var(--line);background:var(--panel);font-family:var(--f-display);font-weight:700;font-size:14px;letter-spacing:.1em;cursor:pointer}
 #simBtn:hover{background:var(--panel-hi)}
 #simBtn kbd{font-family:var(--f-display);padding:0 5px;border-radius:3px;background:rgba(255,255,255,.14);margin-left:6px}
-#crosshair{position:absolute;left:50%;top:50%;width:26px;height:26px;margin:-13px 0 0 -13px;border:2px solid rgba(255,255,255,.85);border-radius:50%;box-shadow:0 0 0 1px rgba(0,0,0,.4)}
-#crosshair::after{content:"";position:absolute;left:50%;top:50%;width:4px;height:4px;margin:-2px 0 0 -2px;border-radius:50%;background:#fff}
-#crosshair.on{border-color:var(--ball)}
 .bug-abs{font-size:8px;letter-spacing:3px;color:var(--gold);margin:0 6px 0 auto;line-height:1}
 
 @media (max-width:860px){
@@ -278,6 +284,7 @@ button:focus-visible,select:focus-visible{outline:2px solid var(--gold);outline-
 <canvas id="c" tabindex="0" aria-label="Ballpark"></canvas>
 <div id="loading">LOADING BALLPARK</div>
 
+<div id="simVeil" class="hidden"><div class="sim-card"><div class="sim-head">SIMULATING<i></i><i></i><i></i></div><div id="simNext"></div><div class="sim-foot">Player Lock skips plays you aren't part of</div></div></div>
 <div id="hud" class="hidden">
   <div id="bug">
     <div class="bug-teams">
@@ -333,7 +340,6 @@ button:focus-visible,select:focus-visible{outline:2px solid var(--gold);outline-
   <div id="replayTag" class="hidden">REPLAY</div>
   <canvas id="miniMap" class="hidden" width="300" height="300" aria-label="Runner map"></canvas>
   <div id="absCard" class="hidden"><div class="abs-head">ABS CHALLENGE</div><div class="abs-sub" id="absTeam"></div><canvas id="absCanvas" width="400" height="440"></canvas><div class="abs-res" id="absRes"></div></div>
-  <div id="crosshair" class="hidden"></div>
   <button id="simBtn" class="hidden" title="Let the CPU play this at-bat for you">SKIP AT-BAT &#9193;<kbd>Tab</kbd></button>
   <div id="lockTag" class="hidden"><span>PLAYER LOCK</span><b id="lockName">&nbsp;</b><em id="lockLine"></em></div>
   <div id="runHelp" class="hidden"><button data-run="go">Advance runners<small>E</small></button><button data-run="back">Go back<small>Q</small></button></div>
@@ -377,6 +383,7 @@ button:focus-visible,select:focus-visible{outline:2px solid var(--gold);outline-
         <div class="opt hidden" id="optBatter"><span>BATTER</span><select id="derbyBatter" aria-label="Derby batter"></select></div>
         <div class="opt" id="optUmp"><span>UMPIRE</span><div class="seg" data-key="ump"><button data-v="0">Human ump (92%)</button><button data-v="1" class="on">ABS challenge</button><button data-v="2">Robot ABS</button></div></div>
         <div class="opt hidden" id="optLockField"><span>YOUR ROLE</span><div class="seg" data-key="lockField"><button data-v="1" class="on">Bat &amp; field</button><button data-v="0">Bat only (sim fielding)</button></div></div>
+        <div class="opt hidden" id="optLockSkip"><span>NOT INVOLVED</span><div class="seg" data-key="lockSkip"><button data-v="1" class="on">Skip ahead</button><button data-v="0">Watch (fast)</button></div></div>
         <div class="opt hidden" id="optView"><span>CAMERA</span><div class="seg" data-key="view"><button data-v="2" class="on">Third person</button><button data-v="1">First person</button><button data-v="0">Broadcast</button></div></div>
         <div class="opt" id="optThrow"><span>THROWS</span><div class="seg" data-key="manual"><button data-v="1" class="on">Manual</button><button data-v="0">Auto</button></div></div>
       </div>
@@ -419,8 +426,7 @@ button:focus-visible,select:focus-visible{outline:2px solid var(--gold);outline-
         <dt>WASD / stick</dt><dd>Run your fielder (gold ring). The AI helps until you move.</dd>
         <dt>Space / RB</dt><dd>Dive</dd>
         <dt>Q / LB</dt><dd>Switch to the fielder nearest the ball</dd>
-        <dt>Aim at a base</dt><dd>Player Lock: turn the camera toward a base (it lights up green), then Space or click throws there</dd>
-        <dt>&rarr; &uarr; &larr; &darr;</dt><dd>Throw to 1B, 2B, 3B, home (or keys 1&ndash;4)</dd>
+                <dt>1 2 3 4</dt><dd>Throw to 1B, 2B, 3B, home (arrows work too). The best throw is ringed in green.</dd>
         <dt>Carry the ball</dt><dd>Run onto a bag for a force, or into a runner to tag him</dd>
       </dl></div>
       <div><h3>BASERUNNING</h3><dl>

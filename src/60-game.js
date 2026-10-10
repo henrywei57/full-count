@@ -15,7 +15,7 @@ const G = {
   pci: { x: 0, y: 2.5 }, glove: new V3(0, 2.4, 1.7), rec: [], recOn: false, replay: null, derby: null,
   abEnd: null, contactT: 0, menuAng: 0,
   ctrl: ['cpu', 'cpu'], lock: null, remoteIn: { x: 0, z: 0 }, remoteTake: false, camFocus: null, localPitch: false,
-  ump: 1, challenges: [2, 2], challengeable: null, challenge: null, cpuChallengeAt: 0, view: 0, lockSide: 1,
+  ump: 1, challenges: [2, 2], challengeable: null, challenge: null, cpuChallengeAt: 0, view: 0, lockSide: 1, lockSkip: false, skipping: false, lockInv: false, beat: 0,
 };
 const battingTeam = () => G.teams[G.half];
 const fieldingTeam = () => G.teams[1 - G.half];
@@ -159,6 +159,7 @@ function startGame(cfg) {
   settings.manual = cfg.manual == null ? true : !!cfg.manual;
   G.ump = cfg.ump ?? 1; G.challenges = [2, 2]; G.challengeable = null; G.challenge = null; G.cpuChallengeAt = 0;
   G.view = cfg.mode === 'lock' ? cfg.view ?? 2 : 0; G.lockSide = cfg.side ?? 1; G.simAB = false; G.lockFieldSim = cfg.mode === 'lock' && cfg.lockField === 0;
+  G.lockSkip = cfg.mode === 'lock' && cfg.lockSkip !== 0; G.skipping = false; G.lockInv = false; G.beat = 0;
   Object.assign(G, { inning: 1, half: 0, outs: 0, balls: 0, strikes: 0, score: [0, 0], line: [[], []], hits: [0, 0], errs: [0, 0], bases: [null, null, null, null], order: [0, 0], pen: [0, 0], ff: 1, paused: false, replay: null, play: null, abEnd: null });
   G.stats = new Map(); G.pstats = new Map();
   G.pitcher = [G.teams[0].pitchers[0], G.teams[1].pitchers[0]];
@@ -239,7 +240,7 @@ function newBatter() {
   const team = battingTeam();
   const pl = G.mode === 'derby' ? G.derby.batter : team.lineup[G.order[G.half] % 9];
   maybePitchingChange();
-  G.batter = pl; G.balls = 0; G.strikes = 0; G.abPitches = []; G.abEnd = null; G.simAB = false;
+  G.batter = pl; G.balls = 0; G.strikes = 0; G.abPitches = []; G.abEnd = null; G.simAB = false; G.lockInv = false;
   G.batSide = sideFor(pl);
   G.batterModel = getModel(pl);
   applyAlignment();
@@ -575,6 +576,19 @@ function catchPitch() {
 }
 
 // ------------------------------------------------------------ lock skip ----
+// is this ball hit to the outfield or your way?
+function lockFieldInvolved(pl) {
+  const me = pl.uf;
+  if (!me || pl.hr) return false;
+  if (pl.chaser === me) return true;
+  if (pl.bb.foul) return false;
+  if (pl.chaser && pl.chaser.isOF) return true;
+  for (const s of pl.bb.S) {
+    if (s.t > 2.5) break;
+    if (s.y < 9 && Math.hypot(s.x - me.pos.x, s.z - me.pos.z) < 30) return true;
+  }
+  return false;
+}
 // hand your player to the CPU for the rest of this at-bat and fast-forward
 function startSim() {
   if (G.mode !== 'lock' || G.simAB || ['menu', 'final', 'break'].includes(G.phase)) return;
@@ -754,6 +768,13 @@ function launch(ev, la, spray, origin, q, byUser) {
     field: fc === 'cpu' ? null : { lock: G.lock, manual: settings.manual },
     run: rc === 'cpu' ? null : { lock: G.lock },
   });
+  // Player Lock: you field balls hit to the outfield or your way; the CPU plays the rest
+  if (G.mode === 'lock' && G.lockSkip && G.play.hf) {
+    const pl = G.play;
+    G.lockInv = lockFieldInvolved(pl);
+    if (!G.lockInv) { pl.hf = null; pl.userDef = false; pl.uf = null; pl.planFielders(0); }
+    else if (G.skipping) { G.beat = 0.6; hudCall('YOUR PLAY', 'play'); }
+  }
   if (bb.hr) { excite(1, 6); SND.roar(0.55, 2.5, 4); }
   else if (ev > 95 && la > 15 && la < 45) { SND.roar(0.3, 1.2, 2.5); }
   setPhase('live');

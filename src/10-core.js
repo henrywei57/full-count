@@ -299,7 +299,7 @@ const SND = {
     return this.voiceObj || null;
   },
   say(text, opt = {}) {
-    if (!settings.voice || !settings.sound || !('speechSynthesis' in window)) return;
+    if (!settings.voice || !settings.sound || G.skipping || !('speechSynthesis' in window)) return;
     try {
       const u = new SpeechSynthesisUtterance(text);
       u.rate = opt.rate || 1.12; u.pitch = opt.pitch ?? 0.95; u.volume = opt.vol ?? 1;

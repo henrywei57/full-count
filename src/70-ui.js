@@ -145,11 +145,8 @@ function tpCam(L, dt) {
   let yawT = null, minHalf = 0.48;
   const toward = (x, y, z, near = 0) => { _tpT.set(x, y, z); if (Math.hypot(x - P.x, z - P.z) > near) yawT = Math.atan2(x - P.x, z - P.z); };
   const holding = live && L.role === 'field' && pl.ball.holder === L.f && pl.uf === L.f && pl.humanHolder(L.f);
-  if (holding && !TP.holding) {
-    // just got the ball: face the base the smart play goes to (Space throws there)
-    const c = pl.chooseThrow(L.f), base = c.base || (L.f.isOF ? 2 : 0);
-    TP.aimYaw = base ? Math.atan2(BASES[base].x - P.x, BASES[base].z - P.z) : null;
-  }
+  // just got the ball: face the base the smart throw goes to
+  if (holding && !TP.holding) TP.aimYaw = G.sug ? Math.atan2(BASES[G.sug].x - P.x, BASES[G.sug].z - P.z) : null;
   TP.holding = holding;
   if (L.role === 'field' && !live) {
     if (L.f.role === 'C') toward(0, 4.5, MOUND_Z); else toward(0, 3, 0);
@@ -195,7 +192,7 @@ let fbTimer = 0;
 function setHint(html) { const el = $('hint'); el.innerHTML = html; el.style.opacity = html ? 1 : 0; }
 function liveHint() {
   const parts = [];
-  if (userFields()) parts.push('<kbd>WASD</kbd> move', '<kbd>Space</kbd> dive', G.lock ? '' : '<kbd>Q</kbd> switch', '<kbd>&larr;&uarr;&rarr;&darr;</kbd> throw');
+  if (userFields()) parts.push('<kbd>WASD</kbd> move', '<kbd>Space</kbd> dive', G.lock ? '' : '<kbd>Q</kbd> switch', '<kbd>1</kbd>&ndash;<kbd>4</kbd> throw');
   if (userRuns()) parts.push('<kbd>E</kbd> advance runners', '<kbd>Q</kbd> go back');
   return parts.filter(Boolean).join(' &middot; ');
 }
@@ -450,34 +447,43 @@ function requestChallenge() {
   if (c && c.who === 'local') startChallenge(c.side);
 }
 
-// Player Lock: the base most directly in front of the camera while you hold the ball
-function aimBase() {
-  const pl = G.play;
-  if (!fpvOn || !pl || G.phase !== 'live') return 0;
-  const f = pl.ball.holder;
-  if (!f || f !== pl.uf || !pl.humanHolder(f) || f.throwing) return 0;
-  // third person aims where the camera is heading (not where it is mid-swing)
-  const ay = FL.mode !== 'free' && TP.holding && TP.aimYaw != null ? TP.aimYaw : TP.yaw;
-  const fx = G.view === 2 ? Math.sin(ay) : camRig.look.x - camRig.pos.x, fz = G.view === 2 ? Math.cos(ay) : camRig.look.z - camRig.pos.z, L = Math.hypot(fx, fz) || 1;
-  let best = 0, bestA = 0.62;
-  for (let b = 1; b <= 4; b++) {
-    const bp = BASES[b], dx = bp.x - f.pos.x, dz = bp.z - f.pos.z, d = Math.hypot(dx, dz);
-    if (d < 6) continue;
-    const a = Math.acos(clamp((dx * fx + dz * fz) / (d * L), -1, 1));
-    if (a < bestA) { bestA = a; best = b; }
-  }
-  return best;
-}
+// while you hold the ball: 1-4 throw to a base, and the smart throw is ringed in green
 const BASE_NAMES = { 1: 'first', 2: 'second', 3: 'third', 4: 'home' };
-function throwAtLook() { const b = aimBase(); if (b) { actThrow(b); return true; } return false; }
-function updateAimMarker() {
-  const ab = G.phase === 'live' ? aimBase() : 0;
-  const pl = G.play, holding = fpvOn && G.phase === 'live' && pl && pl.ball.holder && pl.ball.holder === pl.uf && pl.humanHolder(pl.uf);
-  $('crosshair').classList.toggle('hidden', !holding || G.view === 2);
-  $('crosshair').classList.toggle('on', !!ab);
-  baseMark.visible = !!ab;
-  if (ab) { baseMark.position.set(BASES[ab].x, 0.15, BASES[ab].z); if (G.aimShown !== ab) { G.aimShown = ab; setHint(`<kbd>Space</kbd> or click: throw to ${BASE_NAMES[ab]} &middot; ${G.view === 2 ? 'swing the camera to another base to aim' : 'look at a base to aim'}`); } }
-  else if (G.aimShown) { G.aimShown = 0; setHint(G.phase === 'live' ? liveHint() : ''); }
+function updateThrowGuide() {
+  const pl = G.play, f = pl && G.phase === 'live' && !pl.done ? pl.ball.holder : null;
+  const mine = !!f && f === pl.uf && pl.humanHolder(f) && !f.throwing && fieldCtrl() === 'local';
+  if (!mine) G.sugFor = null;
+  else if (G.sugFor !== f) { G.sugFor = f; G.sug = pl.chooseThrow(f).base || (f.isOF ? 2 : 0); }
+  const sb = mine ? G.sug : 0;
+  baseMark.visible = !!sb;
+  if (sb) baseMark.position.set(BASES[sb].x, 0.15, BASES[sb].z);
+  if (mine !== !!G.aimShown) {
+    G.aimShown = mine;
+    setHint(mine ? `Throw: <kbd>1</kbd> first &middot; <kbd>2</kbd> second &middot; <kbd>3</kbd> third &middot; <kbd>4</kbd> home${sb ? ` &middot; best: <b>${BASE_NAMES[sb]}</b>` : ''}` : G.phase === 'live' ? liveHint() : '');
+  }
+}
+function skipText() {
+  if (G.simAB) return 'Skipping to the next batter';
+  const fielding = G.half === 1 - G.lockSide;
+  if (fielding && !G.lockFieldSim && G.fielders.some((f) => f.pl.id === G.lock)) return 'In the field: waiting for a ball hit to the outfield or your way';
+  const idx = G.teams[G.lockSide].lineup.findIndex((p) => p.id === G.lock);
+  if (idx < 0) return fielding ? 'Your team is in the field' : 'Your team is batting';
+  const k = (idx - G.order[G.lockSide] + 9) % 9;
+  if (fielding) return k ? `Next: your at-bat (${ordinal(k + 1)} up next inning)` : 'Next: your at-bat (leading off next inning)';
+  return k === 1 ? 'Next: your at-bat (on deck)' : `Next: your at-bat (${k} batters away)`;
+}
+// the SIMULATING card, with game sound and commentary muted while it's up
+function updateSkipUI() {
+  const on = G.mode === 'lock' && G.skipping && !G.paused;
+  if (on !== !!updateSkipUI.on) {
+    updateSkipUI.on = on;
+    $('simVeil').classList.toggle('hidden', !on);
+    document.body.classList.toggle('skipping', on);
+    if (SND.master) SND.master.gain.value = on || !settings.sound ? 0 : 0.8;
+    if (on) { try { speechSynthesis.cancel(); } catch (e) { /* none */ } exitPointerLock(); }
+    else $('banner').className = '';   // an inning banner the skip raced past
+  }
+  if (on) { const t = skipText(); if ($('simNext').textContent !== t) $('simNext').textContent = t; }
 }
 function updateLockUI() {
   const show = G.mode === 'lock' && !G.simAB && !G.replay && ['prePitch', 'windup', 'pitch', 'postPitch', 'live', 'postPlay', 'postFoul'].includes(G.phase);
@@ -661,7 +667,7 @@ canvasEl.addEventListener('pointerdown', (e) => {
       try { const r = canvasEl.requestPointerLock(); if (r && r.catch) r.catch(() => {}); } catch (err) { /* not supported */ }
       return;
     }
-    if (G.phase === 'live') { if (!throwAtLook() && trotOn()) primaryAction('normal'); return; }
+    if (G.phase === 'live') { if (trotOn()) primaryAction('normal'); return; }
     primaryAction('normal');
     return;
   }
@@ -707,7 +713,6 @@ window.addEventListener('keydown', (e) => {
     if (userFields()) {
       const tmap = { arrowright: 1, arrowup: 2, arrowleft: 3, arrowdown: 4, 1: 1, 2: 2, 3: 3, 4: 4 };
       if (k in tmap) { actThrow(tmap[k]); return; }
-      if (k === ' ' && throwAtLook()) return;
       if (k === ' ' || k === 'shift') { actDive(); return; }
       if (k === 'q') { actSwitch(); return; }
       if ('wasd'.includes(k)) return;
@@ -763,7 +768,7 @@ function pollGamepad() {
     if (gp.buttons.some((b, i) => edge(i))) SND.init();
     if (G.replay) { if (edge(0) || edge(1)) endReplay(); }
     else if (G.phase === 'live' && !trotOn() && (userFields() || userRuns())) {
-      if (userFields()) { if (edge(1)) actThrow(1); if (edge(3)) actThrow(2); if (edge(2)) actThrow(3); if (edge(0)) actThrow(4); if (edge(7) && !throwAtLook()) actDive(); if (edge(5)) actDive(); if (edge(4)) actSwitch(); }
+      if (userFields()) { if (edge(1)) actThrow(1); if (edge(3)) actThrow(2); if (edge(2)) actThrow(3); if (edge(0)) actThrow(4); if (edge(7)) actDive(); if (edge(5)) actDive(); if (edge(4)) actSwitch(); }
       else { if (edge(5)) actRun('go'); if (edge(4)) actRun('back'); }
     } else if (userPitches() && G.phase === 'prePitch') {
       const n = curPitcher().pitches.length;
@@ -838,7 +843,7 @@ function togglePause(force, remote) {
 }
 
 // ------------------------------------------------------------------ menus ----
-const menu = { mode: 'exhibition', away: 0, home: 3, side: 1, innings: 3, diff: 1, manual: 1, batter: 3, lockPick: 'h3', ump: 1, view: 2, lockField: 1 };
+const menu = { mode: 'exhibition', away: 0, home: 3, side: 1, innings: 3, diff: 1, manual: 1, batter: 3, lockPick: 'h3', ump: 1, view: 2, lockField: 1, lockSkip: 1 };
 try { Object.assign(menu, JSON.parse(localStorage.getItem('fullcount.menu') || '{}')); } catch (e) { /* ignore */ }
 function teamPickHTML(label, idx, key) {
   const t = TEAMS[idx];
@@ -876,6 +881,7 @@ function renderMenu() {
   $('optLock').classList.toggle('hidden', !lock);
   $('optView').classList.toggle('hidden', !lock);
   $('optLockField').classList.toggle('hidden', !lock);
+  $('optLockSkip').classList.toggle('hidden', !lock);
   $('optUmp').classList.toggle('hidden', derby || !showTeams);
   for (const el of ['optSide', 'optInn', 'optDiff', 'optUmp']) $(el).style.pointerEvents = guest ? 'none' : '';
   for (const b of $('modes').querySelectorAll('button')) b.classList.toggle('on', b.dataset.mode === m);
@@ -938,7 +944,7 @@ function buildMenu() {
     SND.init();
     if (menu.mode === 'online') { hostStartOnline(); return; }
     let away = menu.away; if (menu.mode === 'derby' && away === menu.home) away = (menu.home + 1) % TEAMS.length;
-    startGame({ mode: menu.mode, away, home: menu.home, side: menu.side, innings: menu.innings, diff: menu.diff, manual: menu.manual, batter: menu.batter, lockPick: menu.lockPick, ump: menu.ump, view: menu.view, lockField: menu.lockField });
+    startGame({ mode: menu.mode, away, home: menu.home, side: menu.side, innings: menu.innings, diff: menu.diff, manual: menu.manual, batter: menu.batter, lockPick: menu.lockPick, ump: menu.ump, view: menu.view, lockField: menu.lockField, lockSkip: menu.lockSkip });
   });
   const openHelp = () => { $('help').classList.remove('hidden'); };
   $('btnHow').addEventListener('click', openHelp);
@@ -974,7 +980,7 @@ function toMenu() {
   for (const m of MODELS) m.root.visible = false;
   ballMesh.visible = false; ballShadow.visible = false; trailReset();
   pci.visible = false; reticle.visible = false; zoneGroup.visible = false; pitchMark.visible = false; pitchGuide.visible = false; ctrlRing.visible = false; landMark.visible = false;
-  fpvHide(null); fpvOn = false; exitPointerLock(); $('absCard').classList.add('hidden'); $('simBtn').classList.add('hidden'); $('crosshair').classList.add('hidden'); $('runHelp').classList.add('hidden'); $('throwPrompt').classList.add('hidden');
+  fpvHide(null); fpvOn = false; exitPointerLock(); $('absCard').classList.add('hidden'); $('simBtn').classList.add('hidden'); $('runHelp').classList.add('hidden'); $('throwPrompt').classList.add('hidden');
   showScreen('menu');
   renderMenu();
 }
@@ -1020,12 +1026,28 @@ function update(dt) {
   dressFrame();
   for (const m of MODELS) updateModel(m, G.now);
   if (G.recOn) recFrame();
+  updateThrowGuide();
   fpvCam(dt);
-  updateAimMarker();
 }
-// Player Lock: sim quickly through everything the locked player isn't part of
+// Player Lock: you only play when you're involved - at bat, on base, or when the ball is
+// hit to the outfield or your way. Everything else is skipped behind the SIMULATING card
+// (or, with skipping turned off, fast-forwarded on screen).
+const SKIP_SPEED = 40;
+function lockInvolved() {
+  if (G.simAB) return false;
+  const ph = G.phase, pl = G.play, live = (ph === 'live' || ph === 'postPlay') && !!pl;
+  if (!live) return userBats() || userPitches() || (LOCK_PHASES.includes(ph) && (G.baseRunners || []).some((x) => x.pl.id === G.lock));
+  if (pl.R.some((r) => r.pl.id === G.lock && (r.state === 'run' || r.state === 'base'))) return true;
+  return G.lockInv && G.half === 1 - G.lockSide;
+}
 function lockFF() {
-  if (G.mode !== 'lock' || G.replay) return 1;
+  G.skipping = false;
+  if (G.mode !== 'lock' || G.replay || G.phase === 'final') return 1;
+  if (G.lockSkip) {
+    if (!lockInvolved()) { G.skipping = true; return SKIP_SPEED; }
+    // on base: watch the pitch, but don't wait around between pitches
+    return !userBats() && !userPitches() && (G.phase === 'postPitch' || G.phase === 'postFoul') ? 3 : 1;
+  }
   if (G.simAB) return 6;
   if (userBats() || userPitches()) return 1;
   const ph = G.phase;
@@ -1044,11 +1066,21 @@ function lockFF() {
 function frame(ts) {
   requestAnimationFrame(frame);
   const dt = Math.min(0.05, Math.max(0, (ts - (frame.last || ts)) / 1000)); frame.last = ts;
+  frameStep(dt);
+  renderer.render(scene, camera);
+}
+function frameStep(dt) {
   G.stick = pollGamepad();
   if (!G.paused && !G.hold) {
     if (isGuest()) guestUpdate(dt);
-    else { const n = G.mode === 'lock' ? lockFF() : G.ff > 1 ? G.ff : 1; for (let i = 0; i < n; i++) update(dt); }
+    else if (G.beat > 0) G.beat -= dt;   // a beat to get your bearings when a skip lands you in a play
+    else if (G.mode === 'lock') {
+      const n = lockFF();
+      // stop fast-forwarding the moment you become involved
+      for (let i = 0; i < n; i++) { update(dt); if (i + 1 < n && lockFF() < n) break; }
+    } else { const n = G.ff > 1 ? G.ff : 1; for (let i = 0; i < n; i++) update(dt); }
   }
+  updateSkipUI();
   netTick();
   camUpdate(dt);
   const d = camera.position.distanceTo(ballMesh.position);
@@ -1058,7 +1090,6 @@ function frame(ts) {
   updateFireworks(dt);
   drawMiniMap();
   updateLockUI();
-  renderer.render(scene, camera);
 }
 function boot() {
   makeUmps();
@@ -1087,6 +1118,8 @@ window.__fullcount = {
     camUpdate(dt); renderer.render(scene, camera);
   },
   render() { camUpdate(1 / 60); renderer.render(scene, camera); },
+  // run the real per-frame loop (fast-forward, skipping, beats) for `sec` seconds of wall time
+  run(sec, dt = 1 / 60) { for (let t = 0; t < sec && G.phase !== 'final'; t += dt) frameStep(dt); renderer.render(scene, camera); },
   cam: () => ({ pos: camRig.pos.toArray().map((v) => +v.toFixed(1)), look: camRig.look.toArray().map((v) => +v.toFixed(1)), fl: { ...FL }, fpvOn, tp: { ...TP } }),
   tick(dt = 1 / 30) { if (isGuest()) guestUpdate(dt); else update(dt); netTick(); },
   setBases(list) { const lu = battingTeam().lineup; G.bases = [null, null, null, null]; for (const b of list) G.bases[b] = lu[(b + 4) % 9]; placeForPitch(); },
