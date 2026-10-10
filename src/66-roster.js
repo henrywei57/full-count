@@ -115,7 +115,6 @@ function buildCustomTeam(def) {
   });
   team.ovr = teamOvr(team);
   team.cost = rosterCost(d);
-  for (const p of [...team.hitters, ...team.pitchers]) PBYID[p.id] = p;
   _teamCache.set(sig, team);
   return team;
 }
