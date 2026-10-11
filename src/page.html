@@ -379,6 +379,33 @@ body.letterbox #tutCard{display:none}
 .chip{padding:3px 6px;border-radius:3px;border:1px solid var(--line);background:transparent;cursor:pointer;font-family:var(--f-display);font-weight:700;font-size:12px;color:var(--dust)}
 .chip.on{background:var(--pc);border-color:var(--pc);color:#081020}
 .rs-actions .ghost{flex:0 0 auto}
+.rs-table td.who{text-align:left;white-space:nowrap}
+.rs-table td.who b{font-family:var(--f-display);font-weight:700;font-size:15px;margin-right:6px}
+.rs-club{display:inline-block;font-family:var(--f-display);font-weight:700;font-size:11px;letter-spacing:.1em;padding:1px 5px;border-radius:3px;background:rgba(255,255,255,.1);color:var(--dust);vertical-align:1px}
+.rs-club.custom{color:var(--gold)}
+.rs-off{display:inline-block;margin-left:6px;font-family:var(--f-display);font-weight:700;font-size:10px;letter-spacing:.1em;color:var(--strike)}
+.rs-table td.rv{font-family:var(--f-display);font-weight:700;font-size:16px;font-variant-numeric:tabular-nums}
+.rs-table td.rv.hi{color:var(--gold)}.rs-table td.rv.lo{color:#d78b8b}
+.rs-swap{padding:5px 10px;font-size:13px}
+span.chip{cursor:default}
+#rsPick{position:fixed;inset:0;z-index:12;display:flex;align-items:flex-start;justify-content:center;padding:24px 16px;background:rgba(3,6,12,.72);overflow-y:auto}
+.rsp-card{width:min(1100px,100%);margin:auto;background:var(--panel);border:1px solid var(--gold);border-radius:6px;padding:16px;display:flex;flex-direction:column;gap:10px;max-height:calc(100vh - 48px)}
+.rsp-head{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.rsp-head h3{margin:0;font-family:var(--f-display);font-weight:800;font-style:italic;font-size:26px;letter-spacing:.02em}
+.rsp-head span{flex:1;min-width:200px;color:var(--dust);font-size:13px}
+.rsp-head span b{color:var(--chalk)}
+.rsp-filters{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.rsp-filters input#rspQ{flex:1;min-width:180px}
+.rsp-filters input,.rsp-filters select{font:inherit;font-weight:600;background:var(--night);color:var(--chalk);border:1px solid var(--line);border-radius:3px;padding:7px 9px}
+.rsp-only{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--dust);white-space:nowrap}
+.rsp-list{overflow:auto;min-height:0;flex:1}
+.rsp-table thead th{position:sticky;top:0;background:var(--panel);z-index:1}
+.rsp-table tr.no{opacity:.45}
+.rsp-table td.plays{font-family:var(--f-display);font-weight:600;font-size:12px;color:var(--dust);white-space:nowrap}
+.rsp-table td.diff{font-variant-numeric:tabular-nums;font-weight:600}
+.rsp-table td.diff.up{color:#d78b8b}.rsp-table td.diff.down{color:var(--ball)}
+.rsp-sign{padding:5px 12px;font-size:14px;letter-spacing:.06em}
+.rsp-why{font-size:12px;color:var(--dust);white-space:nowrap}
 .ghost.danger{color:var(--strike);border-color:rgba(255,90,95,.4)}
 
 /* ---------- account, friends, invites ---------- */
@@ -570,6 +597,8 @@ body.letterbox #tutCard{display:none}
     </div>
   </div>
 </div>
+
+<div id="rsPick" class="hidden"></div>
 
 <div id="friendsScreen" class="screen modal hidden">
   <div class="card fr-card">

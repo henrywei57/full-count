@@ -106,10 +106,7 @@ const FASTBALLS = new Set(['FF', 'SI']);
 const BREAKING = new Set(['SL', 'SW', 'CU', 'KC', 'FC']);
 
 // ---------------------------------------------------------------- teams ----
-// The clubs are real (src/12-mlb.js, built by tools/mlb-import.mjs; teams in 14-teams.js).
-// These made-up names are only for blank rosters in the Roster Builder.
-const FIRST = ['Marcus', 'Diego', 'Tyler', 'Kenji', 'Andre', 'Luis', 'Jalen', 'Cole', 'Mateo', 'Owen', 'Rafael', 'Darius', 'Hunter', 'Yuki', 'Elijah', 'Santiago', 'Brady', 'Malik', 'Nolan', 'Javier', 'Cameron', 'Isaiah', 'Trevor', 'Kai', 'Wesley', 'Dominic', 'Reggie', 'Felix', 'Logan', 'Emilio', 'Grant', 'Tomas', 'Xavier', 'Shane', 'Hector', 'Bryce', 'Jonah', 'Andres', 'Caleb', 'Rico', 'Damon', 'Ian', 'Victor', 'Austin', 'Gabe', 'Theo', 'Ramon', 'Miles', 'Oscar', 'Ezra', 'Quinn', 'Silas', 'Joaquin', 'Desmond', 'Ty', 'Royce', 'Callum', 'Nico', 'Tobias', 'Ahmad'];
-const LAST = ['Vale', 'Okafor', 'Brennan', 'Whitlock', 'Holloway', 'Pruitt', 'Marsh', 'Kowalski', 'Fairbanks', 'Ibarra', 'Lindqvist', 'Thorne', 'Quintero', 'Hargrove', 'Calloway', 'Strand', 'Ocampo', 'Fujimoto', 'Ashby', 'Bellamy', 'Duquette', 'Kessler', 'Abernathy', 'Lark', 'Winslow', 'Gallardo', 'Draper', 'Nakamura', 'Corbin', 'Hale', 'Bishop', 'Kemper', 'Sutton', 'Ferris', 'Oduya', 'Haskins', 'Prentice', 'Cordero', 'Maddox', 'Iwata', 'Carrow', 'Solano', 'Teague', 'Mercer', 'Banda', 'Aldana', 'Pike', 'Rutledge', 'Esparza', 'Okonjo', 'Linwood', 'Del Toro', 'Halvorsen', 'Quarles', 'Ybarra', 'Coyle', 'Barrientos', 'Nwosu', 'Kimura', 'Stroud', 'Pellegrini', 'Archuleta', 'Tolliver', 'Vance', 'Huxley'];
+// The clubs and players are real: src/12-mlb.js (built by tools/mlb-import.mjs), unpacked in 14-teams.js.
 const POS_LIST = ['C', '1B', '2B', '3B', 'SS', 'LF', 'CF', 'RF', 'DH'];
 const SKINS = ['#f1c7a5', '#e3b08c', '#c98a63', '#a96c48', '#8a5536', '#6b4029', '#f5d4bb', '#d9a07a'];
 

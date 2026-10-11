@@ -101,13 +101,16 @@ console.log(`Full Count roster import: ${S} season, blended with ${P}`);
 
 const teamsRaw = (await get(`${API}/teams?sportId=1&season=${S}`)).teams.filter((t) => t.active !== false && t.sport && t.sport.id === 1);
 console.log(`  ${teamsRaw.length} clubs`);
-const [hitS, hitP, pitS, pitP, fldS] = await Promise.all([bulk('hitting', S), bulk('hitting', P), bulk('pitching', S), bulk('pitching', P), bulk('fielding', S)]);
+const [hitS, hitP, pitS, pitP, fldS, fldP] = await Promise.all([bulk('hitting', S), bulk('hitting', P), bulk('pitching', S), bulk('pitching', P), bulk('fielding', S), bulk('fielding', P)]);
 const byId = (rows) => new Map(rows.map((r) => [r.player.id, r.stat]));
 const H1 = byId(hitS), H0 = byId(hitP), P1 = byId(pitS), P0 = byId(pitP);
-const posGames = new Map();
-for (const r of fldS) {
-  const pos = r.position && r.position.abbreviation; if (!pos) continue;
-  const m = posGames.get(r.player.id) || {}; m[pos] = (m[pos] || 0) + (r.stat.games || 0); posGames.set(r.player.id, m);
+// games at each position: this season, and both seasons together (for who can play where)
+const posGames = new Map(), posGames2 = new Map();
+for (const [rows, maps] of [[fldS, [posGames, posGames2]], [fldP, [posGames2]]]) {
+  for (const r of rows) {
+    const pos = r.position && r.position.abbreviation; if (!pos) continue;
+    for (const map of maps) { const m = map.get(r.player.id) || {}; m[pos] = (m[pos] || 0) + (r.stat.games || 0); map.set(r.player.id, m); }
+  }
 }
 const sv = (path, key) => Promise.all([savant(path.replace('{Y}', S), key), savant(path.replace('{Y}', P), key)]);
 const [[speedS, speedP], [usageS, usageP], [sprintS, sprintP], [evS, evP]] = await Promise.all([
@@ -223,73 +226,105 @@ function pitcherRatings(id, starter) {
   return { velo: clamp(Math.round(velo), 85, 103), ctl: rt(ctl), stuff: rt(stuff), stam: Math.round(stam), pitches: list };
 }
 
-// --- one club
+// --- the player pool: everyone on a 40-man roster who played (the Roster Builder signs from it)
 function hashSkin(id) { let h = 2166136261; for (const c of String(id)) h = Math.imul(h ^ c.charCodeAt(0), 16777619); return (h >>> 0) % 8; }
+const FIELD = ['C', '1B', '2B', '3B', 'SS', 'LF', 'CF', 'RF'];
 const POS_ORDER = ['C', 'SS', 'CF', '2B', '3B', 'RF', 'LF', '1B'];
 const group = (p) => (p === 'C' ? 'C' : IF.has(p) ? 'IF' : OF.has(p) || p === 'OF' ? 'OF' : p === 'DH' || p === 'TWP' ? 'DH' : 'P');
-async function buildTeam(t) {
-  const roster = (await get(`${API}/teams/${t.id}/roster?rosterType=40Man&season=${S}&hydrate=person`)).roster || [];
-  const people = roster.map((r) => ({ id: r.person.id, name: r.person.fullName, num: parseInt(r.jerseyNumber || r.person.primaryNumber, 10), pos: (r.person.primaryPosition || r.position).abbreviation, bats: (r.person.batSide || {}).code || 'R', throws: (r.person.pitchHand || {}).code || 'R' }));
-  const hitters = people.filter((p) => p.pos !== 'P' && (H1.get(p.id) || H0.get(p.id)));
-  const usedNums = new Set();
-  const numFor = (p) => { let n = Number.isFinite(p.num) ? p.num : 0; while (usedNums.has(n)) n = (n + 17) % 100; usedNums.add(n); return n; };
-  const pa = (p) => sumHit(p.id).pa;
+const clubs = teamsRaw.sort((a, b) => a.name.localeCompare(b.name));
+const rosters = await Promise.all(clubs.map((t) => get(`${API}/teams/${t.id}/roster?rosterType=40Man&season=${S}&hydrate=person`).then((j) => j.roster || [])));
+const HIT = new Map(), PIT = new Map();   // mlb id -> pool entry
+clubs.forEach((t, ci) => {
+  for (const r of rosters[ci]) {
+    const pp = r.person, primary = (pp.primaryPosition || r.position).abbreviation;
+    const base = { id: pp.id, name: pp.fullName, club: ci, num: parseInt(r.jerseyNumber || pp.primaryNumber, 10), bats: (pp.batSide || {}).code || 'R', throws: (pp.pitchHand || {}).code || 'R', skin: hashSkin(pp.id), primary };
+    if (!Number.isFinite(base.num)) base.num = 0;
+    if (primary !== 'P' && sumHit(pp.id).pa >= 50) {
+      // where he plays: 10+ games at a spot over the two seasons, his main spot first
+      const g2 = posGames2.get(pp.id) || {}, g1 = posGames.get(pp.id) || {};
+      const elig = FIELD.filter((p) => (g2[p] || 0) >= 10).sort((a, b) => (g1[b] || 0) - (g1[a] || 0) || (g2[b] || 0) - (g2[a] || 0));
+      if (!elig.length && FIELD.includes(primary)) elig.push(primary);
+      if (!elig.length && primary === 'OF') elig.push('CF');
+      const bat = hitterRatings(pp.id, elig[0] || 'DH');
+      HIT.set(pp.id, { ...base, con: bat.con, pow: bat.pow, eye: bat.eye, spd: bat.spd, def: elig.map((pos) => { const r2 = hitterRatings(pp.id, pos); return [pos, r2.arm, r2.fld]; }) });
+    }
+    if ((primary === 'P' || primary === 'TWP') && sumPit(pp.id).ip >= 10) {
+      const o = sumPit(pp.id), role = o.gs >= 3 && o.gs >= o.g * 0.5 ? 'SP' : 'RP';
+      PIT.set(pp.id, { ...base, role, ...pitcherRatings(pp.id, role === 'SP') });
+    }
+  }
+});
+console.log(`  pool: ${HIT.size} hitters, ${PIT.size} pitchers`);
+const defAt = (h, pos) => h.def.find((d) => d[0] === pos);
+
+// --- each club's lineup and staff, picked from its own players
+function buildTeam(t, ci) {
+  const hitters = [...HIT.values()].filter((h) => h.club === ci);
+  const pa = (h) => sumHit(h.id).pa;
   // how good he is at the job: his bat, his glove there, discounted if he barely played
-  const value = (p, pos) => {
-    const r = hitterRatings(p.id, pos);
-    return (r.con + r.pow * 1.1 + r.eye * 0.6 + (pos === 'DH' ? 0 : (r.fld + r.arm) * 0.3)) * Math.min(1, pa(p) / 200);
+  const value = (h, pos) => {
+    let glove = 0;
+    if (pos !== 'DH') { const d = defAt(h, pos); const r2 = d ? { arm: d[1], fld: d[2] } : hitterRatings(h.id, pos); glove = (r2.arm + r2.fld) * 0.3; }
+    return (h.con + h.pow * 1.1 + h.eye * 0.6 + glove) * Math.min(1, pa(h) / 200);
   };
   const best = (list, pos) => list.sort((a, b) => value(b, pos) - value(a, pos))[0];
   const used = new Set(), lineup = [];
   for (const pos of POS_ORDER) {
-    const games = (p) => (posGames.get(p.id) || {})[pos] || 0;
-    const free = hitters.filter((p) => !used.has(p.id));
-    // the best player who actually plays the position (10+ games there, or it's his position)
-    let pick = best(free.filter((p) => games(p) >= 10 || p.pos === pos || (p.pos === 'OF' && OF.has(pos))), pos);
-    if (!pick) pick = best(free.filter((p) => group(p.pos) === group(pos)), pos);
+    const free = hitters.filter((h) => !used.has(h.id));
+    let pick = best(free.filter((h) => defAt(h, pos)), pos);   // the best player who actually plays there
+    if (!pick) pick = best(free.filter((h) => group(h.primary) === group(pos)), pos);
     if (!pick) pick = best(free, pos);
     if (!pick) continue;
-    used.add(pick.id); lineup.push({ ...pick, pos });
+    // playing somewhere new for his club: rate his arm and glove there too
+    if (!defAt(pick, pos)) { const r2 = hitterRatings(pick.id, pos); pick.def.push([pos, r2.arm, r2.fld]); }
+    used.add(pick.id); lineup.push({ h: pick, pos });
   }
-  // the DH: the best bat left over
-  const left = hitters.filter((p) => !used.has(p.id));
-  const dh = best(left, 'DH');
-  if (dh) lineup.push({ ...dh, pos: 'DH' });
+  const dh = best(hitters.filter((h) => !used.has(h.id)), 'DH');
+  if (dh) lineup.push({ h: dh, pos: 'DH' });
   if (lineup.length < 9) throw new Error(`${t.abbreviation}: only ${lineup.length} hitters with stats`);
-  const H = lineup.map((p) => ({ pos: p.pos, name: p.name, num: numFor(p), bats: p.bats, throws: p.throws, ...hitterRatings(p.id, p.pos), skin: hashSkin(p.id), mlbId: p.id }));
-  // batting order, the way the game orders its lineups: table-setter, contact, power in the middle
-  const pool = [...H], order = [];
-  const take = (f) => { pool.sort((a, b) => f(b) - f(a)); order.push(pool.shift().pos); };
+  // batting order, the way the game orders lineups: table-setter, contact, power in the middle
+  const pool = lineup.map(({ h }) => h), order = [];
+  const take = (f) => { pool.sort((a, b) => f(b) - f(a)); order.push(pool.shift()); };
   take((h) => h.spd * 0.6 + h.con * 0.7 + h.eye * 0.3);
   take((h) => h.con + h.eye * 0.5);
   take((h) => h.con * 0.8 + h.pow);
   take((h) => h.pow * 1.2 + h.con * 0.4);
   take((h) => h.pow + h.con * 0.5);
   pool.sort((a, b) => b.con + b.pow - (a.con + a.pow));
-  order.push(...pool.map((h) => h.pos));
-  // pitching staff: the ace (most starts), then the top three relief arms (saves, holds, innings)
-  const pitchers = people.filter((p) => (p.pos === 'P' || p.pos === 'TWP') && (P1.get(p.id) || P0.get(p.id)));
-  const sp = pitchers.slice().sort((a, b) => sumPit(b.id).gsS - sumPit(a.id).gsS || sumPit(b.id).ipS - sumPit(a.id).ipS)[0];
+  order.push(...pool);
+  // the ace (most starts), then the top three relief arms (saves, holds, innings)
+  const arms = [...PIT.values()].filter((p) => p.club === ci);
+  const sp = arms.slice().sort((a, b) => sumPit(b.id).gsS - sumPit(a.id).gsS || sumPit(b.id).ipS - sumPit(a.id).ipS)[0];
   const lev = (p) => { const o = sumPit(p.id); return o.sv * 3 + o.hld * 2 + o.ip * 0.3 - o.gs * 4; };
-  const rps = pitchers.filter((p) => p !== sp).sort((a, b) => lev(b) - lev(a)).slice(0, 3);
-  const staff = [sp, ...rps].filter(Boolean);
+  const staff = [sp, ...arms.filter((p) => p !== sp).sort((a, b) => lev(b) - lev(a)).slice(0, 3)].filter(Boolean);
   if (staff.length < 4) throw new Error(`${t.abbreviation}: only ${staff.length} pitchers with stats`);
-  const Pl = staff.map((p, i) => ({ name: p.name, num: numFor(p), throws: p.throws, ...pitcherRatings(p.id, i === 0), skin: hashSkin(p.id), mlbId: p.id }));
-  const [c1, c2] = teamColors(t.id);
-  const city = t.name.replace(new RegExp('\\s*' + t.teamName + '$'), '') || t.locationName || t.name;
-  return { id: t.abbreviation, city, name: t.teamName, c1, c2, mlbId: t.id, hitters: H, order, pitchers: Pl };
+  return { club: ci, lineup: order.map((h) => [lineup.find((x) => x.h === h).pos, h.id]), staff: staff.map((p) => p.id) };
 }
 const teams = [];
-for (const t of teamsRaw.sort((a, b) => a.name.localeCompare(b.name))) {
-  try { teams.push(await buildTeam(t)); process.stdout.write('.'); } catch (e) { console.warn(`\n  ${t.name}: ${e.message}`); }
-}
-console.log(`\n  built ${teams.length} teams`);
+clubs.forEach((t, ci) => { try { teams.push(buildTeam(t, ci)); } catch (e) { console.warn(`  ${t.name}: ${e.message}`); } });
+console.log(`  built ${teams.length} teams`);
 if (teams.length < 20) throw new Error('Too few teams built; not writing the file.');
+const clubRows = clubs.map((t) => {
+  const [c1, c2] = teamColors(t.id);
+  const city = t.name.replace(new RegExp('\\s*' + t.teamName + '$'), '') || t.locationName || t.name;
+  return [t.abbreviation, city, t.teamName, c1, c2];
+});
+// compact rows; src/14-teams.js unpacks them
+const hitRows = [...HIT.values()].map((h) => [h.id, h.name, h.club, h.bats, h.throws, h.num, h.con, h.pow, h.eye, h.spd, h.skin, h.def.map((d) => d.join(' ')).join('|')]);
+const pitRows = [...PIT.values()].map((p) => [p.id, p.name, p.club, p.role, p.throws, p.num, p.velo, p.ctl, p.stuff, p.stam, p.skin, p.pitches.map((x) => x.type + x.velo).join(' ')]);
+const rowsOut = (rows) => '[\n' + rows.map((r) => JSON.stringify(r)).join(',\n') + '\n]';
 const out = `// Generated by tools/mlb-import.mjs on ${new Date().toISOString().slice(0, 10)} from the MLB Stats API and
 // Baseball Savant (${S} season, blended with ${P}). Re-run the script to refresh rosters; don't edit by hand.
 // Unofficial fan project: not affiliated with or endorsed by MLB, the MLBPA or any club.
 const MLB_SEASON = ${S};
-const MLB_TEAMS = ${JSON.stringify(teams)};
+// [abbreviation, city, team name, primary color, secondary color]
+const MLB_CLUBS = ${rowsOut(clubRows)};
+// [mlb id, name, club, bats, throws, number, CON, POW, EYE, SPD, skin, "POS ARM FLD|..." for each position he plays]
+const MLB_HITTERS = ${rowsOut(hitRows)};
+// [mlb id, name, club, SP/RP, throws, number, VELO, CTL, STF, STA, skin, "pitch+mph ..." most used first]
+const MLB_PITCHERS = ${rowsOut(pitRows)};
+// each club: [club, lineup in batting order as [position, mlb id], staff (ace first) as mlb ids]
+const MLB_TEAMS = ${rowsOut(teams.map((t) => [t.club, t.lineup, t.staff]))};
 `;
 await writeFile(new URL('../src/12-mlb.js', import.meta.url), out);
 console.log(`  wrote src/12-mlb.js (${(out.length / 1024).toFixed(0)} KB)`);

@@ -821,7 +821,7 @@ function actPick(base) { if (isGuest()) { netSend({ t: 'act', a: 'pick', base })
 const trotOn = () => (isGuest() ? !!(NET.snap && NET.snap.pl && NET.snap.pl.hr) : !!(G.play && (G.play.hr || G.play.awarded)));
 window.addEventListener('keydown', (e) => {
   const k = e.key.toLowerCase();
-  if (k === 'escape' && !$('rosterScreen').classList.contains('hidden')) { closeRosters(); return; }
+  if (k === 'escape' && !$('rosterScreen').classList.contains('hidden')) { if (RS.pick) rsClosePick(); else closeRosters(); return; }
   if (k === 'escape' && !$('friendsScreen').classList.contains('hidden')) { closeFriends(); return; }
   if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA')) return;
   if (k === 'escape' || (k === 'p' && G.phase !== 'menu')) { togglePause(); return; }
