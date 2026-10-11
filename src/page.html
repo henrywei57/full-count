@@ -250,12 +250,17 @@ button:focus-visible,select:focus-visible{outline:2px solid var(--gold);outline-
 .rh-path.go{color:var(--ball)}.rh-path.back{color:var(--strike)}.rh-path.hold{color:var(--gold)}
 #runTags{position:absolute;inset:0;pointer-events:none;overflow:hidden}
 #runHelp.pre{left:16px;top:calc(84px + env(safe-area-inset-top,0px));bottom:auto;transform:none;width:min(290px,calc(100vw - 32px))}
-#runHelp.pre .rh-head,#runHelp.pre .rh-all{display:none}
+#runHelp.pre .rh-all{display:none}
+#runHelp.pre .rh-head{padding:4px 8px;font-size:11px}
 #runHelp.pre .rh-row:first-of-type{border-top:0}
 #hud.prac #runHelp.pre{top:calc(142px + env(safe-area-inset-top,0px))}
-.run-tag{position:absolute;transform:translate(-50%,-100%);padding:2px 7px 2px 3px;border-radius:12px;background:rgba(5,10,20,.78);font-family:var(--f-display);font-weight:700;font-size:13px;white-space:nowrap;display:flex;align-items:center;gap:5px}
+.run-tag{pointer-events:auto;cursor:pointer;border:2px solid transparent;position:absolute;transform:translate(-50%,-100%);padding:2px 7px 2px 3px;border-radius:12px;background:rgba(5,10,20,.78);font-family:var(--f-display);font-weight:700;font-size:13px;white-space:nowrap;display:flex;align-items:center;gap:5px}
 .run-tag b{width:18px;height:18px;border-radius:50%;display:grid;place-items:center;background:var(--dust);color:#081020;font-size:12px}
 .run-tag.user b{background:var(--gold)}
+.run-tag.sel{border-color:#5aa8ff;background:rgba(18,40,74,.92)}
+.rh-row{cursor:pointer}.rh-row:hover{background:rgba(255,255,255,.04)}
+.rh-row.sel{background:rgba(90,168,255,.18);box-shadow:inset 3px 0 0 #5aa8ff}
+#miniMap.pick{pointer-events:auto;cursor:pointer}
 .run-tag.go{color:var(--ball)}.run-tag.back{color:var(--strike)}.run-tag.hold{color:var(--gold)}
 
 #pickHelp{position:absolute;right:16px;bottom:calc(300px + env(safe-area-inset-bottom,0px));display:flex;align-items:center;gap:6px;padding:6px 8px;background:var(--panel);border:1px solid var(--line);border-radius:6px;pointer-events:auto}
@@ -522,8 +527,8 @@ span.chip{cursor:default}
   <div id="pickHelp" class="hidden"><span class="ph-label">PICKOFF</span><span id="pickList"></span></div>
   <div id="runTags"></div>
   <div id="runHelp" class="hidden">
-    <div class="rh-head">BASERUNNING<span>hold a base key (<kbd>1</kbd>&ndash;<kbd>4</kbd> or arrows) + <kbd>E</kbd>/<kbd>Q</kbd> for one runner</span></div>
-    <div class="rh-all"><button data-run="go">All advance <kbd>E</kbd></button><button data-run="back">All go back <kbd>Q</kbd></button></div>
+    <div class="rh-head">BASERUNNING<span id="rhTip">click a runner to pick him, then <kbd>E</kbd>/<kbd>Q</kbd></span></div>
+    <div class="rh-all" id="rhAll"></div>
     <div id="runList"></div>
   </div>
 </div>
@@ -651,7 +656,8 @@ span.chip{cursor:default}
       <div><h3>BASERUNNING</h3><dl>
         <dt>E / RB</dt><dd>Send every runner one more base</dd>
         <dt>Q / LB</dt><dd>Take a base back (stop at the next bag, press again to go back)</dd>
-        <dt>Hold 1&ndash;4 + E/Q</dt><dd>Run just the runner on or heading to that base (1B, 2B, 3B, home). Arrows or the D-pad work too.</dd>
+        <dt>Click a runner</dt><dd>Pick him (click him on the field, his tag, his dot on the mini diamond, or his row in the runner panel). E / Q then run just him. Click him again for everyone.</dd>
+        <dt>Hold 1&ndash;4 + E/Q</dt><dd>Also runs just the runner on or heading to that base. Arrows or the D-pad work too.</dd>
         <dt>E before the pitch</dt><dd>Steal: the runner goes on the pitcher's first move (hold 1&ndash;3 for one runner, Q calls it off). RB / LB on a gamepad.</dd>
         <dt>Runner panel</dt><dd>Click &#9664; / &#9654; next to any runner. Each runner shows where he's headed.</dd>
       </dl></div>

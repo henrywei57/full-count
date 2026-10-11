@@ -122,7 +122,26 @@ function setFade(p, a) {
   });
 }
 function setAnim(p, name, prm = null, now = G.now) {
-  if (p.anim !== name || prm !== p.prm) { p.anim = name; p.t0 = now; p.prm = prm; }
+  if (p.anim !== name || prm !== p.prm) { if (p.anim !== name) animBlend(p, name, now); p.anim = name; p.t0 = now; p.prm = prm; }
+}
+// Changing animations eases out of the old pose instead of snapping: remember where every
+// joint is now and slerp from there into the new pose over a moment.
+const BLEND_T = { dive: 0.08, throw: 0.1, pitch: 0.12, run: 0.16, jog: 0.16 };
+function animBlend(p, name, now = G.now) {
+  if (!p.root.visible) return;
+  if (!p.snapQ) { p.snapQ = JOINTS.map(() => new THREE.Quaternion()); p.snapHips = new V3(); }
+  JOINTS.forEach((k, i) => p.snapQ[i].copy(p.j[k].quaternion));
+  p.snapHips.copy(p.j.hips.position);
+  p.blend = { t0: now, dur: BLEND_T[name] ?? 0.14 };
+}
+const _qb = new THREE.Quaternion();
+function applyBlend(p, now) {
+  const b = p.blend; if (!b) return;
+  const u = (now - b.t0) / b.dur;
+  if (u >= 1 || u < 0) { p.blend = null; return; }
+  const w = smooth(u);
+  JOINTS.forEach((k, i) => { const q = p.j[k].quaternion; _qb.copy(q); q.copy(p.snapQ[i]).slerp(_qb, w); });
+  p.j.hips.position.lerpVectors(p.snapHips, _v1.copy(p.j.hips.position), w);
 }
 function setHelmet(p, on) { if (p.kind === 'catcher') return; p.j.helmet.visible = on; p.j.cap.visible = !on; p.j.flap.position.x = (p.batsL ? -0.36 : 0.36); }
 
@@ -322,6 +341,18 @@ function poseUmp(p, t, prm) {
   j.shL.rotation.set(-0.6, 0, 0.1); j.shR.rotation.set(-0.6, 0, -0.1);
   j.elL.rotation.x = -0.9; j.elR.rotation.x = -0.9;
 }
+// fielder with the ball, gathering to throw: glove at the chest, throwing hand in the glove,
+// shoulders turning to the throwing side
+function poseGather(p, t) {
+  const j = p.j, T = p.lefty ? 'L' : 'R', Gl = p.lefty ? 'R' : 'L', sg = p.lefty ? -1 : 1, u = clamp(t / 0.25, 0, 1);
+  j.hips.position.y = lerp(2.7, 2.95, u);
+  j.hipL.rotation.set(-0.3, 0, 0.18); j.hipR.rotation.set(-0.3, 0, -0.18);
+  j.kneeL.rotation.x = lerp(0.8, 0.45, u); j.kneeR.rotation.x = lerp(0.8, 0.45, u);
+  j.torso.rotation.x = lerp(0.45, 0.15, u); j.torso.rotation.y = sg * -0.35 * u;
+  j['sh' + Gl].rotation.set(-1.2, 0, outZ(Gl, -0.25)); j['el' + Gl].rotation.x = -1.6;
+  j['sh' + T].rotation.set(-1.0 - 0.3 * u, 0, outZ(T, -0.35)); j['el' + T].rotation.x = -1.7;
+  j.neck.rotation.y = sg * 0.3 * u;
+}
 function poseCheer(j, t) {
   j.shL.rotation.set(-2.9 + Math.sin(t * 9) * 0.25, 0, 0.3); j.shR.rotation.set(-2.9 - Math.sin(t * 9) * 0.25, 0, -0.3);
   j.elL.rotation.x = -0.3; j.elR.rotation.x = -0.3;
@@ -341,6 +372,7 @@ function applyPose(p, name, t, prm, phase) {
     case 'ump': poseUmp(p, t, prm); break;
     case 'throw': poseThrow(p, t); break;
     case 'catchHigh': poseCatchHigh(p, t); break;
+    case 'gather': poseGather(p, t); break;
     case 'fieldLow': poseFieldLow(j); break;
     case 'dive': poseDive(p, t); break;
     case 'cheer': poseCheer(j, t); break;
@@ -351,5 +383,6 @@ function applyPose(p, name, t, prm, phase) {
 function updateModel(p, now) {
   if (!p.root.visible) return;
   applyPose(p, p.anim, now - p.t0, p.prm, p.phase);
+  if (p.blend) applyBlend(p, now);
 }
 function handWorld(p, s, out) { p.root.updateMatrixWorld(true); return p.j['hand' + s].getWorldPosition(out); }

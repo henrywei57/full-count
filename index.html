@@ -257,12 +257,17 @@ button:focus-visible,select:focus-visible{outline:2px solid var(--gold);outline-
 .rh-path.go{color:var(--ball)}.rh-path.back{color:var(--strike)}.rh-path.hold{color:var(--gold)}
 #runTags{position:absolute;inset:0;pointer-events:none;overflow:hidden}
 #runHelp.pre{left:16px;top:calc(84px + env(safe-area-inset-top,0px));bottom:auto;transform:none;width:min(290px,calc(100vw - 32px))}
-#runHelp.pre .rh-head,#runHelp.pre .rh-all{display:none}
+#runHelp.pre .rh-all{display:none}
+#runHelp.pre .rh-head{padding:4px 8px;font-size:11px}
 #runHelp.pre .rh-row:first-of-type{border-top:0}
 #hud.prac #runHelp.pre{top:calc(142px + env(safe-area-inset-top,0px))}
-.run-tag{position:absolute;transform:translate(-50%,-100%);padding:2px 7px 2px 3px;border-radius:12px;background:rgba(5,10,20,.78);font-family:var(--f-display);font-weight:700;font-size:13px;white-space:nowrap;display:flex;align-items:center;gap:5px}
+.run-tag{pointer-events:auto;cursor:pointer;border:2px solid transparent;position:absolute;transform:translate(-50%,-100%);padding:2px 7px 2px 3px;border-radius:12px;background:rgba(5,10,20,.78);font-family:var(--f-display);font-weight:700;font-size:13px;white-space:nowrap;display:flex;align-items:center;gap:5px}
 .run-tag b{width:18px;height:18px;border-radius:50%;display:grid;place-items:center;background:var(--dust);color:#081020;font-size:12px}
 .run-tag.user b{background:var(--gold)}
+.run-tag.sel{border-color:#5aa8ff;background:rgba(18,40,74,.92)}
+.rh-row{cursor:pointer}.rh-row:hover{background:rgba(255,255,255,.04)}
+.rh-row.sel{background:rgba(90,168,255,.18);box-shadow:inset 3px 0 0 #5aa8ff}
+#miniMap.pick{pointer-events:auto;cursor:pointer}
 .run-tag.go{color:var(--ball)}.run-tag.back{color:var(--strike)}.run-tag.hold{color:var(--gold)}
 
 #pickHelp{position:absolute;right:16px;bottom:calc(300px + env(safe-area-inset-bottom,0px));display:flex;align-items:center;gap:6px;padding:6px 8px;background:var(--panel);border:1px solid var(--line);border-radius:6px;pointer-events:auto}
@@ -529,8 +534,8 @@ span.chip{cursor:default}
   <div id="pickHelp" class="hidden"><span class="ph-label">PICKOFF</span><span id="pickList"></span></div>
   <div id="runTags"></div>
   <div id="runHelp" class="hidden">
-    <div class="rh-head">BASERUNNING<span>hold a base key (<kbd>1</kbd>&ndash;<kbd>4</kbd> or arrows) + <kbd>E</kbd>/<kbd>Q</kbd> for one runner</span></div>
-    <div class="rh-all"><button data-run="go">All advance <kbd>E</kbd></button><button data-run="back">All go back <kbd>Q</kbd></button></div>
+    <div class="rh-head">BASERUNNING<span id="rhTip">click a runner to pick him, then <kbd>E</kbd>/<kbd>Q</kbd></span></div>
+    <div class="rh-all" id="rhAll"></div>
     <div id="runList"></div>
   </div>
 </div>
@@ -658,7 +663,8 @@ span.chip{cursor:default}
       <div><h3>BASERUNNING</h3><dl>
         <dt>E / RB</dt><dd>Send every runner one more base</dd>
         <dt>Q / LB</dt><dd>Take a base back (stop at the next bag, press again to go back)</dd>
-        <dt>Hold 1&ndash;4 + E/Q</dt><dd>Run just the runner on or heading to that base (1B, 2B, 3B, home). Arrows or the D-pad work too.</dd>
+        <dt>Click a runner</dt><dd>Pick him (click him on the field, his tag, his dot on the mini diamond, or his row in the runner panel). E / Q then run just him. Click him again for everyone.</dd>
+        <dt>Hold 1&ndash;4 + E/Q</dt><dd>Also runs just the runner on or heading to that base. Arrows or the D-pad work too.</dd>
         <dt>E before the pitch</dt><dd>Steal: the runner goes on the pitcher's first move (hold 1&ndash;3 for one runner, Q calls it off). RB / LB on a gamepad.</dd>
         <dt>Runner panel</dt><dd>Click &#9664; / &#9654; next to any runner. Each runner shows where he's headed.</dd>
       </dl></div>
@@ -2907,7 +2913,26 @@ function setFade(p, a) {
   });
 }
 function setAnim(p, name, prm = null, now = G.now) {
-  if (p.anim !== name || prm !== p.prm) { p.anim = name; p.t0 = now; p.prm = prm; }
+  if (p.anim !== name || prm !== p.prm) { if (p.anim !== name) animBlend(p, name, now); p.anim = name; p.t0 = now; p.prm = prm; }
+}
+// Changing animations eases out of the old pose instead of snapping: remember where every
+// joint is now and slerp from there into the new pose over a moment.
+const BLEND_T = { dive: 0.08, throw: 0.1, pitch: 0.12, run: 0.16, jog: 0.16 };
+function animBlend(p, name, now = G.now) {
+  if (!p.root.visible) return;
+  if (!p.snapQ) { p.snapQ = JOINTS.map(() => new THREE.Quaternion()); p.snapHips = new V3(); }
+  JOINTS.forEach((k, i) => p.snapQ[i].copy(p.j[k].quaternion));
+  p.snapHips.copy(p.j.hips.position);
+  p.blend = { t0: now, dur: BLEND_T[name] ?? 0.14 };
+}
+const _qb = new THREE.Quaternion();
+function applyBlend(p, now) {
+  const b = p.blend; if (!b) return;
+  const u = (now - b.t0) / b.dur;
+  if (u >= 1 || u < 0) { p.blend = null; return; }
+  const w = smooth(u);
+  JOINTS.forEach((k, i) => { const q = p.j[k].quaternion; _qb.copy(q); q.copy(p.snapQ[i]).slerp(_qb, w); });
+  p.j.hips.position.lerpVectors(p.snapHips, _v1.copy(p.j.hips.position), w);
 }
 function setHelmet(p, on) { if (p.kind === 'catcher') return; p.j.helmet.visible = on; p.j.cap.visible = !on; p.j.flap.position.x = (p.batsL ? -0.36 : 0.36); }
 
@@ -3107,6 +3132,18 @@ function poseUmp(p, t, prm) {
   j.shL.rotation.set(-0.6, 0, 0.1); j.shR.rotation.set(-0.6, 0, -0.1);
   j.elL.rotation.x = -0.9; j.elR.rotation.x = -0.9;
 }
+// fielder with the ball, gathering to throw: glove at the chest, throwing hand in the glove,
+// shoulders turning to the throwing side
+function poseGather(p, t) {
+  const j = p.j, T = p.lefty ? 'L' : 'R', Gl = p.lefty ? 'R' : 'L', sg = p.lefty ? -1 : 1, u = clamp(t / 0.25, 0, 1);
+  j.hips.position.y = lerp(2.7, 2.95, u);
+  j.hipL.rotation.set(-0.3, 0, 0.18); j.hipR.rotation.set(-0.3, 0, -0.18);
+  j.kneeL.rotation.x = lerp(0.8, 0.45, u); j.kneeR.rotation.x = lerp(0.8, 0.45, u);
+  j.torso.rotation.x = lerp(0.45, 0.15, u); j.torso.rotation.y = sg * -0.35 * u;
+  j['sh' + Gl].rotation.set(-1.2, 0, outZ(Gl, -0.25)); j['el' + Gl].rotation.x = -1.6;
+  j['sh' + T].rotation.set(-1.0 - 0.3 * u, 0, outZ(T, -0.35)); j['el' + T].rotation.x = -1.7;
+  j.neck.rotation.y = sg * 0.3 * u;
+}
 function poseCheer(j, t) {
   j.shL.rotation.set(-2.9 + Math.sin(t * 9) * 0.25, 0, 0.3); j.shR.rotation.set(-2.9 - Math.sin(t * 9) * 0.25, 0, -0.3);
   j.elL.rotation.x = -0.3; j.elR.rotation.x = -0.3;
@@ -3126,6 +3163,7 @@ function applyPose(p, name, t, prm, phase) {
     case 'ump': poseUmp(p, t, prm); break;
     case 'throw': poseThrow(p, t); break;
     case 'catchHigh': poseCatchHigh(p, t); break;
+    case 'gather': poseGather(p, t); break;
     case 'fieldLow': poseFieldLow(j); break;
     case 'dive': poseDive(p, t); break;
     case 'cheer': poseCheer(j, t); break;
@@ -3136,6 +3174,7 @@ function applyPose(p, name, t, prm, phase) {
 function updateModel(p, now) {
   if (!p.root.visible) return;
   applyPose(p, p.anim, now - p.t0, p.prm, p.phase);
+  if (p.blend) applyBlend(p, now);
 }
 function handWorld(p, s, out) { p.root.updateMatrixWorld(true); return p.j['hand' + s].getWorldPosition(out); }
 // ============================================================================
@@ -3301,11 +3340,17 @@ class Fielder {
     this.v = 0; this.react = this.baseReact + Math.random() * (this.isOF ? 0.22 : 0.1);
     this.task = null; this.target = null; this.plan = null; this.decideAt = 0; this.throwing = false; this.runTo = null;
     this.holding = false; this.downUntil = 0; this.animHold = 0; this.promptStart = null; this.excluded = false; this.dive = null; this.touched = 0; this.readyAt = 0;
+    this.quickAt = 0; this.aimBase = null; this.recvAt = null;
   }
   setHome(x, z) { this.home.set(x, groundY(x, z), z); }
-  snapHome() { this.pos.copy(this.home); this.reset(); }
+  snapHome() { this.pos.copy(this.home); this.reset(); this.snapYaw = true; }
   face(x, z) { this.yaw = Math.atan2(x - this.pos.x, z - this.pos.z); }
-  sync() { this.m.root.position.copy(this.pos); this.m.root.position.y = groundY(this.pos.x, this.pos.z); this.m.root.rotation.y = this.yaw; }
+  sync() {
+    this.m.root.position.copy(this.pos); this.m.root.position.y = groundY(this.pos.x, this.pos.z);
+    // the body turns toward where he's facing over a few frames rather than snapping
+    const r = this.m.root.rotation;
+    if (this.snapYaw) { r.y = this.yaw; this.snapYaw = false; } else r.y += angDiff(r.y, this.yaw) * 0.3;
+  }
   anim(name, prm) { setAnim(this.m, name, prm); }
 }
 
@@ -3402,6 +3447,7 @@ class Play {
     if (this.kind === 'steal') {
       // pop time: the transfer is quicker for a strong arm
       holder.readyAt = 0.1; holder.decideAt = clamp(0.68 - ((holder.pl.arm ?? 60) - 50) * 0.004 + rand(-0.06, 0.06), 0.4, 0.85);
+      for (const b of [2, 3]) if (this.cover[b]) this.cover[b].react = 0;   // already on his way (see updateStealers)
       holder.anim('ready');
       return;
     }
@@ -3648,6 +3694,8 @@ class Play {
         tx = f.plan.x; tz = f.plan.z;
         this.tryField(f);
         if (b.holder === f) { f.sync(); continue; }
+      } else if (f.task === 'receive' && f.recvAt) {
+        tx = f.recvAt.x; tz = f.recvAt.z;
       } else if (f.task === 'cover') {
         const bp = BASES[f.coverBase];
         const off = f.coverBase === 4 ? [0, 2.5] : f.coverBase === 1 ? [1.5, 0.5] : [0, 0];
@@ -3792,7 +3840,9 @@ class Play {
       this.events.push('catch');
     } else SND.thud(0.4);
     f.decideAt = this.t + bobble + (dove ? 0.9 : 0) + (air ? (f.isOF ? 0.7 : 0.35) : f.isOF ? 1.0 : 0.5);
-    f.promptStart = null;
+    // you can let it go as soon as the ball's out of the glove: no standing around
+    f.quickAt = this.t + bobble + (dove ? 0.7 : 0) + (air ? 0.15 : 0.25);
+    f.aimBase = null; f.promptStart = null;
   }
   recordOut(r, how, base) {
     if (r.state === 'out') return;
@@ -3814,8 +3864,11 @@ class Play {
       const step = Math.min(d, f.speed * dt); f.pos.x += (dx / d) * step; f.pos.z += (dz / d) * step; f.yaw = Math.atan2(dx, dz); f.m.phase += step * 0.42; f.anim('run');
       return;
     }
-    if (t < f.animHold) return;
     const human = this.humanHolder(f) && f === this.uf;
+    if (human && this.queuedThrow != null && t >= Math.max(f.quickAt, f.readyAt - 0.12)) {
+      const base = this.queuedThrow; this.queuedThrow = null; this.prompt = false; f.holding = false; this.execThrow(f, base); tutNote('throw'); return;
+    }
+    if (t < f.animHold) return;
     // a human carrying the ball: step on bags and tag runners on the way
     if (human && this.queuedThrow == null && Math.hypot(this.inp.x, this.inp.z) > 0.15) {
       this.manualMove(f, dt, true);
@@ -3830,7 +3883,12 @@ class Play {
       f.promptStart = t; this.prompt = this.userDef; f.holding = false;
       return;
     }
-    if (!f.holding) f.anim('ready');
+    if (!f.holding) {
+      // ball out of the glove, gathering to throw, turning toward the likely throw
+      f.anim('gather');
+      if (f.aimBase == null) f.aimBase = this.chooseThrow(f).base || 0;
+      if (f.aimBase) { const bp = BASES[f.aimBase]; f.yaw += angDiff(f.yaw, Math.atan2(bp.x - f.pos.x, bp.z - f.pos.z)) * Math.min(1, dt * 6); }
+    }
     if (t < f.decideAt) return;
     if (this.hf && this.humanHolder(f)) {
       if (this.queuedThrow != null) { const base = this.queuedThrow; this.queuedThrow = null; this.prompt = false; f.holding = false; this.execThrow(f, base); tutNote('throw'); return; }
@@ -3847,7 +3905,7 @@ class Play {
     const c = this.chooseThrow(f);
     if (c.type === 'throw') { f.holding = false; this.execThrow(f, c.base); }
     else if (c.type === 'run') { f.holding = false; f.runTo = c.base; }
-    else if (c.type === 'wait') { f.holding = false; f.decideAt = t + 0.1; f.anim('ready'); }
+    else if (c.type === 'wait') { f.holding = false; f.decideAt = t + 0.1; f.anim('fieldLow'); }   // down for the tag
     else { f.holding = true; f.decideAt = t + 0.2; }
   }
   chooseThrow(f) {
@@ -3896,34 +3954,49 @@ class Play {
     f.throwing = false;
     const base = f.throwBase, bp = BASES[base];
     const from = handWorld(f.m, f.m.lefty ? 'L' : 'R', new V3());
-    const d = Math.hypot(bp.x - from.x, bp.z - from.z);
-    const speed = throwSpeed(f, d) * rand(0.95, 1.03);
+    // throw to the fielder who'll get to the bag first, wherever he'll be when it gets there:
+    // on the bag if he makes it, otherwise out in front of him on his way
+    const bag = new V3(bp.x + (base === 4 ? 0 : 0.8), 4.2, bp.z + (base === 4 ? 2 : 0.8));
+    const speed = throwSpeed(f, Math.hypot(bag.x - from.x, bag.z - from.z)) * rand(0.95, 1.03);
+    const recv = this.receiverFor(base, f);
+    let to = bag;
+    if (recv) {
+      const T0 = Math.hypot(bag.x - from.x, bag.z - from.z) / speed;
+      const rd = Math.hypot(bag.x - recv.pos.x, bag.z - recv.pos.z), reach = Math.max(0, recv.speed * 0.9 * (T0 - 0.15));
+      if (rd > reach + 1) { const k = reach / rd; to = new V3(recv.pos.x + (bag.x - recv.pos.x) * k, 4.2, recv.pos.z + (bag.z - recv.pos.z) * k); }
+      recv.task = 'receive'; recv.recvAt = to;
+    }
+    const d = Math.hypot(to.x - from.x, to.z - from.z);
     const errP = 0.008 + (75 - (f.pl.arm ?? 60)) * 0.0002 + (d > 200 ? 0.01 : 0);
     this.ball.mode = 'throw'; this.ball.holder = null;
-    this.ball.thr = { from, to: new V3(bp.x, 4.2, bp.z), t0: this.t, T: Math.max(0.15, d / speed), arc: d * 0.02 + (d > 150 ? d * 0.03 : 0), base, err: Math.random() < errP, by: f };
+    this.ball.thr = { from, to, t0: this.t, T: Math.max(0.15, d / speed), arc: d * 0.02 + (d > 150 ? d * 0.03 : 0), base, err: Math.random() < errP, by: f, recv };
     f.task = 'hold';
     f.anim('throw');
     f.animHold = this.t + 0.35;
   }
+  // whoever can get to the bag soonest (the assigned cover gets a little head start)
   receiverFor(base, exclude) {
-    const c = this.cover && this.cover[base];
-    if (c && c !== exclude) return c;
-    let best = null, bd = 1e9;
-    for (const f of this.F) { if (f === exclude) continue; const d = f.pos.distanceTo(BASES[base]); if (d < bd) { bd = d; best = f; } }
+    const bp = BASES[base];
+    let best = null, bt = 1e9;
+    for (const f of this.F) {
+      if (f === exclude || f.throwing || (f.downUntil && this.t < f.downUntil)) continue;
+      const t = runTime(Math.max(0, Math.hypot(bp.x - f.pos.x, bp.z - f.pos.z) - 2), f.speed, f.acc) - (this.cover && this.cover[base] === f ? 0.25 : 0);
+      if (t < bt) { bt = t; best = f; }
+    }
     return best;
   }
   throwArrived() {
     const th = this.ball.thr, base = th.base;
-    const recv = this.receiverFor(base, th.by);
-    this.ball.mode = 'held'; this.ball.holder = recv; recv.holding = false; recv.touched = base;
-    const bp = BASES[base];
-    if (recv.pos.distanceTo(bp) > 3) recv.pos.set(bp.x + (base === 4 ? 0 : 0.8), 0, bp.z + (base === 4 ? 2 : 0.8));
-    recv.anim('catchHigh'); recv.animHold = this.t + 0.22; recv.promptStart = null; recv.readyAt = this.t + (th.err ? 1.1 : 0.1);
+    const recv = th.recv || this.receiverFor(base, th.by);
+    this.ball.mode = 'held'; this.ball.holder = recv; recv.holding = false; recv.task = 'hold'; recv.recvAt = null; recv.aimBase = null;
+    recv.anim('catchHigh'); recv.animHold = this.t + 0.22; recv.promptStart = null; recv.readyAt = this.t + (th.err ? 1.1 : 0.1); recv.quickAt = this.t + (th.err ? 1.1 : 0.15);
     if (this.hf && !this.hf.lock) { this.uf = recv; this.ufManual = false; }
     SND.pop(0.55);
     if (th.err) { this.error = true; this.events.push('throwError'); recv.decideAt = this.t + 1.1; return; }
-    this.ballAtBase(base, recv);
-    recv.decideAt = this.t + (base === 2 ? 0.58 : 0.45);
+    // caught on the bag: that's the base touched. Caught short of it, he still has to get there.
+    const bp = BASES[base];
+    if (Math.hypot(bp.x - recv.pos.x, bp.z - recv.pos.z) < 4.5) { recv.touched = base; this.ballAtBase(base, recv); recv.decideAt = this.t + (base === 2 ? 0.58 : 0.45); }
+    else { recv.touched = 0; recv.decideAt = this.t + 0.15; }
   }
   // The ball reached a bag. Only a force (or doubling a runner off after a catch) is an
   // out on the spot; anyone else has to be tagged when he gets there (see updateRunners).
@@ -4327,7 +4400,7 @@ function startGame(cfg) {
   startHalf();
 }
 function startHalf() {
-  G.outs = 0; G.balls = 0; G.strikes = 0; G.bases = [null, null, null, null];
+  G.outs = 0; G.balls = 0; G.strikes = 0; G.bases = [null, null, null, null]; G.selRunner = null;
   while (G.line[G.half].length < G.inning) G.line[G.half].push(0);
   if (G.inning > G.innings) {
     const t = battingTeam(); G.bases[2] = t.lineup[(G.order[G.half] + 8) % 9];
@@ -4422,7 +4495,7 @@ function prePitchUI() {
     const on = G.bases.some(Boolean) && G.mode !== 'derby';
     setHint('<kbd>1</kbd>–<kbd>' + n + '</kbd> pitch &middot; aim with the mouse &middot; <kbd>Click</kbd> to start the meter' + (on ? ' &middot; <kbd>Shift</kbd>+<kbd>1</kbd>–<kbd>3</kbd> pickoff' : ''));
   } else if (ub) setHint('Aim the PCI &middot; <kbd>Click</kbd> swing &middot; <kbd>Right-click</kbd> power &middot; <kbd>J</kbd> contact &middot; <kbd>B</kbd> bunt' + (G.bases.some(Boolean) && userRuns() && G.mode !== 'derby' ? ' &middot; <kbd>E</kbd> steal' : ''));
-  else if (userRuns() && G.bases.some(Boolean)) setHint('You run the bases &middot; <kbd>E</kbd> steal (hold <kbd>1</kbd>&ndash;<kbd>3</kbd> for one runner) &middot; <kbd>Q</kbd> call it off');
+  else if (userRuns() && G.bases.some(Boolean)) setHint('You run the bases &middot; <kbd>E</kbd> steal &middot; <kbd>Q</kbd> call it off &middot; click a runner\'s tag to pick just him');
   else if (G.drill === 'field') setHint('Fielding practice &middot; <kbd>WASD</kbd> move &middot; <kbd>1</kbd>&ndash;<kbd>4</kbd> throw');
   else if (G.mode === 'online') setHint('Waiting for your opponent&hellip;');
   else if (G.mode === 'lock' && G.half === 1 - G.lockSide && G.fielders.some((f) => f.pl.id === G.lock)) setHint('You are in the field &middot; get within the gold ring of the ball to field it');
@@ -4760,8 +4833,21 @@ function stealCmd(kind, which = null) {
     } else if (r.steal && !r.steal.went) r.steal = null;
   }
 }
-// the runners break during the windup and the pitch, before any Play exists
+// the runners break during the windup and the pitch, before any Play exists; once the
+// pitch is on its way the fielder covering the bag breaks for it too
 function updateStealers(dt) {
+  if (G.phase === 'pitch') {
+    for (const r of G.baseRunners) {
+      if (!r.steal || !r.steal.went || r.state !== 'run' || (r.next !== 2 && r.next !== 3)) continue;
+      const f = G.fByRole[r.next === 2 ? 'SS' : '3B'], bp = BASES[r.next];
+      if (!f) continue;
+      const dx = bp.x - f.pos.x, dz = bp.z - f.pos.z, d = Math.hypot(dx, dz);
+      if (d < 3) continue;
+      f.v = Math.min(f.speed * 0.85, f.v + f.acc * dt);
+      const step = Math.min(d - 3, f.v * dt);
+      f.pos.x += (dx / d) * step; f.pos.z += (dz / d) * step; f.yaw = Math.atan2(dx, dz); f.m.phase += step * 0.42; f.anim('run'); f.sync();
+    }
+  }
   for (const r of G.baseRunners) {
     if (!r.steal || !r.steal.went || r.state !== 'run') continue;
     if (r.delay > 0) { r.delay -= dt; continue; }
@@ -5751,7 +5837,7 @@ function netApplySnap(s) {
     if (!mine) {
       // animation clock: where the host's is now, not when this was sent
       const at = e[6] + age;
-      if (m.anim !== e[5] || Math.abs(G.now - m.t0 - at) > 0.08) { m.anim = e[5]; m.t0 = G.now - at; }
+      if (m.anim !== e[5] || Math.abs(G.now - m.t0 - at) > 0.08) { if (m.anim !== e[5]) animBlend(m, e[5]); m.anim = e[5]; m.t0 = G.now - at; }
       m.prm = netPrm(m, e[7]);
     }
     m.fielding = !!e[8]; m.batsL = !!e[10];
@@ -6648,7 +6734,7 @@ const LESSONS = [
     id: 'run', title: 'Baserunning', drill: 'run',
     intro: "You're on base and the CPU is batting. You decide when your runners go.",
     steps: [
-      { ev: 'runCmd', n: 2, goal: 'Give running orders', text: 'When the ball is hit, <kbd>E</kbd> sends every runner one more base and <kbd>Q</kbd> takes a base back. Hold a runner\'s base key (<kbd>1</kbd>&ndash;<kbd>4</kbd>) with <kbd>E</kbd> or <kbd>Q</kbd> to run just him.', tip: 'The runner panel and the tags over each runner show where everyone is headed. Only force plays are outs on the bag; everyone else has to be tagged.' },
+      { ev: 'runCmd', n: 2, goal: 'Give running orders', text: 'When the ball is hit, <kbd>E</kbd> sends every runner one more base and <kbd>Q</kbd> takes a base back. <b>Click a runner</b> first (on the field, his tag, or the mini diamond) to run just him.', tip: 'The runner panel and the tags over each runner show where everyone is headed. Only force plays are outs on the bag; everyone else has to be tagged.' },
       { ev: 'stealTry', n: 1, goal: 'Call a steal', text: 'Steal: before the pitch, press <kbd>E</kbd> (or hold <kbd>1</kbd> + <kbd>E</kbd>) and your runner goes on the pitcher\'s first move. <kbd>Q</kbd> calls it off.', tip: "Fast runners get better jumps; a strong-armed catcher throws more of them out." },
     ],
   },
@@ -6952,7 +7038,7 @@ function setHint(html) { const el = $('hint'); el.innerHTML = html; el.style.opa
 function liveHint() {
   const parts = [];
   if (userFields()) parts.push('<kbd>WASD</kbd> move', '<kbd>Space</kbd> dive', G.lock ? '' : '<kbd>Q</kbd> switch', '<kbd>1</kbd>&ndash;<kbd>4</kbd> throw');
-  if (userRuns()) parts.push('<kbd>E</kbd> advance', '<kbd>Q</kbd> back', 'hold <kbd>1</kbd>&ndash;<kbd>4</kbd> + <kbd>E</kbd>/<kbd>Q</kbd> for one runner');
+  if (userRuns()) parts.push('<kbd>E</kbd> advance', '<kbd>Q</kbd> back', G.lock ? '' : '<b>click a runner</b> to run just him');
   return parts.filter(Boolean).join(' &middot; ');
 }
 function landingAssist() { return settings.guide && G.diff && G.diff.name !== 'Hall of Fame'; }
@@ -7250,8 +7336,9 @@ function updateLockUI() {
 }
 
 // ------------------------------------------------------- baserunning HUD ----
-// Every runner is keyed by the base he's standing on or running to (1-3, 4 = home),
-// the same keys as throwing. Hold that key and press E / Q to run just him.
+// Click a runner (on the field, his tag, the mini diamond or the runner panel) to pick
+// him; E / Q then run just him. Click him again, or empty grass, to go back to everyone.
+// Holding his base key (1-3, 4 = home, same as throwing) with E / Q still works too.
 const BASE_KEY = { 1: 1, 2: 2, 3: 3, 4: 4, arrowright: 1, arrowup: 2, arrowleft: 3, arrowdown: 4 };
 const BASE_ABBR = ['HOME', '1B', '2B', '3B', 'HOME'];
 function heldBase() { for (const k in BASE_KEY) if (keys.has(k)) return BASE_KEY[k]; return 0; }
@@ -7264,12 +7351,33 @@ function runnerList() {
   return G.lock ? L.filter((r) => r.id === G.lock) : L;
 }
 function runnerIdAt(b) { const L = runnerList(); const r = L.find((x) => x.key === b && x.run) || L.find((x) => x.key === b); return r ? r.id : null; }
-// E / Q: one runner if a base key is held, otherwise everyone
-function runKey(kind, base = heldBase()) {
-  if (!base) { actRun(kind, null); return; }
-  const id = runnerIdAt(base);
-  if (id) actRun(kind, id);
+// the runner you picked, if he's still out there
+function selRunner() { const id = G.selRunner; return id && runnerList().some((r) => r.id === id) ? id : null; }
+function selectRunner(id) {
+  G.selRunner = id && G.selRunner !== id ? id : null; rhSig = null;
+  SND.init(); if (SND.ctx) SND.tick();
 }
+// E / Q: the runner on a held base key, else the runner you picked, else everyone
+function runKey(kind, base = heldBase()) {
+  if (base) { const id = runnerIdAt(base); if (id) actRun(kind, id); return; }
+  actRun(kind, selRunner());
+}
+// a click on the field during a play: the runner nearest the click on screen, if any
+const _pickV = new V3();
+function pickRunnerAt(x, y) {
+  let best = null, bd = 70;
+  for (const r of runnerList()) {
+    const m = r.m; if (!m || !m.root.visible) continue;
+    _pickV.copy(m.root.position); _pickV.y += 3.5; _pickV.project(camera);
+    if (_pickV.z > 1) continue;
+    const d = Math.hypot(((_pickV.x + 1) / 2) * window.innerWidth - x, ((1 - _pickV.y) / 2) * window.innerHeight - y);
+    if (d < bd) { bd = d; best = r; }
+  }
+  if (best) selectRunner(best.id); else if (G.selRunner) selectRunner(null);
+}
+// the ring under the runner you picked
+const selRing = new THREE.Mesh(new THREE.RingGeometry(2.3, 3.0, 40), new THREE.MeshBasicMaterial({ color: 0x5aa8ff, transparent: true, opacity: 0.9, depthWrite: false }));
+selRing.rotation.x = -Math.PI / 2; selRing.renderOrder = 3; selRing.visible = false; scene.add(selRing);
 // runners on base before the pitch (or breaking during it): key = the base he's on
 function stealInfo() {
   return (G.baseRunners || []).filter((r) => r.state === 'run' || r.state === 'base').map((r) => {
@@ -7279,7 +7387,7 @@ function stealInfo() {
 }
 function runnerPath(r) {
   if (r.steal && !r.run) return { cls: 'go', txt: `STEALING ${BASE_ABBR[r.to]}`, tag: `STEAL ${BASE_ABBR[r.to]}` };
-  if (!r.run && STEAL_PHASES.includes(G.phase)) return { cls: 'hold', txt: `ON ${BASE_ABBR[r.key]} &middot; <kbd>${r.key}</kbd>+<kbd>E</kbd> steal`, tag: `ON ${BASE_ABBR[r.key]}` };
+  if (!r.run && STEAL_PHASES.includes(G.phase)) return { cls: 'hold', txt: `ON ${BASE_ABBR[r.key]}`, tag: `ON ${BASE_ABBR[r.key]}` };
   if (r.run && r.rev) return { cls: 'back', txt: `BACK TO ${BASE_ABBR[r.to]}`, tag: `&#9664; ${BASE_ABBR[r.to]}` };
   if (r.run) return { cls: 'go', txt: `${BASE_ABBR[r.from]} &rarr; ${BASE_ABBR[r.to]}`, tag: `&rarr; ${BASE_ABBR[r.to]}` };
   if (r.to > r.key) return { cls: 'go', txt: `GOING TO ${BASE_ABBR[r.to]}`, tag: `&rarr; ${BASE_ABBR[r.to]}` };
@@ -7292,13 +7400,19 @@ function runnerHUD(show) {
   $('runHelp').classList.toggle('hidden', !L.length);
   $('runHelp').classList.toggle('pre', STEAL_PHASES.includes(G.phase));   // before the pitch: compact, out of the hitting view
   L.sort((a, b) => b.key - a.key);
-  const sig = L.map((r) => [r.id, r.key, r.to, r.from, r.run, r.rev, r.user].join()).join('|');
+  const sel = L.length ? selRunner() : null, pre = STEAL_PHASES.includes(G.phase);
+  const sig = L.map((r) => [r.id, r.key, r.to, r.from, r.run, r.rev, r.user].join()).join('|') + '#' + sel + pre;
   if (sig !== rhSig) {
     rhSig = sig;
+    const sp = sel && PBYID[sel];
+    $('rhTip').innerHTML = sp ? `<b>${esc(lastName(sp.name))}</b> picked &middot; <kbd>E</kbd>/<kbd>Q</kbd> run him &middot; click him again for everyone`
+      : `click a runner to pick him, then <kbd>E</kbd>/<kbd>Q</kbd>`;
+    $('rhAll').innerHTML = sp ? `<button data-run="go" data-id="${esc(sel)}">Send ${esc(lastName(sp.name))} <kbd>E</kbd></button><button data-run="back" data-id="${esc(sel)}">${pre ? 'Call it off' : 'Hold / back'} <kbd>Q</kbd></button><button data-pickall="1">Pick everyone</button>`
+      : `<button data-run="go">${pre ? 'Everyone steals' : 'All advance'} <kbd>E</kbd></button><button data-run="back">${pre ? 'Call it off' : 'All go back'} <kbd>Q</kbd></button>`;
     $('runList').innerHTML = L.map((r) => {
       const p = runnerPath(r), pl = PBYID[r.id];
-      return `<div class="rh-row ${r.user ? 'user' : ''}"><b class="rh-key">${r.key}</b><span class="rh-name">${esc(pl ? lastName(pl.name) : '')}</span><span class="rh-path ${p.cls}">${p.txt}</span>`
-        + `<button data-run="back" data-id="${esc(r.id)}" title="Take a base back">&#9664;</button><button data-run="go" data-id="${esc(r.id)}" title="One more base">&#9654;</button></div>`;
+      return `<div class="rh-row ${r.user ? 'user' : ''} ${r.id === sel ? 'sel' : ''}" data-pickid="${esc(r.id)}" title="Click to pick him"><b class="rh-key">${r.key}</b><span class="rh-name">${esc(pl ? lastName(pl.name) : '')}</span><span class="rh-path ${p.cls}">${p.txt}</span>`
+        + `<button data-run="back" data-id="${esc(r.id)}" title="${pre ? 'Call off his steal' : 'Take a base back'}">&#9664;</button><button data-run="go" data-id="${esc(r.id)}" title="${pre ? 'Steal' : 'One more base'}">&#9654;</button></div>`;
     }).join('');
   }
   // a little tag over each runner's head: his key and where he's going
@@ -7309,12 +7423,15 @@ function runnerHUD(show) {
     if (_tagV.z > 1 || Math.abs(_tagV.x) > 1.1 || Math.abs(_tagV.y) > 1.1) continue;
     let el = runTagEls.get(r.id);
     if (!el) { el = document.createElement('div'); $('runTags').appendChild(el); runTagEls.set(r.id, el); }
-    const p = runnerPath(r), s = `${r.key}|${p.tag}|${r.user}`;
-    if (el.dataset.sig !== s) { el.dataset.sig = s; el.className = `run-tag ${p.cls} ${r.user ? 'user' : ''}`; el.innerHTML = `<b>${r.key}</b>${p.tag}`; }
+    const p = runnerPath(r), s = `${r.key}|${p.tag}|${r.user}|${r.id === sel}`;
+    if (el.dataset.sig !== s) { el.dataset.sig = s; el.dataset.id = r.id; el.className = `run-tag ${p.cls} ${r.user ? 'user' : ''} ${r.id === sel ? 'sel' : ''}`; el.innerHTML = `<b>${r.key}</b>${p.tag}`; }
     el.style.left = ((_tagV.x + 1) / 2) * W + 'px'; el.style.top = ((1 - _tagV.y) / 2) * H + 'px';
     seen.add(r.id);
   }
   for (const [id, el] of runTagEls) if (!seen.has(id)) { el.remove(); runTagEls.delete(id); }
+  const sr = sel && L.find((r) => r.id === sel);
+  selRing.visible = !!(sr && sr.m && sr.m.root.visible);
+  if (selRing.visible) selRing.position.set(sr.m.root.position.x, groundY(sr.m.root.position.x, sr.m.root.position.z) + 0.14, sr.m.root.position.z);
 }
 
 // pitching with runners on: buttons to throw over (Shift + 1 / 2 / 3 on the keyboard)
@@ -7349,9 +7466,10 @@ function drawMiniMap() {
     && (G.mode === 'lock' || G.phase === 'live' || G.phase === 'postPlay' || G.bases.some(Boolean));
   el.classList.toggle('hidden', !show);
   if (!show) return;
-  const g = el.getContext('2d'), s = 1.02, ox = 150, oy = 262;
-  // far-away objects are pulled in to the map edge along their real direction
-  const P = (x, z) => { const vx = x * s, vz = z * s; const k = Math.min(1, 138 / Math.max(1e-6, Math.abs(vx)), 250 / Math.max(1e-6, -vz), 28 / Math.max(1e-6, vz)); return [ox + vx * k, oy + vz * k]; };
+  const runners = userRuns() && !G.lock && (G.phase === 'live' || STEAL_PHASES.includes(G.phase)) ? runnerList() : [];
+  el.classList.toggle('pick', runners.length > 0);
+  const g = el.getContext('2d');
+  const P = mapPt, ox = 150, oy = 262;
   g.clearRect(0, 0, 300, 300);
   g.fillStyle = 'rgba(54,120,58,0.35)'; g.beginPath(); g.moveTo(ox, oy); g.arc(ox, oy, 205, -Math.PI * 0.75, -Math.PI * 0.25); g.closePath(); g.fill();
   const c = [0, 1, 2, 3].map((i) => P(BASES[i].x, BASES[i].z));
@@ -7371,7 +7489,23 @@ function drawMiniMap() {
     else if (m.j.helmet.visible) dot(p.x, p.z, me ? 11 : 9, '#ffc94a', me ? '#ffffff' : '#081020', 4);
   }
   if (ballMesh.visible) { const b = ballMesh.position; dot(b.x, b.z, 4 + Math.min(5, b.y / 25), '#ffffff', '#081020', 2); }
+  const sid = runners.length ? selRunner() : null, sr = sid && runners.find((r) => r.id === sid);
+  if (sr && sr.m) { const [px, py] = P(sr.m.root.position.x, sr.m.root.position.z); g.beginPath(); g.arc(px, py, 16, 0, Math.PI * 2); g.lineWidth = 4; g.strokeStyle = '#5aa8ff'; g.stroke(); }
 }
+// world (x, z) to the mini diamond's 300x300 canvas; far-away things are pulled in to the edge
+function mapPt(x, z) {
+  const s = 1.02, ox = 150, oy = 262, vx = x * s, vz = z * s;
+  const k = Math.min(1, 138 / Math.max(1e-6, Math.abs(vx)), 250 / Math.max(1e-6, -vz), 28 / Math.max(1e-6, vz));
+  return [ox + vx * k, oy + vz * k];
+}
+$('miniMap').addEventListener('pointerdown', (e) => {
+  if (!$('miniMap').classList.contains('pick')) return;
+  e.preventDefault(); e.stopPropagation();
+  const el = $('miniMap'), rc = el.getBoundingClientRect(), x = ((e.clientX - rc.left) / rc.width) * 300, y = ((e.clientY - rc.top) / rc.height) * 300;
+  let best = null, bd = 30;
+  for (const r of runnerList()) { if (!r.m) continue; const [px, py] = mapPt(r.m.root.position.x, r.m.root.position.z); const d = Math.hypot(px - x, py - y); if (d < bd) { bd = d; best = r; } }
+  if (best) selectRunner(best.id); else if (G.selRunner) selectRunner(null);
+});
 
 // ------------------------------------------------------------ fireworks ----
 const FW = [];
@@ -7517,6 +7651,8 @@ canvasEl.addEventListener('pointermove', (e) => {
 canvasEl.addEventListener('contextmenu', (e) => e.preventDefault());
 canvasEl.addEventListener('pointerdown', (e) => {
   SND.init(); setMouse(e);
+  // running the bases during a play: a click picks the runner under it
+  if (G.phase === 'live' && userRuns() && !G.lock && !trotOn() && !G.paused) { e.preventDefault(); pickRunnerAt(e.clientX, e.clientY); return; }
   // first person: grab the mouse for looking around; right-click re-centers on the play
   if (fpvOn && !userPitches()) {
     e.preventDefault();
@@ -7622,7 +7758,15 @@ $('pitchList').addEventListener('click', (e) => { const row = e.target.closest('
 for (const b of $('throwPrompt').querySelectorAll('button')) b.addEventListener('pointerdown', (e) => { e.stopPropagation(); actThrow(+b.dataset.base); });
 $('simBtn').addEventListener('pointerdown', (e) => { e.stopPropagation(); startSim(); });
 $('pickHelp').addEventListener('pointerdown', (e) => { const b = e.target.closest('button[data-pick]'); if (!b) return; e.stopPropagation(); e.preventDefault(); actPick(+b.dataset.pick); });
-$('runHelp').addEventListener('pointerdown', (e) => { const b = e.target.closest('button[data-run]'); if (!b) return; e.stopPropagation(); e.preventDefault(); actRun(b.dataset.run, b.dataset.id || null); });
+$('runHelp').addEventListener('pointerdown', (e) => {
+  e.stopPropagation();
+  const b = e.target.closest('button[data-run]');
+  if (b) { e.preventDefault(); actRun(b.dataset.run, b.dataset.id || null); return; }
+  if (e.target.closest('[data-pickall]')) { e.preventDefault(); selectRunner(null); return; }
+  const row = e.target.closest('[data-pickid]');
+  if (row) { e.preventDefault(); selectRunner(row.dataset.pickid); }
+});
+$('runTags').addEventListener('pointerdown', (e) => { const t = e.target.closest('.run-tag'); if (!t || !t.dataset.id) return; e.preventDefault(); e.stopPropagation(); selectRunner(t.dataset.id); });
 
 let gpPrev = [];
 function pollGamepad() {

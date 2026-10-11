@@ -399,7 +399,7 @@ function netApplySnap(s) {
     if (!mine) {
       // animation clock: where the host's is now, not when this was sent
       const at = e[6] + age;
-      if (m.anim !== e[5] || Math.abs(G.now - m.t0 - at) > 0.08) { m.anim = e[5]; m.t0 = G.now - at; }
+      if (m.anim !== e[5] || Math.abs(G.now - m.t0 - at) > 0.08) { if (m.anim !== e[5]) animBlend(m, e[5]); m.anim = e[5]; m.t0 = G.now - at; }
       m.prm = netPrm(m, e[7]);
     }
     m.fielding = !!e[8]; m.batsL = !!e[10];

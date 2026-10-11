@@ -35,7 +35,7 @@ const LESSONS = [
     id: 'run', title: 'Baserunning', drill: 'run',
     intro: "You're on base and the CPU is batting. You decide when your runners go.",
     steps: [
-      { ev: 'runCmd', n: 2, goal: 'Give running orders', text: 'When the ball is hit, <kbd>E</kbd> sends every runner one more base and <kbd>Q</kbd> takes a base back. Hold a runner\'s base key (<kbd>1</kbd>&ndash;<kbd>4</kbd>) with <kbd>E</kbd> or <kbd>Q</kbd> to run just him.', tip: 'The runner panel and the tags over each runner show where everyone is headed. Only force plays are outs on the bag; everyone else has to be tagged.' },
+      { ev: 'runCmd', n: 2, goal: 'Give running orders', text: 'When the ball is hit, <kbd>E</kbd> sends every runner one more base and <kbd>Q</kbd> takes a base back. <b>Click a runner</b> first (on the field, his tag, or the mini diamond) to run just him.', tip: 'The runner panel and the tags over each runner show where everyone is headed. Only force plays are outs on the bag; everyone else has to be tagged.' },
       { ev: 'stealTry', n: 1, goal: 'Call a steal', text: 'Steal: before the pitch, press <kbd>E</kbd> (or hold <kbd>1</kbd> + <kbd>E</kbd>) and your runner goes on the pitcher\'s first move. <kbd>Q</kbd> calls it off.', tip: "Fast runners get better jumps; a strong-armed catcher throws more of them out." },
     ],
   },

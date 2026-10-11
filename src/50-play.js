@@ -39,11 +39,17 @@ class Fielder {
     this.v = 0; this.react = this.baseReact + Math.random() * (this.isOF ? 0.22 : 0.1);
     this.task = null; this.target = null; this.plan = null; this.decideAt = 0; this.throwing = false; this.runTo = null;
     this.holding = false; this.downUntil = 0; this.animHold = 0; this.promptStart = null; this.excluded = false; this.dive = null; this.touched = 0; this.readyAt = 0;
+    this.quickAt = 0; this.aimBase = null; this.recvAt = null;
   }
   setHome(x, z) { this.home.set(x, groundY(x, z), z); }
-  snapHome() { this.pos.copy(this.home); this.reset(); }
+  snapHome() { this.pos.copy(this.home); this.reset(); this.snapYaw = true; }
   face(x, z) { this.yaw = Math.atan2(x - this.pos.x, z - this.pos.z); }
-  sync() { this.m.root.position.copy(this.pos); this.m.root.position.y = groundY(this.pos.x, this.pos.z); this.m.root.rotation.y = this.yaw; }
+  sync() {
+    this.m.root.position.copy(this.pos); this.m.root.position.y = groundY(this.pos.x, this.pos.z);
+    // the body turns toward where he's facing over a few frames rather than snapping
+    const r = this.m.root.rotation;
+    if (this.snapYaw) { r.y = this.yaw; this.snapYaw = false; } else r.y += angDiff(r.y, this.yaw) * 0.3;
+  }
   anim(name, prm) { setAnim(this.m, name, prm); }
 }
 
@@ -140,6 +146,7 @@ class Play {
     if (this.kind === 'steal') {
       // pop time: the transfer is quicker for a strong arm
       holder.readyAt = 0.1; holder.decideAt = clamp(0.68 - ((holder.pl.arm ?? 60) - 50) * 0.004 + rand(-0.06, 0.06), 0.4, 0.85);
+      for (const b of [2, 3]) if (this.cover[b]) this.cover[b].react = 0;   // already on his way (see updateStealers)
       holder.anim('ready');
       return;
     }
@@ -386,6 +393,8 @@ class Play {
         tx = f.plan.x; tz = f.plan.z;
         this.tryField(f);
         if (b.holder === f) { f.sync(); continue; }
+      } else if (f.task === 'receive' && f.recvAt) {
+        tx = f.recvAt.x; tz = f.recvAt.z;
       } else if (f.task === 'cover') {
         const bp = BASES[f.coverBase];
         const off = f.coverBase === 4 ? [0, 2.5] : f.coverBase === 1 ? [1.5, 0.5] : [0, 0];
@@ -530,7 +539,9 @@ class Play {
       this.events.push('catch');
     } else SND.thud(0.4);
     f.decideAt = this.t + bobble + (dove ? 0.9 : 0) + (air ? (f.isOF ? 0.7 : 0.35) : f.isOF ? 1.0 : 0.5);
-    f.promptStart = null;
+    // you can let it go as soon as the ball's out of the glove: no standing around
+    f.quickAt = this.t + bobble + (dove ? 0.7 : 0) + (air ? 0.15 : 0.25);
+    f.aimBase = null; f.promptStart = null;
   }
   recordOut(r, how, base) {
     if (r.state === 'out') return;
@@ -552,8 +563,11 @@ class Play {
       const step = Math.min(d, f.speed * dt); f.pos.x += (dx / d) * step; f.pos.z += (dz / d) * step; f.yaw = Math.atan2(dx, dz); f.m.phase += step * 0.42; f.anim('run');
       return;
     }
-    if (t < f.animHold) return;
     const human = this.humanHolder(f) && f === this.uf;
+    if (human && this.queuedThrow != null && t >= Math.max(f.quickAt, f.readyAt - 0.12)) {
+      const base = this.queuedThrow; this.queuedThrow = null; this.prompt = false; f.holding = false; this.execThrow(f, base); tutNote('throw'); return;
+    }
+    if (t < f.animHold) return;
     // a human carrying the ball: step on bags and tag runners on the way
     if (human && this.queuedThrow == null && Math.hypot(this.inp.x, this.inp.z) > 0.15) {
       this.manualMove(f, dt, true);
@@ -568,7 +582,12 @@ class Play {
       f.promptStart = t; this.prompt = this.userDef; f.holding = false;
       return;
     }
-    if (!f.holding) f.anim('ready');
+    if (!f.holding) {
+      // ball out of the glove, gathering to throw, turning toward the likely throw
+      f.anim('gather');
+      if (f.aimBase == null) f.aimBase = this.chooseThrow(f).base || 0;
+      if (f.aimBase) { const bp = BASES[f.aimBase]; f.yaw += angDiff(f.yaw, Math.atan2(bp.x - f.pos.x, bp.z - f.pos.z)) * Math.min(1, dt * 6); }
+    }
     if (t < f.decideAt) return;
     if (this.hf && this.humanHolder(f)) {
       if (this.queuedThrow != null) { const base = this.queuedThrow; this.queuedThrow = null; this.prompt = false; f.holding = false; this.execThrow(f, base); tutNote('throw'); return; }
@@ -585,7 +604,7 @@ class Play {
     const c = this.chooseThrow(f);
     if (c.type === 'throw') { f.holding = false; this.execThrow(f, c.base); }
     else if (c.type === 'run') { f.holding = false; f.runTo = c.base; }
-    else if (c.type === 'wait') { f.holding = false; f.decideAt = t + 0.1; f.anim('ready'); }
+    else if (c.type === 'wait') { f.holding = false; f.decideAt = t + 0.1; f.anim('fieldLow'); }   // down for the tag
     else { f.holding = true; f.decideAt = t + 0.2; }
   }
   chooseThrow(f) {
@@ -634,34 +653,49 @@ class Play {
     f.throwing = false;
     const base = f.throwBase, bp = BASES[base];
     const from = handWorld(f.m, f.m.lefty ? 'L' : 'R', new V3());
-    const d = Math.hypot(bp.x - from.x, bp.z - from.z);
-    const speed = throwSpeed(f, d) * rand(0.95, 1.03);
+    // throw to the fielder who'll get to the bag first, wherever he'll be when it gets there:
+    // on the bag if he makes it, otherwise out in front of him on his way
+    const bag = new V3(bp.x + (base === 4 ? 0 : 0.8), 4.2, bp.z + (base === 4 ? 2 : 0.8));
+    const speed = throwSpeed(f, Math.hypot(bag.x - from.x, bag.z - from.z)) * rand(0.95, 1.03);
+    const recv = this.receiverFor(base, f);
+    let to = bag;
+    if (recv) {
+      const T0 = Math.hypot(bag.x - from.x, bag.z - from.z) / speed;
+      const rd = Math.hypot(bag.x - recv.pos.x, bag.z - recv.pos.z), reach = Math.max(0, recv.speed * 0.9 * (T0 - 0.15));
+      if (rd > reach + 1) { const k = reach / rd; to = new V3(recv.pos.x + (bag.x - recv.pos.x) * k, 4.2, recv.pos.z + (bag.z - recv.pos.z) * k); }
+      recv.task = 'receive'; recv.recvAt = to;
+    }
+    const d = Math.hypot(to.x - from.x, to.z - from.z);
     const errP = 0.008 + (75 - (f.pl.arm ?? 60)) * 0.0002 + (d > 200 ? 0.01 : 0);
     this.ball.mode = 'throw'; this.ball.holder = null;
-    this.ball.thr = { from, to: new V3(bp.x, 4.2, bp.z), t0: this.t, T: Math.max(0.15, d / speed), arc: d * 0.02 + (d > 150 ? d * 0.03 : 0), base, err: Math.random() < errP, by: f };
+    this.ball.thr = { from, to, t0: this.t, T: Math.max(0.15, d / speed), arc: d * 0.02 + (d > 150 ? d * 0.03 : 0), base, err: Math.random() < errP, by: f, recv };
     f.task = 'hold';
     f.anim('throw');
     f.animHold = this.t + 0.35;
   }
+  // whoever can get to the bag soonest (the assigned cover gets a little head start)
   receiverFor(base, exclude) {
-    const c = this.cover && this.cover[base];
-    if (c && c !== exclude) return c;
-    let best = null, bd = 1e9;
-    for (const f of this.F) { if (f === exclude) continue; const d = f.pos.distanceTo(BASES[base]); if (d < bd) { bd = d; best = f; } }
+    const bp = BASES[base];
+    let best = null, bt = 1e9;
+    for (const f of this.F) {
+      if (f === exclude || f.throwing || (f.downUntil && this.t < f.downUntil)) continue;
+      const t = runTime(Math.max(0, Math.hypot(bp.x - f.pos.x, bp.z - f.pos.z) - 2), f.speed, f.acc) - (this.cover && this.cover[base] === f ? 0.25 : 0);
+      if (t < bt) { bt = t; best = f; }
+    }
     return best;
   }
   throwArrived() {
     const th = this.ball.thr, base = th.base;
-    const recv = this.receiverFor(base, th.by);
-    this.ball.mode = 'held'; this.ball.holder = recv; recv.holding = false; recv.touched = base;
-    const bp = BASES[base];
-    if (recv.pos.distanceTo(bp) > 3) recv.pos.set(bp.x + (base === 4 ? 0 : 0.8), 0, bp.z + (base === 4 ? 2 : 0.8));
-    recv.anim('catchHigh'); recv.animHold = this.t + 0.22; recv.promptStart = null; recv.readyAt = this.t + (th.err ? 1.1 : 0.1);
+    const recv = th.recv || this.receiverFor(base, th.by);
+    this.ball.mode = 'held'; this.ball.holder = recv; recv.holding = false; recv.task = 'hold'; recv.recvAt = null; recv.aimBase = null;
+    recv.anim('catchHigh'); recv.animHold = this.t + 0.22; recv.promptStart = null; recv.readyAt = this.t + (th.err ? 1.1 : 0.1); recv.quickAt = this.t + (th.err ? 1.1 : 0.15);
     if (this.hf && !this.hf.lock) { this.uf = recv; this.ufManual = false; }
     SND.pop(0.55);
     if (th.err) { this.error = true; this.events.push('throwError'); recv.decideAt = this.t + 1.1; return; }
-    this.ballAtBase(base, recv);
-    recv.decideAt = this.t + (base === 2 ? 0.58 : 0.45);
+    // caught on the bag: that's the base touched. Caught short of it, he still has to get there.
+    const bp = BASES[base];
+    if (Math.hypot(bp.x - recv.pos.x, bp.z - recv.pos.z) < 4.5) { recv.touched = base; this.ballAtBase(base, recv); recv.decideAt = this.t + (base === 2 ? 0.58 : 0.45); }
+    else { recv.touched = 0; recv.decideAt = this.t + 0.15; }
   }
   // The ball reached a bag. Only a force (or doubling a runner off after a catch) is an
   // out on the spot; anyone else has to be tagged when he gets there (see updateRunners).

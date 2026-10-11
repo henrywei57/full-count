@@ -211,7 +211,7 @@ function startGame(cfg) {
   startHalf();
 }
 function startHalf() {
-  G.outs = 0; G.balls = 0; G.strikes = 0; G.bases = [null, null, null, null];
+  G.outs = 0; G.balls = 0; G.strikes = 0; G.bases = [null, null, null, null]; G.selRunner = null;
   while (G.line[G.half].length < G.inning) G.line[G.half].push(0);
   if (G.inning > G.innings) {
     const t = battingTeam(); G.bases[2] = t.lineup[(G.order[G.half] + 8) % 9];
@@ -306,7 +306,7 @@ function prePitchUI() {
     const on = G.bases.some(Boolean) && G.mode !== 'derby';
     setHint('<kbd>1</kbd>–<kbd>' + n + '</kbd> pitch &middot; aim with the mouse &middot; <kbd>Click</kbd> to start the meter' + (on ? ' &middot; <kbd>Shift</kbd>+<kbd>1</kbd>–<kbd>3</kbd> pickoff' : ''));
   } else if (ub) setHint('Aim the PCI &middot; <kbd>Click</kbd> swing &middot; <kbd>Right-click</kbd> power &middot; <kbd>J</kbd> contact &middot; <kbd>B</kbd> bunt' + (G.bases.some(Boolean) && userRuns() && G.mode !== 'derby' ? ' &middot; <kbd>E</kbd> steal' : ''));
-  else if (userRuns() && G.bases.some(Boolean)) setHint('You run the bases &middot; <kbd>E</kbd> steal (hold <kbd>1</kbd>&ndash;<kbd>3</kbd> for one runner) &middot; <kbd>Q</kbd> call it off');
+  else if (userRuns() && G.bases.some(Boolean)) setHint('You run the bases &middot; <kbd>E</kbd> steal &middot; <kbd>Q</kbd> call it off &middot; click a runner\'s tag to pick just him');
   else if (G.drill === 'field') setHint('Fielding practice &middot; <kbd>WASD</kbd> move &middot; <kbd>1</kbd>&ndash;<kbd>4</kbd> throw');
   else if (G.mode === 'online') setHint('Waiting for your opponent&hellip;');
   else if (G.mode === 'lock' && G.half === 1 - G.lockSide && G.fielders.some((f) => f.pl.id === G.lock)) setHint('You are in the field &middot; get within the gold ring of the ball to field it');
@@ -644,8 +644,21 @@ function stealCmd(kind, which = null) {
     } else if (r.steal && !r.steal.went) r.steal = null;
   }
 }
-// the runners break during the windup and the pitch, before any Play exists
+// the runners break during the windup and the pitch, before any Play exists; once the
+// pitch is on its way the fielder covering the bag breaks for it too
 function updateStealers(dt) {
+  if (G.phase === 'pitch') {
+    for (const r of G.baseRunners) {
+      if (!r.steal || !r.steal.went || r.state !== 'run' || (r.next !== 2 && r.next !== 3)) continue;
+      const f = G.fByRole[r.next === 2 ? 'SS' : '3B'], bp = BASES[r.next];
+      if (!f) continue;
+      const dx = bp.x - f.pos.x, dz = bp.z - f.pos.z, d = Math.hypot(dx, dz);
+      if (d < 3) continue;
+      f.v = Math.min(f.speed * 0.85, f.v + f.acc * dt);
+      const step = Math.min(d - 3, f.v * dt);
+      f.pos.x += (dx / d) * step; f.pos.z += (dz / d) * step; f.yaw = Math.atan2(dx, dz); f.m.phase += step * 0.42; f.anim('run'); f.sync();
+    }
+  }
   for (const r of G.baseRunners) {
     if (!r.steal || !r.steal.went || r.state !== 'run') continue;
     if (r.delay > 0) { r.delay -= dt; continue; }

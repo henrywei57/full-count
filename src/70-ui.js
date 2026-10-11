@@ -209,7 +209,7 @@ function setHint(html) { const el = $('hint'); el.innerHTML = html; el.style.opa
 function liveHint() {
   const parts = [];
   if (userFields()) parts.push('<kbd>WASD</kbd> move', '<kbd>Space</kbd> dive', G.lock ? '' : '<kbd>Q</kbd> switch', '<kbd>1</kbd>&ndash;<kbd>4</kbd> throw');
-  if (userRuns()) parts.push('<kbd>E</kbd> advance', '<kbd>Q</kbd> back', 'hold <kbd>1</kbd>&ndash;<kbd>4</kbd> + <kbd>E</kbd>/<kbd>Q</kbd> for one runner');
+  if (userRuns()) parts.push('<kbd>E</kbd> advance', '<kbd>Q</kbd> back', G.lock ? '' : '<b>click a runner</b> to run just him');
   return parts.filter(Boolean).join(' &middot; ');
 }
 function landingAssist() { return settings.guide && G.diff && G.diff.name !== 'Hall of Fame'; }
@@ -507,8 +507,9 @@ function updateLockUI() {
 }
 
 // ------------------------------------------------------- baserunning HUD ----
-// Every runner is keyed by the base he's standing on or running to (1-3, 4 = home),
-// the same keys as throwing. Hold that key and press E / Q to run just him.
+// Click a runner (on the field, his tag, the mini diamond or the runner panel) to pick
+// him; E / Q then run just him. Click him again, or empty grass, to go back to everyone.
+// Holding his base key (1-3, 4 = home, same as throwing) with E / Q still works too.
 const BASE_KEY = { 1: 1, 2: 2, 3: 3, 4: 4, arrowright: 1, arrowup: 2, arrowleft: 3, arrowdown: 4 };
 const BASE_ABBR = ['HOME', '1B', '2B', '3B', 'HOME'];
 function heldBase() { for (const k in BASE_KEY) if (keys.has(k)) return BASE_KEY[k]; return 0; }
@@ -521,12 +522,33 @@ function runnerList() {
   return G.lock ? L.filter((r) => r.id === G.lock) : L;
 }
 function runnerIdAt(b) { const L = runnerList(); const r = L.find((x) => x.key === b && x.run) || L.find((x) => x.key === b); return r ? r.id : null; }
-// E / Q: one runner if a base key is held, otherwise everyone
-function runKey(kind, base = heldBase()) {
-  if (!base) { actRun(kind, null); return; }
-  const id = runnerIdAt(base);
-  if (id) actRun(kind, id);
+// the runner you picked, if he's still out there
+function selRunner() { const id = G.selRunner; return id && runnerList().some((r) => r.id === id) ? id : null; }
+function selectRunner(id) {
+  G.selRunner = id && G.selRunner !== id ? id : null; rhSig = null;
+  SND.init(); if (SND.ctx) SND.tick();
 }
+// E / Q: the runner on a held base key, else the runner you picked, else everyone
+function runKey(kind, base = heldBase()) {
+  if (base) { const id = runnerIdAt(base); if (id) actRun(kind, id); return; }
+  actRun(kind, selRunner());
+}
+// a click on the field during a play: the runner nearest the click on screen, if any
+const _pickV = new V3();
+function pickRunnerAt(x, y) {
+  let best = null, bd = 70;
+  for (const r of runnerList()) {
+    const m = r.m; if (!m || !m.root.visible) continue;
+    _pickV.copy(m.root.position); _pickV.y += 3.5; _pickV.project(camera);
+    if (_pickV.z > 1) continue;
+    const d = Math.hypot(((_pickV.x + 1) / 2) * window.innerWidth - x, ((1 - _pickV.y) / 2) * window.innerHeight - y);
+    if (d < bd) { bd = d; best = r; }
+  }
+  if (best) selectRunner(best.id); else if (G.selRunner) selectRunner(null);
+}
+// the ring under the runner you picked
+const selRing = new THREE.Mesh(new THREE.RingGeometry(2.3, 3.0, 40), new THREE.MeshBasicMaterial({ color: 0x5aa8ff, transparent: true, opacity: 0.9, depthWrite: false }));
+selRing.rotation.x = -Math.PI / 2; selRing.renderOrder = 3; selRing.visible = false; scene.add(selRing);
 // runners on base before the pitch (or breaking during it): key = the base he's on
 function stealInfo() {
   return (G.baseRunners || []).filter((r) => r.state === 'run' || r.state === 'base').map((r) => {
@@ -536,7 +558,7 @@ function stealInfo() {
 }
 function runnerPath(r) {
   if (r.steal && !r.run) return { cls: 'go', txt: `STEALING ${BASE_ABBR[r.to]}`, tag: `STEAL ${BASE_ABBR[r.to]}` };
-  if (!r.run && STEAL_PHASES.includes(G.phase)) return { cls: 'hold', txt: `ON ${BASE_ABBR[r.key]} &middot; <kbd>${r.key}</kbd>+<kbd>E</kbd> steal`, tag: `ON ${BASE_ABBR[r.key]}` };
+  if (!r.run && STEAL_PHASES.includes(G.phase)) return { cls: 'hold', txt: `ON ${BASE_ABBR[r.key]}`, tag: `ON ${BASE_ABBR[r.key]}` };
   if (r.run && r.rev) return { cls: 'back', txt: `BACK TO ${BASE_ABBR[r.to]}`, tag: `&#9664; ${BASE_ABBR[r.to]}` };
   if (r.run) return { cls: 'go', txt: `${BASE_ABBR[r.from]} &rarr; ${BASE_ABBR[r.to]}`, tag: `&rarr; ${BASE_ABBR[r.to]}` };
   if (r.to > r.key) return { cls: 'go', txt: `GOING TO ${BASE_ABBR[r.to]}`, tag: `&rarr; ${BASE_ABBR[r.to]}` };
@@ -549,13 +571,19 @@ function runnerHUD(show) {
   $('runHelp').classList.toggle('hidden', !L.length);
   $('runHelp').classList.toggle('pre', STEAL_PHASES.includes(G.phase));   // before the pitch: compact, out of the hitting view
   L.sort((a, b) => b.key - a.key);
-  const sig = L.map((r) => [r.id, r.key, r.to, r.from, r.run, r.rev, r.user].join()).join('|');
+  const sel = L.length ? selRunner() : null, pre = STEAL_PHASES.includes(G.phase);
+  const sig = L.map((r) => [r.id, r.key, r.to, r.from, r.run, r.rev, r.user].join()).join('|') + '#' + sel + pre;
   if (sig !== rhSig) {
     rhSig = sig;
+    const sp = sel && PBYID[sel];
+    $('rhTip').innerHTML = sp ? `<b>${esc(lastName(sp.name))}</b> picked &middot; <kbd>E</kbd>/<kbd>Q</kbd> run him &middot; click him again for everyone`
+      : `click a runner to pick him, then <kbd>E</kbd>/<kbd>Q</kbd>`;
+    $('rhAll').innerHTML = sp ? `<button data-run="go" data-id="${esc(sel)}">Send ${esc(lastName(sp.name))} <kbd>E</kbd></button><button data-run="back" data-id="${esc(sel)}">${pre ? 'Call it off' : 'Hold / back'} <kbd>Q</kbd></button><button data-pickall="1">Pick everyone</button>`
+      : `<button data-run="go">${pre ? 'Everyone steals' : 'All advance'} <kbd>E</kbd></button><button data-run="back">${pre ? 'Call it off' : 'All go back'} <kbd>Q</kbd></button>`;
     $('runList').innerHTML = L.map((r) => {
       const p = runnerPath(r), pl = PBYID[r.id];
-      return `<div class="rh-row ${r.user ? 'user' : ''}"><b class="rh-key">${r.key}</b><span class="rh-name">${esc(pl ? lastName(pl.name) : '')}</span><span class="rh-path ${p.cls}">${p.txt}</span>`
-        + `<button data-run="back" data-id="${esc(r.id)}" title="Take a base back">&#9664;</button><button data-run="go" data-id="${esc(r.id)}" title="One more base">&#9654;</button></div>`;
+      return `<div class="rh-row ${r.user ? 'user' : ''} ${r.id === sel ? 'sel' : ''}" data-pickid="${esc(r.id)}" title="Click to pick him"><b class="rh-key">${r.key}</b><span class="rh-name">${esc(pl ? lastName(pl.name) : '')}</span><span class="rh-path ${p.cls}">${p.txt}</span>`
+        + `<button data-run="back" data-id="${esc(r.id)}" title="${pre ? 'Call off his steal' : 'Take a base back'}">&#9664;</button><button data-run="go" data-id="${esc(r.id)}" title="${pre ? 'Steal' : 'One more base'}">&#9654;</button></div>`;
     }).join('');
   }
   // a little tag over each runner's head: his key and where he's going
@@ -566,12 +594,15 @@ function runnerHUD(show) {
     if (_tagV.z > 1 || Math.abs(_tagV.x) > 1.1 || Math.abs(_tagV.y) > 1.1) continue;
     let el = runTagEls.get(r.id);
     if (!el) { el = document.createElement('div'); $('runTags').appendChild(el); runTagEls.set(r.id, el); }
-    const p = runnerPath(r), s = `${r.key}|${p.tag}|${r.user}`;
-    if (el.dataset.sig !== s) { el.dataset.sig = s; el.className = `run-tag ${p.cls} ${r.user ? 'user' : ''}`; el.innerHTML = `<b>${r.key}</b>${p.tag}`; }
+    const p = runnerPath(r), s = `${r.key}|${p.tag}|${r.user}|${r.id === sel}`;
+    if (el.dataset.sig !== s) { el.dataset.sig = s; el.dataset.id = r.id; el.className = `run-tag ${p.cls} ${r.user ? 'user' : ''} ${r.id === sel ? 'sel' : ''}`; el.innerHTML = `<b>${r.key}</b>${p.tag}`; }
     el.style.left = ((_tagV.x + 1) / 2) * W + 'px'; el.style.top = ((1 - _tagV.y) / 2) * H + 'px';
     seen.add(r.id);
   }
   for (const [id, el] of runTagEls) if (!seen.has(id)) { el.remove(); runTagEls.delete(id); }
+  const sr = sel && L.find((r) => r.id === sel);
+  selRing.visible = !!(sr && sr.m && sr.m.root.visible);
+  if (selRing.visible) selRing.position.set(sr.m.root.position.x, groundY(sr.m.root.position.x, sr.m.root.position.z) + 0.14, sr.m.root.position.z);
 }
 
 // pitching with runners on: buttons to throw over (Shift + 1 / 2 / 3 on the keyboard)
@@ -606,9 +637,10 @@ function drawMiniMap() {
     && (G.mode === 'lock' || G.phase === 'live' || G.phase === 'postPlay' || G.bases.some(Boolean));
   el.classList.toggle('hidden', !show);
   if (!show) return;
-  const g = el.getContext('2d'), s = 1.02, ox = 150, oy = 262;
-  // far-away objects are pulled in to the map edge along their real direction
-  const P = (x, z) => { const vx = x * s, vz = z * s; const k = Math.min(1, 138 / Math.max(1e-6, Math.abs(vx)), 250 / Math.max(1e-6, -vz), 28 / Math.max(1e-6, vz)); return [ox + vx * k, oy + vz * k]; };
+  const runners = userRuns() && !G.lock && (G.phase === 'live' || STEAL_PHASES.includes(G.phase)) ? runnerList() : [];
+  el.classList.toggle('pick', runners.length > 0);
+  const g = el.getContext('2d');
+  const P = mapPt, ox = 150, oy = 262;
   g.clearRect(0, 0, 300, 300);
   g.fillStyle = 'rgba(54,120,58,0.35)'; g.beginPath(); g.moveTo(ox, oy); g.arc(ox, oy, 205, -Math.PI * 0.75, -Math.PI * 0.25); g.closePath(); g.fill();
   const c = [0, 1, 2, 3].map((i) => P(BASES[i].x, BASES[i].z));
@@ -628,7 +660,23 @@ function drawMiniMap() {
     else if (m.j.helmet.visible) dot(p.x, p.z, me ? 11 : 9, '#ffc94a', me ? '#ffffff' : '#081020', 4);
   }
   if (ballMesh.visible) { const b = ballMesh.position; dot(b.x, b.z, 4 + Math.min(5, b.y / 25), '#ffffff', '#081020', 2); }
+  const sid = runners.length ? selRunner() : null, sr = sid && runners.find((r) => r.id === sid);
+  if (sr && sr.m) { const [px, py] = P(sr.m.root.position.x, sr.m.root.position.z); g.beginPath(); g.arc(px, py, 16, 0, Math.PI * 2); g.lineWidth = 4; g.strokeStyle = '#5aa8ff'; g.stroke(); }
 }
+// world (x, z) to the mini diamond's 300x300 canvas; far-away things are pulled in to the edge
+function mapPt(x, z) {
+  const s = 1.02, ox = 150, oy = 262, vx = x * s, vz = z * s;
+  const k = Math.min(1, 138 / Math.max(1e-6, Math.abs(vx)), 250 / Math.max(1e-6, -vz), 28 / Math.max(1e-6, vz));
+  return [ox + vx * k, oy + vz * k];
+}
+$('miniMap').addEventListener('pointerdown', (e) => {
+  if (!$('miniMap').classList.contains('pick')) return;
+  e.preventDefault(); e.stopPropagation();
+  const el = $('miniMap'), rc = el.getBoundingClientRect(), x = ((e.clientX - rc.left) / rc.width) * 300, y = ((e.clientY - rc.top) / rc.height) * 300;
+  let best = null, bd = 30;
+  for (const r of runnerList()) { if (!r.m) continue; const [px, py] = mapPt(r.m.root.position.x, r.m.root.position.z); const d = Math.hypot(px - x, py - y); if (d < bd) { bd = d; best = r; } }
+  if (best) selectRunner(best.id); else if (G.selRunner) selectRunner(null);
+});
 
 // ------------------------------------------------------------ fireworks ----
 const FW = [];
@@ -774,6 +822,8 @@ canvasEl.addEventListener('pointermove', (e) => {
 canvasEl.addEventListener('contextmenu', (e) => e.preventDefault());
 canvasEl.addEventListener('pointerdown', (e) => {
   SND.init(); setMouse(e);
+  // running the bases during a play: a click picks the runner under it
+  if (G.phase === 'live' && userRuns() && !G.lock && !trotOn() && !G.paused) { e.preventDefault(); pickRunnerAt(e.clientX, e.clientY); return; }
   // first person: grab the mouse for looking around; right-click re-centers on the play
   if (fpvOn && !userPitches()) {
     e.preventDefault();
@@ -879,7 +929,15 @@ $('pitchList').addEventListener('click', (e) => { const row = e.target.closest('
 for (const b of $('throwPrompt').querySelectorAll('button')) b.addEventListener('pointerdown', (e) => { e.stopPropagation(); actThrow(+b.dataset.base); });
 $('simBtn').addEventListener('pointerdown', (e) => { e.stopPropagation(); startSim(); });
 $('pickHelp').addEventListener('pointerdown', (e) => { const b = e.target.closest('button[data-pick]'); if (!b) return; e.stopPropagation(); e.preventDefault(); actPick(+b.dataset.pick); });
-$('runHelp').addEventListener('pointerdown', (e) => { const b = e.target.closest('button[data-run]'); if (!b) return; e.stopPropagation(); e.preventDefault(); actRun(b.dataset.run, b.dataset.id || null); });
+$('runHelp').addEventListener('pointerdown', (e) => {
+  e.stopPropagation();
+  const b = e.target.closest('button[data-run]');
+  if (b) { e.preventDefault(); actRun(b.dataset.run, b.dataset.id || null); return; }
+  if (e.target.closest('[data-pickall]')) { e.preventDefault(); selectRunner(null); return; }
+  const row = e.target.closest('[data-pickid]');
+  if (row) { e.preventDefault(); selectRunner(row.dataset.pickid); }
+});
+$('runTags').addEventListener('pointerdown', (e) => { const t = e.target.closest('.run-tag'); if (!t || !t.dataset.id) return; e.preventDefault(); e.stopPropagation(); selectRunner(t.dataset.id); });
 
 let gpPrev = [];
 function pollGamepad() {
