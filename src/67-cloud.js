@@ -9,6 +9,7 @@
 //   users/{uid}/friends/{uid}   your friends list
 //   users/{uid}/inbox/{fromUid} friend requests and game invites sent to you
 //   users/{uid}/games/{id}      your finished games: box scores and stats (62-records.js)
+//   users/{uid}/seasons/current your season in progress (63-season.js)
 //   codes/{code}                friend code -> uid
 // ============================================================================
 
@@ -68,6 +69,7 @@ const Cloud = {
     rs.forEach((d) => { try { list.push(JSON.parse(d.data().json)); } catch (e) { /* skip a broken one */ } });
     for (const r of mergeRosters(list)) this.saveRoster(r);
     this.syncGames(u.uid);
+    this.syncSeason(u.uid);
     this.unsub.push(F.onSnapshot(F.collection(db, 'users', u.uid, 'friends'), (qs) => {
       this.friends = qs.docs.map((d) => ({ uid: d.id, ...d.data() }));
       this.watchFriends(); cloudRender();
@@ -113,6 +115,33 @@ const Cloud = {
       if (mergeGames(cloud)) renderStats();
       for (const g of gamesList()) if (!have.has(g.id)) this.saveGameRec(g);
     } catch (e) { console.warn('[cloud] games', e); }   // older Firestore rules without games: they stay on this device
+  },
+  // the season: whichever copy (here or the account) was played last wins
+  async syncSeason(uid) {
+    const { F, db } = this;
+    try {
+      const d = await F.getDoc(F.doc(db, 'users', uid, 'seasons', 'current'));
+      if (this.user?.uid !== uid) return;
+      let s = null;
+      if (d.exists()) try { s = JSON.parse(d.data().json); } catch (e) { /* broken */ }
+      if (s && seasonFromCloud(s)) { if (G.mode === 'menu') renderMenu(); }
+      else if (seasonLoad()) this.saveSeason(seasonLoad());
+    } catch (e) { console.warn('[cloud] season', e); }
+  },
+  saveSeason(s) {
+    if (!this.user) return;
+    clearTimeout(this.seaT);
+    this.seaT = setTimeout(() => {
+      if (!this.user) return;
+      const { F, db } = this;
+      F.setDoc(F.doc(db, 'users', this.user.uid, 'seasons', 'current'), { json: JSON.stringify(s), updated: s.updated || Date.now() }).catch((e) => console.warn('[cloud] season', e));
+    }, 1500);
+  },
+  deleteSeason() {
+    if (!this.user) return;
+    clearTimeout(this.seaT);
+    const { F, db } = this;
+    F.deleteDoc(F.doc(db, 'users', this.user.uid, 'seasons', 'current')).catch((e) => console.warn('[cloud] season', e));
   },
   saveGameRec(g) {
     if (!this.user) return;

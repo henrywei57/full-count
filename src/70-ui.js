@@ -422,7 +422,7 @@ function showScreen(id) {
   for (const s of ['menu', 'breakCard', 'final']) $(s).classList.toggle('hidden', s !== id);
   if (id === 'final') {
     const online = G.mode === 'online';
-    $('btnAgain').textContent = online ? 'REMATCH' : 'PLAY AGAIN';
+    $('btnAgain').textContent = online ? 'REMATCH' : G.mode === 'season' ? 'BACK TO THE SEASON' : 'PLAY AGAIN';
   }
 }
 
@@ -894,6 +894,7 @@ window.addEventListener('keydown', (e) => {
   if (k === 'escape' && !$('teamScreen').classList.contains('hidden')) { closeTeam(); return; }
   if (k === 'escape' && !$('boxScreen').classList.contains('hidden')) { closeBox(); return; }
   if (k === 'escape' && !$('statsScreen').classList.contains('hidden')) { closeStats(); return; }
+  if (k === 'escape' && !$('seasonScreen').classList.contains('hidden')) { closeSeasonHub(); return; }
   if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA')) return;
   if (k === 'escape' || (k === 'p' && G.phase !== 'menu')) { togglePause(); return; }
   if (G.phase === 'menu' || G.phase === 'boot' || G.paused) return;
@@ -1069,7 +1070,7 @@ function togglePause(force, remote) {
 }
 
 // ------------------------------------------------------------------ menus ----
-const menu = { mode: 'exhibition', away: 'NYY', home: 'LAD', park: '', side: 1, innings: 3, diff: 1, manual: 1, batter: 3, lockPick: 'h3', ump: 1, view: 2, lockField: 1, lockSkip: 1, batCam: settings.batCam || 0, netTeam: 'LAD', drill: 0, tutLesson: -1 };
+const menu = { mode: 'exhibition', away: 'NYY', home: 'LAD', park: '', seasonLen: 30, side: 1, innings: 3, diff: 1, manual: 1, batter: 3, lockPick: 'h3', ump: 1, view: 2, lockField: 1, lockSkip: 1, batCam: settings.batCam || 0, netTeam: 'LAD', drill: 0, tutLesson: -1 };
 try { Object.assign(menu, JSON.parse(localStorage.getItem('fullcount.menu') || '{}')); } catch (e) { /* ignore */ }
 menu.batCam = settings.batCam || 0;   // the pause screen can change it too; settings wins
 // teams used to be saved as an index into the built-in list
@@ -1077,7 +1078,7 @@ for (const k of ['away', 'home', 'netTeam']) if (typeof menu[k] === 'number') me
 // a team the menu remembers may have been deleted since
 function menuTeam(k) { const t = teamByKey(menu[k]); if (t) return t; menu[k] = (teamByKey(k === 'away' ? 'NYY' : 'LAD') || TEAMS[k === 'away' ? 0 : 1]).key; return teamByKey(menu[k]); }
 function cycleTeam(k, d, avoid) {
-  const list = allTeams();
+  const list = allTeams().filter((t) => menu.mode !== 'season' || !t.custom);   // a season is played with a real club
   let i = list.findIndex((t) => t.key === menu[k]);
   for (let n = 0; n < list.length; n++) { i = (i + d + list.length) % list.length; if (list[i].key !== avoid) break; }
   menu[k] = list[i].key;
@@ -1108,7 +1109,9 @@ function renderMenu() {
   const m = menu.mode, derby = m === 'derby', spec = m === 'spectate', lock = m === 'lock', online = m === 'online', tut = m === 'tutorial', prac = m === 'practice' || tut;
   const guest = online && NET.role === 'guest', host = online && NET.role === 'host';
   const L = guest && NET.lobby ? NET.lobby : menu;
-  const showTeams = !online || host || (guest && NET.open && NET.lobby);
+  const season = m === 'season', activeSeason = season && !!seasonLoad();
+  if (season && menuTeam('home').custom) menu.home = 'LAD';
+  const showTeams = (!online || host || (guest && NET.open && NET.lobby)) && !activeSeason;
   $('netPanel').classList.toggle('hidden', !online);
   $('netShare').classList.toggle('hidden', !(host && NET.code));
   $('netHostRow').classList.toggle('hidden', online && NET.open);
@@ -1121,24 +1124,25 @@ function renderMenu() {
     $('pickH').innerHTML = teamPickHTML(P.mySide === 1 ? 'HOME · YOU' : 'HOME · FRIEND', P.teams[1], 'home', P.mySide === 1);
   } else if (showTeams) {
     $('pickA').innerHTML = teamPickHTML(derby ? 'BP PITCHER FROM' : prac ? 'OPPONENT' : 'AWAY', menuTeam('away'), 'away');
-    $('pickH').innerHTML = teamPickHTML(derby || prac ? 'YOUR TEAM' : 'HOME', menuTeam('home'), 'home');
+    $('pickH').innerHTML = teamPickHTML(derby || prac || season ? 'YOUR TEAM' : 'HOME', menuTeam('home'), 'home');
   }
-  $('pickA').classList.toggle('hidden', derby); $('vsLabel').classList.toggle('hidden', derby);
-  $('optSide').classList.toggle('hidden', derby || spec || prac || !showTeams);
+  $('pickA').classList.toggle('hidden', derby || season); $('vsLabel').classList.toggle('hidden', derby || season);
+  $('optSide').classList.toggle('hidden', derby || spec || prac || season || !showTeams);
+  $('optSeasonLen').classList.toggle('hidden', !season || activeSeason);
   $('optDrill').classList.toggle('hidden', !prac || tut);
   $('optLesson').classList.toggle('hidden', !tut);
   $('tutNew').classList.toggle('hidden', (() => { try { return !!localStorage.getItem('fullcount.tutSeen'); } catch (e) { return true; } })());
   $('optSide').querySelector('span').textContent = lock ? 'YOUR TEAM' : 'YOU PLAY AS';
   $('optInn').classList.toggle('hidden', derby || prac || !showTeams);
   $('optDiff').classList.toggle('hidden', spec || tut || !showTeams);
-  $('optThrow').classList.toggle('hidden', derby || spec || online || tut);
+  $('optThrow').classList.toggle('hidden', derby || spec || online || tut || activeSeason);
   $('optBatter').classList.toggle('hidden', !derby);
   $('optLock').classList.toggle('hidden', !lock);
   $('optView').classList.toggle('hidden', !lock);
   $('optLockField').classList.toggle('hidden', !lock);
   $('optLockSkip').classList.toggle('hidden', !lock);
   $('optUmp').classList.toggle('hidden', derby || tut || !showTeams);
-  $('optPark').classList.toggle('hidden', tut || !showTeams);
+  $('optPark').classList.toggle('hidden', tut || season || !showTeams);
   for (const el of ['optSide', 'optInn', 'optDiff', 'optUmp', 'optPark']) $(el).style.pointerEvents = guest ? 'none' : '';
   if (showTeams) {
     // the ballpark: the home team's, or any of the others
@@ -1164,13 +1168,14 @@ function renderMenu() {
   }
   const play = $('btnPlay');
   const block = host && NET.open ? onlineBlock() : '';
-  play.classList.toggle('hidden', online && !host);
+  play.classList.toggle('hidden', (online && !host) || activeSeason);
   play.disabled = (host && !NET.open) || !!block;
   play.title = block;
-  play.textContent = derby ? 'START DERBY' : tut ? 'START TUTORIAL' : prac ? 'START PRACTICE' : spec ? 'WATCH GAME' : lock ? 'PLAY AS ' + (lock ? lockName() : '') : online ? (NET.open ? 'START ONLINE GAME' : 'WAITING FOR FRIEND') : 'PLAY BALL';
+  play.textContent = season ? 'START SEASON' : derby ? 'START DERBY' : tut ? 'START TUTORIAL' : prac ? 'START PRACTICE' : spec ? 'WATCH GAME' : lock ? 'PLAY AS ' + (lock ? lockName() : '') : online ? (NET.open ? 'START ONLINE GAME' : 'WAITING FOR FRIEND') : 'PLAY BALL';
   if (host && NET.open && block !== (NET.blockShown || '')) { NET.blockShown = block; netStatus(block || 'Ready! Press Start when you are.', block ? 'bad' : 'good'); }
   try { localStorage.setItem('fullcount.menu', JSON.stringify(menu)); } catch (e) { /* ignore */ }
   renderResume();
+  renderSeasonPanel();
   if (host && NET.open) netSendLobby();
   if (typeof renderAccount === 'function') renderAccount();
 }
@@ -1232,6 +1237,7 @@ function buildMenu() {
     SND.init();
     if (menu.mode === 'online') { hostStartOnline(); return; }
     if (menu.mode === 'tutorial') { tutStart(menu.tutLesson >= 0 ? menu.tutLesson : null); return; }
+    if (menu.mode === 'season') { startSeason({ team: menuTeam('home').key, len: SEASON_LENS.includes(menu.seasonLen) ? menu.seasonLen : 30, innings: menu.innings, diff: menu.diff, ump: menu.ump, manual: menu.manual }); renderMenu(); return; }
     const teams = [teamSpec(menuTeam('away')), teamSpec(menuTeam('home'))];
     startGame({ mode: menu.mode, teams, drill: ['bat', 'pitch', 'run', 'field'][menu.drill] || 'bat', side: menu.side, innings: menu.innings, diff: menu.diff, manual: menu.manual, batter: menu.batter, lockPick: menu.lockPick, ump: menu.ump, view: menu.view, lockField: menu.lockField, lockSkip: menu.lockSkip, park: menu.park || '' });
   });
@@ -1250,6 +1256,7 @@ function buildMenu() {
   $('btnMenu').addEventListener('click', toMenu);
   $('btnAgain').addEventListener('click', () => {
     if (G.mode === 'online') { if (isGuest()) { netSend({ t: 'act', a: 'again' }); $('finalSub').textContent = 'Rematch requested. Waiting for the host…'; } else if (isHost()) hostRestart(); return; }
+    if (G.mode === 'season') { toMenu(); menu.mode = 'season'; renderMenu(); return; }
     showScreen(null); startGame(G.cfg);
   });
   $('btnVoice').textContent = `Commentary voice: ${settings.voice ? 'On' : 'Off'}`;
@@ -1404,6 +1411,7 @@ function boot() {
   buildTutorialUI();
   buildTeamUI();
   buildRecordsUI();
+  buildSeasonUI();
   $('btnRosters').addEventListener('click', openRosters);
   buildMenu();
   buildCloudUI();
@@ -1423,7 +1431,7 @@ function boot() {
 }
 // Debug handle: lets a test harness advance the simulation without waiting on animation frames.
 window.__fullcount = {
-  G, TEAMS, settings, NET, keys, BAT_CAMS, Play, Runner, BASES, simBatted, V3, getModel, ballMesh, startPickoff, stealCmd, camTo, setPark, PARKS, fenceDist, fenceH, gameRecord, gamesList, loadSave, openLiveBox, openStats, toMenu, TUT, tutStart, rosterCost, teamToDef, cleanRoster, buildCustomTeam, Cloud, cloudRender, inviteToast, get ROSTERS() { return ROSTERS; },
+  G, TEAMS, settings, NET, keys, BAT_CAMS, Play, Runner, BASES, simBatted, V3, getModel, ballMesh, startPickoff, stealCmd, camTo, setPark, PARKS, fenceDist, fenceH, gameRecord, gamesList, loadSave, openLiveBox, openStats, toMenu, simGame, SIMK, seasonLoad, startSeason, seasonSimNext, seasonSimMany, seasonPlayNext, seasonNextGame, standings, openSeasonHub, renderMenu, menu, TUT, tutStart, rosterCost, teamToDef, cleanRoster, buildCustomTeam, Cloud, cloudRender, inviteToast, get ROSTERS() { return ROSTERS; },
   step(sec, dt = 1 / 60) {
     const n = Math.round(sec / dt);
     for (let i = 0; i < n && !G.paused; i++) { if (isGuest()) guestUpdate(dt); else update(dt); netTick(); }

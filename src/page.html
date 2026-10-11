@@ -290,7 +290,7 @@ button:focus-visible,select:focus-visible{outline:2px solid var(--gold);outline-
 
 /* ---------- stats, box scores, resume ---------- */
 #statsScreen,#boxScreen{align-items:flex-start}
-#boxScreen .card{background:#09111f}
+#boxScreen .card,#statsScreen .card,#seasonScreen .card{background:#09111f}
 .bx-ls{overflow-x:auto;margin:4px 0 10px}
 .bx-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}
 @media (max-width:860px){.bx-grid{grid-template-columns:1fr}}
@@ -311,6 +311,45 @@ button:focus-visible,select:focus-visible{outline:2px solid var(--gold);outline-
 .resume{display:flex;align-items:center;gap:8px;margin-bottom:12px;padding:10px 12px;background:var(--panel);border:1px solid var(--gold);border-radius:4px}
 .resume-txt{flex:1;display:flex;flex-direction:column;gap:2px;font-size:13px;color:var(--dust)}
 .resume-txt b{font-family:var(--f-display);letter-spacing:.1em;color:var(--gold);font-size:13px}
+
+/* ---------- season ---------- */
+#seasonScreen{align-items:flex-start}
+.sea-panel{margin-bottom:10px}
+.sea-head{display:flex;align-items:center;gap:12px;margin-bottom:10px}
+.sea-head>div{display:flex;flex-direction:column;gap:2px}
+.sea-head b{font-family:var(--f-display);font-size:22px;letter-spacing:.04em}
+.sea-head span{color:var(--dust);font-size:13px}
+.sea-next{display:flex;flex-direction:column;gap:3px;padding:10px 12px;border:1px solid var(--line);border-radius:4px;margin-bottom:10px;background:rgba(255,255,255,.03)}
+.sea-next small{font-family:var(--f-display);letter-spacing:.12em;color:var(--gold);font-size:12px}
+.sea-next b{font-size:17px}
+.sea-next span{color:var(--dust);font-size:12px}
+.sea-panel .row-actions{margin-bottom:6px;flex-wrap:wrap}
+.tbadge{display:inline-block;min-width:44px;padding:4px 7px;border-radius:3px;border:1px solid;font-family:var(--f-display);font-weight:800;font-size:16px;letter-spacing:.04em;text-align:center}
+.tbadge.sm{min-width:30px;padding:0 4px;font-size:10px;vertical-align:1px}
+.sea-cols{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+@media (max-width:860px){.sea-cols{grid-template-columns:1fr}}
+.sea-boards{display:grid;grid-template-columns:repeat(5,1fr);gap:14px}
+@media (max-width:980px){.sea-boards{grid-template-columns:repeat(2,1fr)}}
+.sea-board h3{font-size:12px!important}
+.sea-ld{display:grid;grid-template-columns:14px 1fr auto auto;gap:6px;font-size:12px;padding:4px 0;border-top:1px solid rgba(255,255,255,.06)}
+.sea-ld span{color:var(--dust)}
+.sea-ld b{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sea-ld em{color:var(--dust);font-style:normal;font-size:11px}
+.sea-ld i{font-style:normal;font-weight:800}
+.sea-ld.me b{color:var(--gold)}
+.sea-series{display:flex;align-items:center;gap:14px;padding:7px 0;border-top:1px solid rgba(255,255,255,.06);font-size:13px}
+.sea-series em{font-style:normal;color:var(--dust);font-size:11px;width:20px}
+.sea-series span{flex:1;display:flex;align-items:center;gap:6px}
+.sea-series span small{color:var(--dust);width:12px}
+.sea-series span b{margin-left:auto;padding-right:12px;font-size:15px}
+.sea-series .won b{color:var(--gold)}
+.sea-series .lost{opacity:.5}
+.sea-series .me{font-weight:700}
+.sea-champ{display:flex;align-items:center;gap:12px;padding:12px;border:1px solid var(--gold);border-radius:4px;margin:4px 0 10px}
+.sea-champ b{font-family:var(--f-display);font-size:20px}
+.sea-champ span{color:var(--gold);font-family:var(--f-display);letter-spacing:.1em}
+.st-table .gold{color:var(--gold)}
+.st-table tr.sel{background:rgba(90,168,255,.12)}
 
 /* ---------- tutorial ---------- */
 #tutCard{position:fixed;right:16px;top:calc(110px + env(safe-area-inset-top,0px));z-index:6;width:min(330px,calc(100vw - 32px));background:var(--panel);border:1px solid var(--gold);border-radius:6px;padding:12px 14px;display:flex;flex-direction:column;gap:8px;box-shadow:0 10px 30px rgba(0,0,0,.45)}
@@ -589,6 +628,7 @@ span.chip{cursor:default}
       <div class="modes" id="modes">
         <button data-mode="tutorial"><span>Tutorial<span class="new hidden" id="tutNew">START HERE</span></span> <small>Learn to hit, pitch, field and run</small></button>
         <button data-mode="exhibition" class="on">Play Ball <small>Exhibition game</small></button>
+        <button data-mode="season">Season <small>A schedule, standings, playoffs</small></button>
         <button data-mode="lock">Player Lock <small>Play as one player</small></button>
         <button data-mode="online">Online 1v1 <small>Play a friend on another device</small></button>
         <button data-mode="derby">Home Run Derby <small>10 outs, swing away</small></button>
@@ -606,6 +646,7 @@ span.chip{cursor:default}
         <div class="resume-txt"><b>GAME IN PROGRESS</b><span id="resumeLabel"></span></div>
         <button class="cta" id="btnResumeGame">RESUME</button><button class="ghost" id="btnDiscardSave">Discard</button>
       </div>
+      <div class="sea-panel hidden" id="seasonPanel"></div>
       <div id="netPanel" class="hidden">
         <h3>ONLINE 1V1</h3>
         <div class="net-row" id="netHostRow"><button class="cta" id="btnHost">HOST A GAME</button></div>
@@ -623,6 +664,7 @@ span.chip{cursor:default}
         <div class="opt hidden" id="optLesson"><span>LESSONS</span><div class="seg" data-key="tutLesson"><button data-v="-1" class="on">All, in order</button><button data-v="0">Hitting</button><button data-v="1">Pitching</button><button data-v="2">Fielding</button><button data-v="3">Baserunning</button><button data-v="4">Pickoffs</button></div></div>
         <div class="opt hidden" id="optDrill"><span>DRILL</span><div class="seg" data-key="drill"><button data-v="0" class="on">Batting</button><button data-v="1">Pitching</button><button data-v="2">Baserunning</button><button data-v="3">Fielding</button></div></div>
         <div class="opt" id="optSide"><span>YOU PLAY AS</span><div class="seg" data-key="side"><button data-v="0">Away</button><button data-v="1" class="on">Home</button></div></div>
+        <div class="opt hidden" id="optSeasonLen"><span>SEASON</span><div class="seg" data-key="seasonLen"><button data-v="12">12 games</button><button data-v="30" class="on">30</button><button data-v="60">60</button><button data-v="162">162</button></div></div>
         <div class="opt" id="optInn"><span>INNINGS</span><div class="seg" data-key="innings"><button data-v="3" class="on">3</button><button data-v="6">6</button><button data-v="9">9</button></div></div>
         <div class="opt" id="optDiff"><span>DIFFICULTY</span><div class="seg" data-key="diff"><button data-v="0">Rookie</button><button data-v="1" class="on">Veteran</button><button data-v="2">All-Star</button><button data-v="3">Hall of Fame</button></div></div>
         <div class="opt hidden" id="optLock"><span>YOUR PLAYER</span><select id="lockPick" aria-label="Player to control"></select></div>
@@ -754,6 +796,14 @@ span.chip{cursor:default}
     <div class="potg" id="potg"></div>
     <div class="final-sub" id="finalSub"></div>
     <div class="row-actions"><button class="cta" id="btnAgain">PLAY AGAIN</button><button class="ghost" id="btnFinalBox">Box score</button><button class="ghost" id="btnMenu">Main menu</button></div>
+  </div>
+</div>
+
+<div id="seasonScreen" class="screen modal hidden">
+  <div class="card tm-card">
+    <div class="fr-head"><h2>SEASON</h2><span id="seaSub" class="tm-sub"></span><button class="ghost" id="seaClose">Back</button></div>
+    <div class="seg st-tabs" id="seaTabs"></div>
+    <div id="seaBody"></div>
   </div>
 </div>
 

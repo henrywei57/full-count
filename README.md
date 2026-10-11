@@ -12,6 +12,7 @@ All 30 MLB clubs with their real current rosters. Every player's ratings come fr
 
 - **Tutorial** – five short hands-on lessons: hitting, pitching, fielding, baserunning and pickoffs. Each step asks you to do the thing (make contact, throw a strike, make a throw, call a steal) and moves on once you have. Play them all in order or pick one; skip any step.
 - **Play Ball** – exhibition game (3, 6 or 9 innings) as the home or away team.
+- **Season** – take a real club through a 12, 30, 60 or 162-game schedule, the standings and the playoffs (see [Season](#season)).
 - **Player Lock** – pick one player. You only play when he's involved: at bat, on base, or when the ball is hit to the outfield or his way. Everything else is skipped behind a SIMULATING card (set Not Involved to Watch to see it fast-forwarded instead). Fielding and baserunning use a third-person camera behind your player, like Road to the Show: it faces home plate before the pitch, then follows the ball, the base you're running to, or the base you're about to throw to. First person and broadcast cameras are also available, and V cycles between them. At-bats use the strike-zone view. Set Your Role to Bat only to sim all of your fielding, or press Tab to skip any single at-bat.
 - **Online 1v1** – one player hosts and gets a 5-character room code (or invite link); the other joins with it. Each player picks their own team, custom rosters included. Signed in, you can invite a friend straight from your friends list. Works across devices and networks.
 - **Practice** – endless drills with your team against any opponent:
@@ -74,6 +75,16 @@ Call a steal any time before the pitch: the runner breaks on the pitcher's first
 Who wins the race comes down to the runner's speed (fast runners also get better jumps), the pitch, and the catcher's arm. Against a typical catcher an average runner makes it a bit more than half the time, a burner almost always, and a slow runner almost never. A runner can't steal a base another runner is standing on unless that runner goes too. CPU teams steal when they have an edge, and with two outs and a full count their forced runners go on the pitch.
 
 When you're pitching with runners on, Shift + 1 / 2 / 3 throws over. The runner dives back and is usually safe, but a runner who was going on that pitch gets caught leaning: he's either picked off or hung up between bases. CPU pitchers throw over too, mostly to fast runners.
+
+## Season
+
+Pick **Season** on the main menu, choose your club and a length (12, 30, 60 or the full 162), and play a schedule of three-game series against the other 29 real clubs. Everyone plays every day, and every team runs a five-man rotation, so you face whoever's turn it is.
+
+- **Play next game** plays it out like any other game, in the home team's park, with that day's starters. **Sim game**, **Sim 7 days** and **Sim to the playoffs** let the computer play it for you.
+- Every other game in the league is played out by a quick plate-appearance sim: each batter against each pitcher from their ratings and the park, with pitching changes, steals, double plays and sac flies. Across a season it lands on big-league rates (about a .245 average, 22% strikeouts, 3% homers and 4 to 4.5 runs a team).
+- **Standings** by division (W, L, PCT, GB, runs, last 10, streak), **league leaders** (AVG, HR, RBI, OPS, SB, W, RA9, K, SV, WHIP) from every game in the league, and **your games**, each with its box score.
+- **Playoffs**, MLB style: six teams a league (three division winners and three wild cards), a wild-card round, the Division Series, the Championship Series and the World Series. A short season gets shorter series. If your club misses out, sim ahead to see who wins it all.
+- The season saves after every game, on this device and to your Google account. A season game you quit partway through resumes where you left it.
 
 ## Box scores, saved games and stats
 

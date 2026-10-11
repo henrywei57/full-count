@@ -138,10 +138,10 @@ function openLiveBox() {
 }
 
 // ------------------------------------------------------- save and resume ----
-// Exhibition and Player Lock games save themselves before every batter. Quit whenever you
+// Exhibition, Player Lock and Season games save themselves before every batter. Quit whenever you
 // like and pick it back up from the main menu; starting another game replaces the save.
 const SAVE_KEY = 'fullcount.save';
-function canSave() { return ['exhibition', 'lock'].includes(G.mode) && !G.drill && !!G.teams && !G.season; }
+function canSave() { return ['exhibition', 'lock', 'season'].includes(G.mode) && !G.drill && !!G.teams; }
 function autoSave() {
   if (!canSave()) return;
   const id = (p) => (p ? p.id : null);
@@ -153,7 +153,7 @@ function autoSave() {
     stats: [...G.stats], pstats: [...G.pstats], dec: G.dec ? { team: G.dec.team, w: id(G.dec.w), l: id(G.dec.l) } : null, enterLead: G.enterLead, gameId: G.gameId,
   };
   const [a, h] = G.teams;
-  const label = `${a.id} ${G.score[0]}, ${h.id} ${G.score[1]} · ${G.half ? 'Bottom' : 'Top'} ${ordinal(G.inning)} · ${G.mode === 'lock' ? 'Player Lock' : 'Exhibition'}`;
+  const label = `${a.id} ${G.score[0]}, ${h.id} ${G.score[1]} · ${G.half ? 'Bottom' : 'Top'} ${ordinal(G.inning)} · ${G.mode === 'lock' ? 'Player Lock' : G.mode === 'season' ? 'Season' : 'Exhibition'}`;
   try { localStorage.setItem(SAVE_KEY, JSON.stringify({ v: 1, at: Date.now(), cfg: G.cfg, s, label })); } catch (e) { /* storage full or blocked */ }
 }
 function loadSave() {

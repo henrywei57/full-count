@@ -32,7 +32,7 @@ function mlbPitcher(team, pid, role, id) {
   const p = POOL_P.get(pid), brk = stuffBreak(p.stuff);
   return {
     id, mlbId: pid, name: p.name, num: p.num, pos: role, throws: p.throws, bats: p.throws, skin: SKINS[p.skinIdx % SKINS.length], team,
-    velo: p.velo, ctl: p.ctl, stam: p.stam, spd: 45, arm: 72, fld: 62, con: 22, pow: 15, eye: 25,
+    velo: p.velo, ctl: p.ctl, stuff: p.stuff, stam: p.stam, spd: 45, arm: 72, fld: 62, con: 22, pow: 15, eye: 25,
     pitches: p.pitches.map((x) => ({ type: x.type, velo: x.velo, brk })),
   };
 }

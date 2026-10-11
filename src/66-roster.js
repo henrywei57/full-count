@@ -121,7 +121,7 @@ function buildCustomTeam(def) {
   const hitter = (h, id) => { const o = { id, mlbId: h.mlbId, name: h.name, num: h.num, pos: h.pos, bats: h.bats, throws: h.throws, skin: h.skin, team }; for (const [k] of HIT_KEYS) o[k] = h[k]; return o; };
   const pitcher = (p, id, role) => ({
     id, mlbId: p.mlbId, name: p.name, num: p.num, pos: role, throws: p.throws, bats: p.throws, skin: p.skin, team,
-    velo: p.velo, ctl: p.ctl, stam: p.stam, spd: 45, arm: 72, fld: 62, con: 22, pow: 15, eye: 25,
+    velo: p.velo, ctl: p.ctl, stuff: p.stuff, stam: p.stam, spd: 45, arm: 72, fld: 62, con: 22, pow: 15, eye: 25,
     pitches: p.pitches.map((t, k) => ({ type: t, velo: (p.pv && p.pv[k]) || p.velo + PITCH_TYPES[t].d, brk: stuffBreak(p.stuff) })),
   });
   team.hitters = r.hitters.map((h) => hitter(h, pid(h.pos)));

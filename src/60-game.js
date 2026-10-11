@@ -167,7 +167,8 @@ function startGame(cfg) {
   // look players up by id (lock, online, HUD); a custom team's players are only registered for the game they play in
   for (const t of G.teams) for (const p of teamPlayers(t)) PBYID[p.id] = p;
   G.lock = null;
-  if (cfg.mode === 'exhibition' || cfg.mode === 'lock') { G.ctrl = ['cpu', 'cpu']; G.ctrl[cfg.side] = 'local'; }
+  G.season = cfg.season || null;   // which season game this is (63-season.js)
+  if (cfg.mode === 'exhibition' || cfg.mode === 'lock' || cfg.mode === 'season') { G.ctrl = ['cpu', 'cpu']; G.ctrl[cfg.side] = 'local'; }
   else if (cfg.mode === 'derby') G.ctrl = ['local', 'cpu'];
   else if (cfg.mode === 'online') { G.ctrl = ['remote', 'remote']; G.ctrl[cfg.guest ? 1 - cfg.side : cfg.side] = 'local'; }
   else if (G.drill) G.ctrl = youBat ? ['local', 'cpu'] : ['cpu', 'local'];
@@ -187,7 +188,7 @@ function startGame(cfg) {
   // each side's game roster: batting order, positions, bench and bullpen (61-manager.js)
   G.lu = []; G.pos = []; G.bench = []; G.bullpen = []; G.gone = []; G.played = []; G.pitched = [];
   G.pitcher = [];
-  for (let ti = 0; ti < 2; ti++) initGameRoster(ti, cfg.starters && cfg.starters[ti]);
+  for (let ti = 0; ti < 2; ti++) { const st = cfg.starters && cfg.starters[ti]; initGameRoster(ti, typeof st === 'string' ? PBYID[st] : st); }
   G.gameId = 'g' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
   G.dec = null; G.decIds = null; G.enterLead = {};
   const resumed = !!cfg.resume && restoreSave(cfg.resume);
@@ -1375,7 +1376,8 @@ function endGame(walkoff) {
   $('potg').innerHTML = G.potg ? potgHTML(G.potg) : '';
   Caster.line(walkoff ? `And the ${h.name} walk it off! What a finish!` : `That's the ballgame. ${$('finalSub').textContent}`);
   setPhase('final');
-  recordGame();
+  const rec = recordGame();
+  if (G.mode === 'season' && rec) seasonGameDone(rec);
   if (canSave()) clearSave();
   setTimeout(() => { if (G.phase === 'final') showScreen('final'); }, walkoff ? 3200 : 1500);
 }
