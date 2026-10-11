@@ -228,7 +228,7 @@ function h2hGet(uid) {
 }
 function h2hResult() {
   const opp = NET.opp, me = mySide();
-  if (G.coop || !opp || me < 0 || G.h2hDone === G.gameId || typeof Cloud === 'undefined' || !Cloud.profile) return;
+  if (!opp || me < 0 || G.h2hDone === G.gameId || typeof Cloud === 'undefined' || !Cloud.profile) return;
   G.h2hDone = G.gameId;
   const won = G.score[me] > G.score[1 - me], cur = h2hGet(opp.uid) || { w: 0, l: 0 }, rec = { w: cur.w + (won ? 1 : 0), l: cur.l + (won ? 0 : 1) };
   const all = h2hLocal(); all[opp.uid] = { name: opp.name, ...rec, at: Date.now() };

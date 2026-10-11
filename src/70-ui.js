@@ -460,9 +460,9 @@ function absReveal(overturned, truth) {
 }
 function requestChallenge() {
   if (isGuest()) { if (G.chkSide === localSide()) netSend({ t: 'act', a: 'challenge' }); return; }
-  if (G.phase === 'reviewWait' && G.review && canAct(G.review.who, 'local')) { startReview(); return; }
+  if (G.phase === 'reviewWait' && G.review && G.review.who === 'local') { startReview(); return; }
   const c = G.challengeable;
-  if (c && canAct(c.who, 'local')) startChallenge(c.side);
+  if (c && c.who === 'local') startChallenge(c.side);
 }
 
 // while you hold the ball: 1-4 throw to a base, and the smart throw is ringed in green
@@ -1051,7 +1051,7 @@ function primaryAction(kind) {
 function skip(force) {
   if (isGuest()) { netSend({ t: 'act', a: 'skip' }); return; }
   // waiting on a challenge: only the side that can challenge can wave it off
-  if (G.phase === 'reviewWait') { if (G.review && canAct(G.review.who, force ? 'remote' : 'local')) G.pt = G.dur; return; }
+  if (G.phase === 'reviewWait') { if (G.review && G.review.who === (force ? 'remote' : 'local')) G.pt = G.dur; return; }
   if (['postPitch', 'postPlay', 'postFoul', 'halfIntro', 'break', 'derbyResult'].includes(G.phase) && (force || G.pt > 0.3)) G.pt = G.dur;
 }
 function toggleZone() { settings.zone = !settings.zone; saveSettings(); zoneGroup.visible = settings.zone && (userBats() || userPitches()) && ['prePitch', 'windup', 'pitch'].includes(G.phase); $('btnZone').textContent = `Strike zone: ${settings.zone ? 'On' : 'Off'}`; }
@@ -1075,7 +1075,7 @@ function togglePause(force, remote) {
 }
 
 // ------------------------------------------------------------------ menus ----
-const menu = { mode: 'exhibition', away: 'NYY', home: 'LAD', park: '', seasonLen: 30, coop: 0, side: 1, innings: 3, diff: 1, pdiff: 1, manual: 1, batter: 3, lockPick: 'h3', ump: 1, view: 2, lockField: 1, lockSkip: 1, batCam: settings.batCam || 0, netTeam: 'LAD', drill: 0, tutLesson: -1 };
+const menu = { mode: 'exhibition', away: 'NYY', home: 'LAD', park: '', seasonLen: 30, side: 1, innings: 3, diff: 1, pdiff: 1, manual: 1, batter: 3, lockPick: 'h3', ump: 1, view: 2, lockField: 1, lockSkip: 1, batCam: settings.batCam || 0, netTeam: 'LAD', drill: 0, tutLesson: -1 };
 try { Object.assign(menu, JSON.parse(localStorage.getItem('fullcount.menu') || '{}')); } catch (e) { /* ignore */ }
 menu.batCam = settings.batCam || 0;   // the pause screen can change it too; settings wins
 // teams used to be saved as an index into the built-in list
@@ -1115,12 +1115,6 @@ function lockOptions(team) {
 }
 // online: the two picks shown in the matchup, as [away, home] teams plus which one is mine to change
 function onlinePicks() {
-  // co-op: the host picks both teams; you two share one side
-  if (NET.role === 'guest' && NET.lobby && NET.lobby.coop) {
-    const L = NET.lobby, t = (L.coopTeams || []).map((x) => (specOK(x) ? teamFromSpec(specOK(x)) : null));
-    return { teams: [t[0] || null, t[1] || null], mySide: L.side, coop: true };
-  }
-  if (NET.role !== 'guest' && menu.coop) return { teams: [menuTeam('away'), menuTeam('home')], mySide: menu.side, coop: true };
   if (NET.role === 'guest') {
     const L = NET.lobby, mySide = L ? 1 - L.side : 1, mine = menuTeam('netTeam'), theirs = L && L.hostSpec ? teamFromSpec(L.hostSpec) : null;
     return { teams: mySide ? [theirs, mine] : [mine, theirs], mySide };
@@ -1143,25 +1137,19 @@ function renderMenu() {
   $('matchup').classList.toggle('hidden', !showTeams);
   if (online && showTeams) {
     const P = onlinePicks();
-    if (P.coop) {
-      $('pickA').innerHTML = teamPickHTML(P.mySide === 0 ? 'AWAY · YOU TWO' : 'AWAY · CPU', P.teams[0], 'away', !guest);
-      $('pickH').innerHTML = teamPickHTML(P.mySide === 1 ? 'HOME · YOU TWO' : 'HOME · CPU', P.teams[1], 'home', !guest);
-    } else {
-      $('pickA').innerHTML = teamPickHTML(P.mySide === 0 ? 'AWAY · YOU' : 'AWAY · FRIEND', P.teams[0], 'away', P.mySide === 0);
-      $('pickH').innerHTML = teamPickHTML(P.mySide === 1 ? 'HOME · YOU' : 'HOME · FRIEND', P.teams[1], 'home', P.mySide === 1);
-    }
+    $('pickA').innerHTML = teamPickHTML(P.mySide === 0 ? 'AWAY · YOU' : 'AWAY · FRIEND', P.teams[0], 'away', P.mySide === 0);
+    $('pickH').innerHTML = teamPickHTML(P.mySide === 1 ? 'HOME · YOU' : 'HOME · FRIEND', P.teams[1], 'home', P.mySide === 1);
   } else if (showTeams) {
     $('pickA').innerHTML = teamPickHTML(derby ? 'BP PITCHER FROM' : prac ? 'OPPONENT' : 'AWAY', menuTeam('away'), 'away');
     $('pickH').innerHTML = teamPickHTML(derby || prac || season ? 'YOUR TEAM' : 'HOME', menuTeam('home'), 'home');
   }
   $('pickA').classList.toggle('hidden', derby || season); $('vsLabel').classList.toggle('hidden', derby || season);
   $('optSide').classList.toggle('hidden', derby || spec || prac || season || !showTeams);
-  $('optCoop').classList.toggle('hidden', !online || !showTeams);
   $('optSeasonLen').classList.toggle('hidden', !season || activeSeason);
   $('optDrill').classList.toggle('hidden', !prac || tut);
   $('optLesson').classList.toggle('hidden', !tut);
   $('tutNew').classList.toggle('hidden', (() => { try { return !!localStorage.getItem('fullcount.tutSeen'); } catch (e) { return true; } })());
-  $('optSide').querySelector('span').textContent = lock ? 'YOUR TEAM' : online && (guest ? L.coop : menu.coop) ? 'YOU TWO PLAY' : 'YOU PLAY AS';
+  $('optSide').querySelector('span').textContent = lock ? 'YOUR TEAM' : 'YOU PLAY AS';
   $('optInn').classList.toggle('hidden', derby || prac || !showTeams);
   $('optDiff').classList.toggle('hidden', spec || tut || !showTeams);
   $('optPDiff').classList.toggle('hidden', spec || tut || derby || !showTeams);
@@ -1173,7 +1161,7 @@ function renderMenu() {
   $('optLockSkip').classList.toggle('hidden', !lock);
   $('optUmp').classList.toggle('hidden', derby || tut || !showTeams);
   $('optPark').classList.toggle('hidden', tut || season || !showTeams);
-  for (const el of ['optSide', 'optInn', 'optDiff', 'optPDiff', 'optUmp', 'optPark', 'optCoop']) $(el).style.pointerEvents = guest ? 'none' : '';
+  for (const el of ['optSide', 'optInn', 'optDiff', 'optPDiff', 'optUmp', 'optPark']) $(el).style.pointerEvents = guest ? 'none' : '';
   if (showTeams) {
     // the ballpark: the home team's, or any of the others
     const hk = online ? onlinePicks().teams[1] : menuTeam('home'), hp = (hk && PARKS[hk.park || hk.key]) || PARKS.FC;
@@ -1214,7 +1202,7 @@ function renderMenu() {
 // why the host can't start the online game yet ('' when it's fine)
 function onlineBlock() {
   const P = onlinePicks();
-  if (!P.coop && !P.teams[1 - P.mySide]) return 'Waiting for your friend to pick a team…';
+  if (!P.teams[1 - P.mySide]) return 'Waiting for your friend to pick a team…';
   if (P.teams.some((t) => t.custom && t.cost > ROSTER_BUDGET)) return 'A custom roster is over the point cap. Fix it in the Roster Builder first.';
   return '';
 }
@@ -1231,7 +1219,6 @@ function buildMenu() {
     const k = b.dataset.k, d = +b.dataset.d;
     if (menu.mode === 'online') {
       const P = onlinePicks();
-      if (P.coop) { if (NET.role !== 'guest') cycleTeam(k, d, menu[k === 'away' ? 'home' : 'away']); renderMenu(); return; }
       if ((k === 'home' ? 1 : 0) !== P.mySide) return;
       if (NET.role === 'guest') { cycleTeam('netTeam', d); netSendPick(); }
       else cycleTeam(k, d);
@@ -1248,9 +1235,8 @@ function buildMenu() {
     if (!v) return;
     if (menu.mode === 'online') {
       const P = onlinePicks();
-      if (P.coop) { if (NET.role !== 'guest') menu[k] = v; }
-      else if ((k === 'home' ? 1 : 0) !== P.mySide) return;
-      else if (NET.role === 'guest') { menu.netTeam = v; netSendPick(); } else menu[k] = v;
+      if ((k === 'home' ? 1 : 0) !== P.mySide) return;
+      if (NET.role === 'guest') { menu.netTeam = v; netSendPick(); } else menu[k] = v;
     } else {
       const other = menu[k === 'away' ? 'home' : 'away'];
       if (v === other && menu.mode !== 'derby') return;
