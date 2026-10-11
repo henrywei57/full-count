@@ -51,7 +51,7 @@ const userRuns = () => runCtrl() === 'local';
 const localSide = () => (G.ctrl ? G.ctrl.indexOf('local') : -1);
 function setPhase(name, dur = 0) { G.phase = name; G.pt = 0; G.dur = dur; }
 function bstat(pl) { if (!G.stats.has(pl.id)) G.stats.set(pl.id, { pa: 0, ab: 0, h: 0, d: 0, t: 0, hr: 0, rbi: 0, bb: 0, k: 0, r: 0, sb: 0, cs: 0 }); return G.stats.get(pl.id); }
-function pstat(pl) { if (!G.pstats.has(pl.id)) G.pstats.set(pl.id, { outs: 0, h: 0, r: 0, bb: 0, k: 0, pc: 0, hr: 0, wp: 0 }); return G.pstats.get(pl.id); }
+function pstat(pl) { if (!G.pstats.has(pl.id)) G.pstats.set(pl.id, { outs: 0, h: 0, r: 0, er: 0, bb: 0, k: 0, pc: 0, hr: 0, wp: 0 }); return G.pstats.get(pl.id); }
 function pitchLimit(p) { return p.pos === 'SP' ? p.stam + 12 : p.stam * 0.75; }
 function fatigue(p) { if (G.drill) return 0; const L = pitchLimit(p), pc = pstat(p).pc; return clamp((pc - 0.7 * L) / (0.5 * L), 0, 1); }
 
@@ -229,6 +229,7 @@ function startGame(cfg) {
 }
 function startHalf() {
   G.outs = 0; G.balls = 0; G.strikes = 0; G.bases = [null, null, null, null]; G.selRunner = null;
+  G.unearned = new Set();   // runners who got on by an error: their runs aren't earned
   while (G.line[G.half].length < G.inning) G.line[G.half].push(0);
   if (G.inning > G.innings) {
     G.bases[2] = G.lu[G.half][(G.order[G.half] + 8) % 9];
@@ -729,7 +730,7 @@ function finishStealPlay() {
   const pl = G.play, res = pl.summary(), ps = pstat(curPitcher());
   const outsMade = res.outs - G.outs;
   G.outs = res.outs; ps.outs += outsMade;
-  scoreRuns(res.runs, res.scorers);
+  scoreRuns(res.runs, res.scorers, res.error || pl.wildKind === 'PB');
   if (res.error) G.errs[1 - G.half]++;
   const sb = [], cs = [];
   for (const r of pl.R) {
@@ -786,7 +787,7 @@ function finishPickPlay() {
   const pl = G.play, res = pl.summary(), ps = pstat(curPitcher());
   const outsMade = res.outs - G.outs;
   G.outs = res.outs; ps.outs += outsMade;
-  scoreRuns(res.runs, res.scorers);
+  scoreRuns(res.runs, res.scorers, res.error || pl.wildKind === 'PB');
   if (res.error) G.errs[1 - G.half]++;
   G.bases = res.outs >= 3 ? [null, null, null, null] : res.bases;
   const out = pl.outEvents[0];
@@ -884,7 +885,7 @@ function finishWildPlay() {
   const pl = G.play, res = pl.summary(), ps = pstat(curPitcher());
   const outsMade = res.outs - G.outs;
   G.outs = res.outs; ps.outs += outsMade;
-  scoreRuns(res.runs, res.scorers);
+  scoreRuns(res.runs, res.scorers, res.error || pl.wildKind === 'PB');
   const bat = pl.R.find((r) => r.isBatter), wp = pl.wildKind === 'WP';
   const moved = pl.R.filter((r) => !r.isBatter && (r.state === 'scored' || (r.state === 'base' && r.base > r.start)));
   for (const r of pl.R) if (r.steal && r.steal.went) { if (r.state === 'out') bstat(r.pl).cs++; else if (moved.includes(r)) bstat(r.pl).sb++; }
@@ -1198,8 +1199,13 @@ function settleAB(k) {
   }
   hudPrac();
 }
-function scoreRuns(n, scorers) {
+// errPlay: the runs came on an error or a passed ball, so none of them are earned
+function scoreRuns(n, scorers, errPlay = false) {
   if (!n) return;
+  if (!G.unearned) G.unearned = new Set();
+  const ps = pstat(curPitcher());
+  ps.er = (ps.er || 0) + (errPlay ? 0 : scorers.filter((s) => !G.unearned.has(s.id)).length);
+  for (const s of scorers) G.unearned.delete(s.id);
   const bi = G.half, before = G.score.slice();
   G.score[bi] += n; G.line[bi][G.inning - 1] += n; G.prac.runs += n;
   noteLead(bi, before);
@@ -1264,7 +1270,7 @@ function finishPlay() {
   const p = curPitcher(), ps = pstat(p), bs = bstat(G.batter);
   const outsMade = res.outs - G.outs;
   G.outs = res.outs; ps.outs += outsMade;
-  scoreRuns(res.runs, res.scorers);
+  scoreRuns(res.runs, res.scorers, res.error || pl.wildKind === 'PB');
   let hit = null;
   if (res.hr) hit = 4;
   else if (res.gr) hit = 2;
@@ -1275,6 +1281,7 @@ function finishPlay() {
   bs.pa++; if (!sacFly) bs.ab++;
   if (!res.error && !(res.dp && !hit)) bs.rbi += res.runs;
   G.bases = res.outs >= 3 ? [null, null, null, null] : res.bases;
+  if (res.error && !res.batterOut && G.unearned) G.unearned.add(G.batter.id);   // on by an error
   G.abEnd = 'play';
   const pr = G.prac;
   pr.chances++; pr.outs += outsMade; if (res.error) pr.errors++;

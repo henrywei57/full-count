@@ -47,7 +47,8 @@ function simGame(teams, innings, starters, parkKey) {
   });
   const bat = new Map(), pit = new Map();
   const BL = (pl) => { let x = bat.get(pl.id); if (!x) bat.set(pl.id, (x = { pa: 0, ab: 0, r: 0, h: 0, d: 0, t: 0, hr: 0, rbi: 0, bb: 0, k: 0, sb: 0, cs: 0 })); return x; };
-  const PL = (pl) => { let x = pit.get(pl.id); if (!x) pit.set(pl.id, (x = { outs: 0, h: 0, r: 0, bb: 0, k: 0, hr: 0, pc: 0 })); return x; };
+  const PL = (pl) => { let x = pit.get(pl.id); if (!x) pit.set(pl.id, (x = { outs: 0, h: 0, r: 0, er: 0, bb: 0, k: 0, hr: 0, pc: 0 })); return x; };
+  let ue = new Set();   // runners on by an error
   const lim = (p) => (p.pos === 'SP' ? p.stam + 12 : p.stam * 0.75);
   const fat = (p) => { const l = lim(p); return clamp((PL(p).pc - 0.7 * l) / (0.5 * l), 0, 1); };
   const score = [0, 0], line = [[], []], hits = [0, 0], errs = [0, 0];
@@ -65,10 +66,12 @@ function simGame(teams, innings, starters, parkKey) {
     else np = pen[Math.floor(rand(pen.length / 2, pen.length))] || pen[pen.length - 1];
     d.pen = d.pen.filter((x) => x !== np); d.p = np; d.pitched.push(np); d.enter[np.id] = lead;
   };
-  const tally = (half, scorers, batter, rbi) => {
+  const tally = (half, scorers, batter, rbi, unearned) => {
     if (!scorers.length) return;
     const before = score.slice(), d = S[1 - half];
     score[half] += scorers.length; line[half][inning - 1] += scorers.length; PL(d.p).r += scorers.length;
+    PL(d.p).er += unearned ? 0 : scorers.filter((r) => !ue.has(r)).length;
+    for (const r of scorers) ue.delete(r);
     for (const r of scorers) BL(r).r++;
     if (rbi) BL(batter).rbi += scorers.length;
     if (before[half] - before[1 - half] <= 0 && score[half] - score[1 - half] > 0) dec = { team: half, w: S[half].p, l: d.p };
@@ -79,6 +82,7 @@ function simGame(teams, innings, starters, parkKey) {
       const o = S[half], dti = 1 - half, b = [null, null, null, null];
       line[half][inning - 1] = 0;
       if (inning > innings) b[2] = o.lu[(o.i + 8) % 9];   // extra innings: a runner on second
+      ue = new Set();
       let outs = 0;
       change(dti, true);
       while (outs < 3) {
@@ -114,7 +118,7 @@ function simGame(teams, innings, starters, parkKey) {
           if (r2) { if (Math.random() < 0.6 + (r2.spd - 72) * 0.008) sc.push(r2); else b[3] = r2; }
           if (r) { if (!b[3] && Math.random() < 0.28 + (r.spd - 72) * 0.006) b[3] = r; else b[2] = r; }
           b[1] = bt;
-        } else if (res === 'E') { bl.ab++; errs[dti]++; rbi = false; if (b[3]) sc.push(b[3]); b[3] = b[2]; b[2] = b[1]; b[1] = bt; }
+        } else if (res === 'E') { bl.ab++; errs[dti]++; rbi = false; if (b[3]) sc.push(b[3]); b[3] = b[2]; b[2] = b[1]; b[1] = bt; ue.add(bt); }
         else {
           bl.ab++;
           const kind = Math.random();
@@ -138,7 +142,7 @@ function simGame(teams, innings, starters, parkKey) {
             if (outs < 3 && b[2] && !b[3] && Math.random() < 0.3) { b[3] = b[2]; b[2] = null; }
           } else { outs++; ps.outs++; }   // a liner or a popup: nobody moves
         }
-        tally(half, sc, bt, rbi);
+        tally(half, sc, bt, rbi, res === 'E');
         if (half === 1 && inning >= innings && score[1] > score[0]) { over = true; break; }   // walk-off
       }
     }
@@ -155,7 +159,7 @@ function simGame(teams, innings, starters, parkKey) {
   return {
     score, line, hits, errs, inn: inning,
     bat: S.map((s) => s.lu.map((pl) => { const x = BL(pl); return [statKey(pl), pl.name, pl.pos, x.pa, x.ab, x.r, x.h, x.d, x.t, x.hr, x.rbi, x.bb, x.k, x.sb, x.cs, 0]; })),
-    pit: S.map((s) => s.pitched.map((p) => { const x = PL(p); return [statKey(p), p.name, x.outs, x.h, x.r, x.bb, x.k, x.hr, x.pc, decs[p.id] || '']; })),
+    pit: S.map((s) => s.pitched.map((p) => { const x = PL(p); return [statKey(p), p.name, x.outs, x.h, x.r, x.bb, x.k, x.hr, x.pc, decs[p.id] || '', x.er]; })),
   };
 }
 
@@ -236,8 +240,9 @@ function seasonAddLines(rec, tix) {
     for (let k = 3; k <= 14; k++) s[k] += r[k] | 0;
   }));
   rec.pit.forEach((rows, side) => rows.forEach((r, i) => {
-    // [name, team, g, gs, outs, h, r, bb, k, hr, w, l, sv]
-    const s = S.sp[r[0]] || (S.sp[r[0]] = [r[1], tix[side], 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+    // [name, team, g, gs, outs, h, r, bb, k, hr, w, l, sv, er]
+    const s = S.sp[r[0]] || (S.sp[r[0]] = [r[1], tix[side], 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+    s[13] = (s[13] || 0) + erOf(r);
     s[0] = r[1]; s[1] = tix[side]; s[2]++;
     if (i === 0) s[3]++;
     for (let k = 2; k <= 7; k++) s[k + 2] += r[k] | 0;
@@ -423,8 +428,8 @@ function seasonPlayers() {
     return x;
   });
   const P = Object.values(S.sp).map((s) => {
-    const x = { name: s[0], team: s[1], g: s[2], gs: s[3], outs: s[4], h: s[5], r: s[6], bb: s[7], k: s[8], hr: s[9], w: s[10], l: s[11], sv: s[12] };
-    x.ra9 = x.outs ? (x.r * 27) / x.outs : 99; x.whip = x.outs ? ((x.h + x.bb) * 3) / x.outs : 99;
+    const x = { name: s[0], team: s[1], g: s[2], gs: s[3], outs: s[4], h: s[5], r: s[6], bb: s[7], k: s[8], hr: s[9], w: s[10], l: s[11], sv: s[12], er: s[13] ?? s[6] };
+    x.era = x.outs ? (x.er * 27) / x.outs : 99; x.whip = x.outs ? ((x.h + x.bb) * 3) / x.outs : 99;
     return x;
   });
   return { H, P };
@@ -499,8 +504,8 @@ function renderSeasonHub() {
     };
     const r3 = (v) => v.toFixed(3).replace(/^0/, ''), f2 = (v) => v.toFixed(2);
     body.innerHTML = `<div class="sea-boards">${board('AVG', H, 'avg', r3, false, qH)}${board('HOME RUNS', H, 'hr')}${board('RBI', H, 'rbi')}${board('OPS', H, 'ops', r3, false, qH)}${board('STOLEN BASES', H, 'sb')}
-      ${board('WINS', P, 'w')}${board('RA9', P, 'ra9', f2, true, qP)}${board('STRIKEOUTS', P, 'k')}${board('SAVES', P, 'sv')}${board('WHIP', P, 'whip', f2, true, qP)}</div>
-      <p class="fr-note">Regular season, every game in the league. AVG and OPS need about 2.7 plate appearances per team game; RA9 and WHIP about 0.8 innings.</p>`;
+      ${board('WINS', P, 'w')}${board('ERA', P, 'era', f2, true, qP)}${board('STRIKEOUTS', P, 'k')}${board('SAVES', P, 'sv')}${board('WHIP', P, 'whip', f2, true, qP)}</div>
+      <p class="fr-note">Regular season, every game in the league. AVG and OPS need about 2.7 plate appearances per team game; ERA and WHIP about 0.8 innings.</p>`;
   } else if (SEA.tab === 'sched') {
     const rows = [];
     S.sched.forEach((day, d) => {

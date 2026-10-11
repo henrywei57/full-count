@@ -94,7 +94,11 @@ Pick **Season** on the main menu, choose your club and a length (12, 30, 60 or t
 
 - **Box score**: from the pause menu during a game, or the final screen. Every batter (subs indented) with AB, R, H, RBI, BB and K, then doubles, triples, homers and steals, and every pitcher with IP, H, R, BB, K, HR and pitch count, plus the win, loss and save.
 - **Saved games**: Play Ball and Player Lock games save themselves before every batter. Quit whenever you like (or close the tab) and press **Resume** on the main menu to pick up with the same batter, score, lineups, bullpen and pitch counts. Starting another game replaces the save.
-- **Stats**: every finished game (Play Ball, Player Lock, Online, Season) is kept with its box score. **Stats** on the main menu adds up every player's numbers across your games (hitting: G, PA, AB, H, 2B, 3B, HR, RBI, R, BB, K, SB, AVG, OBP, SLG, OPS; pitching: G, W, L, SV, IP, H, R, BB, K, HR, RA9, WHIP), sortable by any column, and lists your games, each with its box score. Signed in with Google, your games are saved to your account and come with you to any device. (If you set up Firebase before this version, publish the updated `firestore.rules` so the account can store games.)
+- **Stats**: every finished game (Play Ball, Player Lock, Online, Co-op, Season) is kept with its box score. **Stats** on the main menu is about you, game by game:
+  - **You**: your record, your hitting (AVG, HR, RBI, OBP, SLG, OPS) and your pitching (ERA, strikeouts, WHIP, W-L-SV) across your games, filtered by mode, and your game history with how you hit and pitched in each one. In Player Lock it's just your player.
+  - **Head to head**: every opponent you've played online, with your record against them, your AVG, HR and ERA against them and theirs against you. Click one for every game you've played each other.
+  - **All games**, plus **Hitters** and **Pitchers**: every MLB player's totals across your games, sortable.
+  ERA counts earned runs only: runs that score on an error or a passed ball, or by a runner who got on by an error, are unearned (box scores show both R and ER). Signed in with Google, your games are saved to your account and come with you to any device. (If you set up Firebase before this version, publish the updated `firestore.rules` so the account can store games.)
 
 ## Ballparks
 

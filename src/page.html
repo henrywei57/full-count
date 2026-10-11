@@ -309,6 +309,14 @@ button:focus-visible,select:focus-visible{outline:2px solid var(--gold);outline-
 .bx-notes b{color:var(--chalk);font-weight:700}
 .st-tabs,.st-filter{margin:8px 0 10px}
 .st-table th[data-sort]{cursor:pointer}
+.st-cards{display:grid;grid-template-columns:repeat(8,1fr);gap:8px;margin:6px 0 12px}
+@media (max-width:860px){.st-cards{grid-template-columns:repeat(4,1fr)}}
+.st-cards div{display:flex;flex-direction:column;align-items:center;padding:8px 4px;border:1px solid var(--line);border-radius:4px;background:rgba(255,255,255,.03)}
+.st-cards b{font-family:var(--f-display);font-size:24px;font-weight:800}
+.st-cards small{font-size:10px;letter-spacing:.12em;color:var(--dust)}
+.st-click{cursor:pointer}
+.st-click:hover{background:rgba(255,255,255,.05)}
+.st-opp{color:var(--gold);font-size:11px}
 .st-table th.on{color:var(--gold)}
 .st-table .good{color:var(--ball)}.st-table .bad{color:var(--strike)}
 .resume{display:flex;align-items:center;gap:8px;margin-bottom:12px;padding:10px 12px;background:var(--panel);border:1px solid var(--gold);border-radius:4px}
@@ -859,7 +867,7 @@ span.chip{cursor:default}
 <div id="statsScreen" class="screen modal hidden">
   <div class="card tm-card">
     <div class="fr-head"><h2>STATS</h2><span id="stSub" class="tm-sub"></span><button class="ghost" id="stClose">Back</button></div>
-    <div class="seg st-tabs" id="stTabs"><button data-t="bat" class="on">Hitting</button><button data-t="pit">Pitching</button><button data-t="games">Games</button></div>
+    <div class="seg st-tabs" id="stTabs"><button data-t="you" class="on">You</button><button data-t="h2h">Head to head</button><button data-t="games">All games</button><button data-t="bat">Hitters</button><button data-t="pit">Pitchers</button></div>
     <div id="stBody"></div>
   </div>
 </div>
