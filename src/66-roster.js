@@ -28,7 +28,11 @@ function ratingCost(v) { v = clamp(Math.round(v), 40, RATING_MAX); return v - 40
 const veloRating = (mph) => 40 + ((mph - VELO_MIN) * 59) / (VELO_MAX - VELO_MIN);
 function hitterCost(h) { return HIT_KEYS.reduce((s, [k]) => s + ratingCost(h[k]), 0); }
 function pitcherCost(p) { return ratingCost(veloRating(p.velo)) + ratingCost(p.ctl) + ratingCost(p.stuff) + ratingCost(p.stam); }
-function rosterCost(d) { const r = resolveRoster(d); return r.hitters.reduce((s, h) => s + hitterCost(h), 0) + r.pitchers.reduce((s, p) => s + pitcherCost(p), 0); }
+function rosterCost(d) {
+  const r = resolveRoster(d);
+  return [...r.hitters, ...r.bench].reduce((s, h) => s + hitterCost(h), 0) + [...r.rotation, ...r.bullpen].reduce((s, p) => s + pitcherCost(p), 0);
+}
+const ROSTER_SIZES = { bench: 4, rotation: 5, bullpen: 7 };
 // overall: the whole player at a fielding spot; a DH is judged on his bat alone
 function hitterOvr(h, pos) { return pos === 'DH' ? Math.round((h.con * 1.2 + h.pow * 1.2 + h.eye * 0.8 + h.spd * 0.4) / 3.6) : Math.round((h.con * 1.2 + h.pow * 1.2 + h.eye * 0.8 + h.spd * 0.6 + h.arm * 0.5 + h.fld * 0.7) / 5); }
 function pitcherOvr(p) { return Math.round((veloRating(p.velo) * 1.1 + p.ctl * 1.2 + p.stuff * 1.0 + p.stam * 0.3) / 3.6); }
@@ -45,36 +49,43 @@ function cleanRoster(r) {
   const hand = (v, ok, d) => (ok.includes(v) ? v : d);
   const mlb = (v) => (Number.isInteger(+v) && +v > 0 ? +v : undefined);
   const d = {
-    v: 2, id: /^X[a-z0-9]{4,16}$/i.test(r.id) ? r.id : 'X' + randId(), updated: Number.isFinite(+r.updated) ? +r.updated : Date.now(),
+    v: 3, id: /^X[a-z0-9]{4,16}$/i.test(r.id) ? r.id : 'X' + randId(), updated: Number.isFinite(+r.updated) ? +r.updated : Date.now(),
     city: str(r.city, 18, 'Hometown'), name: str(r.name, 18, 'Sluggers'),
     abbr: String(r.abbr || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 4) || 'CUS',
-    c1: hex(r.c1, '#2b4c7e'), c2: hex(r.c2, '#f2c14e'), hitters: [], order: [], pitchers: [],
+    c1: hex(r.c1, '#2b4c7e'), c2: hex(r.c2, '#f2c14e'), hitters: [], order: [],
   };
   if (d.abbr.length < 2) d.abbr = (d.abbr + 'X').slice(0, 2);
-  const src = Array.isArray(r.hitters) ? r.hitters : [];
-  POS_LIST.forEach((pos, i) => {
-    const h = src.find((x) => x && x.pos === pos) || {};
+  const cleanH = (h, pos, i) => {
+    h = h || {};
     const o = { pos, mlbId: mlb(h.mlbId), name: str(h.name, 30, `${pos} Player`), num: no(h.num, i + 1), bats: hand(h.bats, ['R', 'L', 'S'], 'R'), throws: hand(h.throws, ['R', 'L'], 'R'), skin: skin(h.skin) };
     for (const [k] of HIT_KEYS) o[k] = rat(h[k]);
-    d.hitters.push(o);
-  });
-  const seen = new Set();
-  for (const p of Array.isArray(r.order) ? r.order : []) if (POS_LIST.includes(p) && !seen.has(p)) { seen.add(p); d.order.push(p); }
-  for (const p of POS_LIST) if (!seen.has(p)) d.order.push(p);
-  const ps = Array.isArray(r.pitchers) ? r.pitchers : [];
-  for (let i = 0; i < 4; i++) {
-    const p = ps[i] || {};
+    return o;
+  };
+  const cleanP = (p, i, rp) => {
+    p = p || {};
     const pitches = [], pv = [];
     (Array.isArray(p.pitches) ? p.pitches : []).forEach((t, k) => {
       if (!PITCH_TYPES[t] || pitches.includes(t) || pitches.length >= 5) return;
       pitches.push(t); pv.push(clamp(Math.round(+((p.pv || [])[k]) || 0), 0, 105));
     });
     for (const t of ['FF', 'SL']) if (pitches.length < 2 && !pitches.includes(t)) { pitches.push(t); pv.push(0); }
-    d.pitchers.push({
-      mlbId: mlb(p.mlbId), name: str(p.name, 30, i ? `Reliever ${i}` : 'Starter'), num: no(p.num, 40 + i), throws: hand(p.throws, ['R', 'L'], 'R'), skin: skin(p.skin),
-      velo: clamp(Math.round(Number.isFinite(+p.velo) ? +p.velo : 93), VELO_MIN, 103), ctl: rat(p.ctl), stuff: rat(p.stuff), stam: rat(p.stam, i ? 45 : 85), pitches, pv,
-    });
-  }
+    return {
+      mlbId: mlb(p.mlbId), name: str(p.name, 30, rp ? `Reliever ${i + 1}` : `Starter ${i + 1}`), num: no(p.num, 40 + i), throws: hand(p.throws, ['R', 'L'], 'R'), skin: skin(p.skin),
+      velo: clamp(Math.round(Number.isFinite(+p.velo) ? +p.velo : 93), VELO_MIN, 103), ctl: rat(p.ctl), stuff: rat(p.stuff), stam: rat(p.stam, rp ? 45 : 85), pitches, pv,
+    };
+  };
+  const src = Array.isArray(r.hitters) ? r.hitters : [];
+  POS_LIST.forEach((pos, i) => d.hitters.push(cleanH(src.find((x) => x && x.pos === pos), pos, i)));
+  const seen = new Set();
+  for (const p of Array.isArray(r.order) ? r.order : []) if (POS_LIST.includes(p) && !seen.has(p)) { seen.add(p); d.order.push(p); }
+  for (const p of POS_LIST) if (!seen.has(p)) d.order.push(p);
+  // the bench, rotation and bullpen (older rosters had one starter and three relievers in r.pitchers)
+  const old = Array.isArray(r.pitchers) ? r.pitchers : [];
+  const rot = Array.isArray(r.rotation) ? r.rotation : old.slice(0, 1), pen = Array.isArray(r.bullpen) ? r.bullpen : old.slice(1);
+  d.bench = (Array.isArray(r.bench) ? r.bench : []).slice(0, ROSTER_SIZES.bench).map((h, i) => cleanH(h, POS_LIST.includes(h && h.pos) ? h.pos : 'DH', 10 + i));
+  d.rotation = (rot.length ? rot : [{}]).slice(0, ROSTER_SIZES.rotation).map((x, i) => cleanP(x, i, false));
+  d.bullpen = (pen.length ? pen : [{}]).slice(0, ROSTER_SIZES.bullpen).map((x, i) => cleanP(x, i, true));
+  delete d.pitchers;
   return d;
 }
 // real players' current numbers, from the pool (a snapshot only stands in if he's gone from it)
@@ -85,19 +96,19 @@ function pitcherSnap(p) {
   return { mlbId: p.id, name: p.name, num: p.num, throws: p.throws, skin: SKINS[p.skinIdx % SKINS.length], velo: p.velo, ctl: p.ctl, stuff: p.stuff, stam: p.stam, pitches: p.pitches.map((x) => x.type), pv: p.pitches.map((x) => x.velo) };
 }
 function resolveRoster(d) {
-  return {
-    ...d,
-    hitters: d.hitters.map((h) => { const P = h.mlbId && POOL_H.get(h.mlbId); return P ? hitterSnap(P, h.pos) : h; }),
-    pitchers: d.pitchers.map((p) => { const P = p.mlbId && POOL_P.get(p.mlbId); return P ? pitcherSnap(P) : p; }),
-  };
+  const rh = (h) => { const P = h.mlbId && POOL_H.get(h.mlbId); return P ? hitterSnap(P, h.pos) : h; };
+  const rp = (p) => { const P = p.mlbId && POOL_P.get(p.mlbId); return P ? pitcherSnap(P) : p; };
+  return { ...d, hitters: d.hitters.map(rh), bench: (d.bench || []).map(rh), rotation: (d.rotation || []).map(rp), bullpen: (d.bullpen || []).map(rp) };
 }
 // a built-in club as a roster: where a new roster starts, and how mirror matchups work online
 function teamToDef(t, id) {
+  const hs = (h, pos) => (POOL_H.get(h.mlbId) ? hitterSnap(POOL_H.get(h.mlbId), pos) : { ...h, pos, team: undefined });
+  const ps = (p) => (POOL_P.get(p.mlbId) ? pitcherSnap(POOL_P.get(p.mlbId)) : { ...p, team: undefined, pitches: p.pitches.map((x) => x.type), pv: p.pitches.map((x) => x.velo) });
   return cleanRoster({
     id: id || 'X' + randId(), updated: Date.now(), city: t.city, name: t.name, abbr: t.id, c1: t.c1, c2: t.c2,
-    hitters: t.hitters.map((h) => (POOL_H.get(h.mlbId) ? hitterSnap(POOL_H.get(h.mlbId), h.pos) : { ...h, team: undefined })),
-    order: t.lineup.map((h) => h.pos),
-    pitchers: t.pitchers.map((p) => (POOL_P.get(p.mlbId) ? pitcherSnap(POOL_P.get(p.mlbId)) : { ...p, team: undefined, pitches: p.pitches.map((x) => x.type), pv: p.pitches.map((x) => x.velo) })),
+    hitters: t.hitters.map((h) => hs(h, h.pos)), order: t.lineup.map((h) => h.pos),
+    bench: (t.bench || []).map((h) => hs(h, h.pos)),
+    rotation: (t.rotation || t.pitchers.slice(0, 1)).map(ps), bullpen: (t.bullpen || t.pitchers.slice(1)).map(ps),
   });
 }
 const _teamCache = new Map();
@@ -105,22 +116,20 @@ function buildCustomTeam(def) {
   const d = cleanRoster(def), sig = JSON.stringify(d);
   if (_teamCache.has(sig)) return _teamCache.get(sig);
   const r = resolveRoster(d);
-  const team = { id: d.abbr, key: 'X:' + d.id, ver: String(d.updated), city: d.city, name: d.name, c1: d.c1, c2: d.c2, custom: true, roster: d, hitters: [], pitchers: [] };
+  const team = { id: d.abbr, key: 'X:' + d.id, ver: String(d.updated), city: d.city, name: d.name, c1: d.c1, c2: d.c2, custom: true, roster: d };
   const pid = (s) => d.id + '-' + s;
-  for (const h of r.hitters) {
-    const o = { id: pid(h.pos), mlbId: h.mlbId, name: h.name, num: h.num, pos: h.pos, bats: h.bats, throws: h.throws, skin: h.skin, team };
-    for (const [k] of HIT_KEYS) o[k] = h[k];
-    team.hitters.push(o);
-  }
-  team.lineup = d.order.map((pos) => team.hitters.find((h) => h.pos === pos));
-  r.pitchers.forEach((p, i) => {
-    const brk = stuffBreak(p.stuff);
-    team.pitchers.push({
-      id: pid('P' + i), mlbId: p.mlbId, name: p.name, num: p.num, pos: i ? 'RP' : 'SP', throws: p.throws, bats: p.throws, skin: p.skin, team,
-      velo: p.velo, ctl: p.ctl, stam: p.stam, spd: 45, arm: 72, fld: 62, con: 22, pow: 15, eye: 25,
-      pitches: p.pitches.map((t, k) => ({ type: t, velo: (p.pv && p.pv[k]) || p.velo + PITCH_TYPES[t].d, brk })),
-    });
+  const hitter = (h, id) => { const o = { id, mlbId: h.mlbId, name: h.name, num: h.num, pos: h.pos, bats: h.bats, throws: h.throws, skin: h.skin, team }; for (const [k] of HIT_KEYS) o[k] = h[k]; return o; };
+  const pitcher = (p, id, role) => ({
+    id, mlbId: p.mlbId, name: p.name, num: p.num, pos: role, throws: p.throws, bats: p.throws, skin: p.skin, team,
+    velo: p.velo, ctl: p.ctl, stam: p.stam, spd: 45, arm: 72, fld: 62, con: 22, pow: 15, eye: 25,
+    pitches: p.pitches.map((t, k) => ({ type: t, velo: (p.pv && p.pv[k]) || p.velo + PITCH_TYPES[t].d, brk: stuffBreak(p.stuff) })),
   });
+  team.hitters = r.hitters.map((h) => hitter(h, pid(h.pos)));
+  team.lineup = d.order.map((pos) => team.hitters.find((h) => h.pos === pos));
+  team.bench = r.bench.map((h, i) => hitter(h, pid('B' + i)));
+  team.rotation = r.rotation.map((p, i) => pitcher(p, pid('S' + i), 'SP'));
+  team.bullpen = r.bullpen.map((p, i) => pitcher(p, pid('R' + i), 'RP'));
+  team.pitchers = [team.rotation[0], ...team.bullpen];
   team.ovr = teamOvr(team);
   team.cost = rosterCost(d);
   _teamCache.set(sig, team);
@@ -220,10 +229,25 @@ function rsRenderEdit() {
       + HIT_KEYS.map(([k]) => `<td class="rv ${h[k] >= 85 ? 'hi' : h[k] < 60 ? 'lo' : ''}">${h[k]}</td>`).join('')
       + `<td class="ovr">${hitterOvr(h, pos)}</td><td class="cost">${hitterCost(h)}</td><td><button class="ghost rs-swap" data-swap-h="${pos}">Change</button></td></tr>`;
   }).join('');
-  const pRows = r.pitchers.map((p, i) => `<tr data-p="${i}"><td class="pos">${i ? 'RP' + i : 'SP'}</td><td class="who"><b>${esc(p.name)}</b>${clubTag(p.mlbId, POOL_P)}</td><td>${p.throws}</td>`
-    + PIT_KEYS.map(([k]) => `<td class="rv">${p[k]}</td>`).join('')
-    + `<td class="chips">${p.pitches.map((t, k) => `<span class="chip on" style="--pc:${PITCH_TYPES[t].col}" title="${PITCH_TYPES[t].name}">${PITCH_TYPES[t].short} ${(p.pv && p.pv[k]) || p.velo + PITCH_TYPES[t].d}</span>`).join('')}</td>`
-    + `<td class="ovr">${pitcherOvr(p)}</td><td class="cost">${pitcherCost(p)}</td><td><button class="ghost rs-swap" data-swap-p="${i}">Change</button></td></tr>`).join('');
+  const pRow = (p, i, list) => {
+    const role = list === 'rotation' ? 'SP' + (i + 1) : i === 0 ? 'CL' : 'RP' + i, min = 1;
+    if (!p) return `<tr class="rs-empty-row"><td class="pos">${role}</td><td class="who" colspan="9"><span class="rs-open">Open spot</span></td><td><button class="cta rs-swap" data-swap-${list === 'rotation' ? 's' : 'r'}="${i}">SIGN</button></td></tr>`;
+    return `<tr><td class="pos">${role}</td><td class="who"><b>${esc(p.name)}</b>${clubTag(p.mlbId, POOL_P)}</td><td>${p.throws}</td>`
+      + PIT_KEYS.map(([k]) => `<td class="rv">${p[k]}</td>`).join('')
+      + `<td class="chips">${p.pitches.map((t, k) => `<span class="chip on" style="--pc:${PITCH_TYPES[t].col}" title="${PITCH_TYPES[t].name}">${PITCH_TYPES[t].short} ${(p.pv && p.pv[k]) || p.velo + PITCH_TYPES[t].d}</span>`).join('')}</td>`
+      + `<td class="ovr">${pitcherOvr(p)}</td><td class="cost">${pitcherCost(p)}</td><td class="rs-btns"><button class="ghost rs-swap" data-swap-${list === 'rotation' ? 's' : 'r'}="${i}">Change</button>${r[list].length > min ? `<button class="ghost rs-x" data-drop="${list}" data-i="${i}" title="Release him">&times;</button>` : ''}</td></tr>`;
+  };
+  const slots = (list, n) => Array.from({ length: n }, (_, i) => r[list][i] || null);
+  const rotRows = slots('rotation', ROSTER_SIZES.rotation).map((p, i) => pRow(p, i, 'rotation')).join('');
+  const penRows = slots('bullpen', ROSTER_SIZES.bullpen).map((p, i) => pRow(p, i, 'bullpen')).join('');
+  const benchRows = slots('bench', ROSTER_SIZES.bench).map((h, i) => {
+    if (!h) return `<tr class="rs-empty-row"><td class="pos">BN</td><td class="who" colspan="10"><span class="rs-open">Open spot</span></td><td><button class="cta rs-swap" data-swap-b="${i}">SIGN</button></td></tr>`;
+    const P = h.mlbId && POOL_H.get(h.mlbId), plays = P ? P.elig.join(' ') || 'DH' : h.pos;
+    return `<tr><td class="pos">BN</td><td class="who"><b>${esc(h.name)}</b>${clubTag(h.mlbId, POOL_H)}<span class="rs-plays">${plays}</span></td><td>${h.bats}</td>`
+      + HIT_KEYS.map(([k]) => `<td class="rv ${h[k] >= 85 ? 'hi' : h[k] < 60 ? 'lo' : ''}">${h[k]}</td>`).join('')
+      + `<td class="ovr">${hitterOvr(h, h.pos)}</td><td class="cost">${hitterCost(h)}</td><td class="rs-btns"><button class="ghost rs-swap" data-swap-b="${i}">Change</button><button class="ghost rs-x" data-drop="bench" data-i="${i}" title="Release him">&times;</button></td></tr>`;
+  }).join('');
+  const pHead = `<thead><tr><th>ROLE</th><th>PLAYER</th><th title="Throws">T</th>${PIT_KEYS.map(([, l, tip]) => `<th title="${tip}">${l}</th>`).join('')}<th>PITCHES</th><th>OVR</th><th>PTS</th><th></th></tr></thead>`;
   el.innerHTML = `
     <div class="rs-ident">${rsBadge(d)}
       <label>City<input data-f="city" maxlength="18" value="${esc(d.city)}"></label>
@@ -232,22 +256,27 @@ function rsRenderEdit() {
       <label class="short">Colors<span class="cols"><input type="color" data-f="c1" value="${d.c1}" aria-label="Primary color"><input type="color" data-f="c2" value="${d.c2}" aria-label="Secondary color"></span></label>
     </div>
     <div class="rs-points"><div class="rs-track"><i id="rsBar"></i></div><div id="rsPts"></div></div>
-    <p class="rs-help">Sign real MLB players to every spot. Each one costs points from his ratings (a point a step above 40, two above 70, three above 85), and the whole roster has to fit under the ${ROSTER_BUDGET.toLocaleString()}-point cap, what the priciest real club costs. Click <b>Change</b> to swap anyone out. Hover a column for what it means.</p>
+    <p class="rs-help">Sign real MLB players to every spot. Each one costs points from his ratings (a point a step above 40, two above 70, three above 85), and the whole roster has to fit under the ${ROSTER_BUDGET.toLocaleString()}-point cap, what the priciest real club costs. Click <b>Change</b> to swap anyone out, or <b>&times;</b> to release a bench player or pitcher and free up points. Hover a column for what it means.</p>
     <h3>LINEUP <small>batting order top to bottom</small></h3>
     <div class="rs-scroll"><table class="rs-table"><thead><tr><th>#</th><th>POS</th><th>PLAYER</th><th title="Bats">B</th>${HIT_KEYS.map(([, l, tip]) => `<th title="${tip}">${l}</th>`).join('')}<th>OVR</th><th>PTS</th><th></th></tr></thead><tbody>${hRows}</tbody></table></div>
-    <h3>PITCHING STAFF <small>a starter and three relievers</small></h3>
-    <div class="rs-scroll"><table class="rs-table"><thead><tr><th>ROLE</th><th>PLAYER</th><th title="Throws">T</th>${PIT_KEYS.map(([, l, tip]) => `<th title="${tip}">${l}</th>`).join('')}<th>PITCHES</th><th>OVR</th><th>PTS</th><th></th></tr></thead><tbody>${pRows}</tbody></table></div>
+    <h3>BENCH <small>pinch hitters, pinch runners and defensive subs, up to ${ROSTER_SIZES.bench}</small></h3>
+    <div class="rs-scroll"><table class="rs-table"><thead><tr><th>POS</th><th>PLAYER</th><th title="Bats">B</th>${HIT_KEYS.map(([, l, tip]) => `<th title="${tip}">${l}</th>`).join('')}<th>OVR</th><th>PTS</th><th></th></tr></thead><tbody>${benchRows}</tbody></table></div>
+    <h3>ROTATION <small>SP1 starts single games; a season rotates through all ${ROSTER_SIZES.rotation}</small></h3>
+    <div class="rs-scroll"><table class="rs-table">${pHead}<tbody>${rotRows}</tbody></table></div>
+    <h3>BULLPEN <small>the closer first, up to ${ROSTER_SIZES.bullpen} arms</small></h3>
+    <div class="rs-scroll"><table class="rs-table">${pHead}<tbody>${penRows}</tbody></table></div>
     <div class="row-actions rs-actions"><button class="ghost" data-act="dup">Duplicate</button><button class="ghost danger" data-act="del">Delete roster</button></div>`;
   rsPoints();
 }
 
 // --------------------------------------------------------- player picker ----
-// RS.pick = { kind: 'h' | 'p', slot: position or staff index, q, only, club, sort }
+// RS.pick = { kind: 'h' (lineup spot) | 'b' (bench) | 's' (rotation) | 'r' (bullpen), slot, q, only, club, sort }
 function rsOpenPick(kind, slot) {
-  RS.pick = { kind, slot, q: '', only: true, club: '', sort: 'ovr' };
-  const el = $('rsPick'), word = kind === 'h' ? posWord[slot] : +slot === 0 ? 'starting pitcher' : 'reliever';
-  const onlyLabel = kind === 'h' ? (slot === 'DH' ? '' : `Only players who play ${slot}`) : +slot === 0 ? 'Only starters' : 'Only relievers';
-  const sorts = kind === 'h' ? [['ovr', 'Best overall'], ['cost', 'Cheapest'], ['con', 'Contact'], ['pow', 'Power'], ['eye', 'Eye'], ['spd', 'Speed'], ['fld', 'Fielding']]
+  RS.pick = { kind, slot, q: '', only: kind !== 'b', club: '', sort: 'ovr' };
+  const isH = kind === 'h' || kind === 'b', el = $('rsPick');
+  const word = kind === 'h' ? posWord[slot] : kind === 'b' ? 'bench player' : kind === 's' ? 'starting pitcher' : +slot === 0 ? 'closer' : 'reliever';
+  const onlyLabel = kind === 'h' ? (slot === 'DH' ? '' : `Only players who play ${slot}`) : kind === 'b' ? '' : kind === 's' ? 'Only starters' : 'Only relievers';
+  const sorts = isH ? [['ovr', 'Best overall'], ['cost', 'Cheapest'], ['con', 'Contact'], ['pow', 'Power'], ['eye', 'Eye'], ['spd', 'Speed'], ['fld', 'Fielding']]
     : [['ovr', 'Best overall'], ['cost', 'Cheapest'], ['velo', 'Velocity'], ['ctl', 'Control'], ['stuff', 'Stuff'], ['stam', 'Stamina']];
   el.innerHTML = `<div class="rsp-card" role="dialog" aria-label="Sign a player">
     <div class="rsp-head"><h3>SIGN A ${word.toUpperCase()}</h3><span id="rspNow"></span><button class="ghost" data-pk="close">Close</button></div>
@@ -263,23 +292,25 @@ function rsOpenPick(kind, slot) {
 function rsClosePick() { RS.pick = null; $('rsPick').classList.add('hidden'); $('rsPick').innerHTML = ''; }
 function rsPickList() {
   const P = RS.pick, d = rsCur(); if (!P || !d) return;
-  const isH = P.kind === 'h', r = resolveRoster(d);
-  const cur = isH ? r.hitters.find((h) => h.pos === P.slot) : r.pitchers[+P.slot];
-  const curCost = isH ? hitterCost(cur) : pitcherCost(cur), room = ROSTER_BUDGET - (rosterCost(d) - curCost);
-  const taken = new Set((isH ? r.hitters.filter((h) => h.pos !== P.slot) : r.pitchers.filter((p, i) => i !== +P.slot)).map((x) => x.mlbId).filter(Boolean));
-  $('rspNow').innerHTML = `Now: <b>${esc(cur.name)}</b> &middot; ${curCost} pts &middot; up to <b>${Math.max(0, room).toLocaleString()}</b> pts for this spot`;
+  const isH = P.kind === 'h' || P.kind === 'b', r = resolveRoster(d);
+  const list0 = P.kind === 'h' ? null : P.kind === 'b' ? r.bench : P.kind === 's' ? r.rotation : r.bullpen;
+  const cur = P.kind === 'h' ? r.hitters.find((h) => h.pos === P.slot) : list0[+P.slot] || null;
+  const curCost = cur ? (isH ? hitterCost(cur) : pitcherCost(cur)) : 0, room = ROSTER_BUDGET - (rosterCost(d) - curCost);
+  const others = isH ? [...r.hitters, ...r.bench] : [...r.rotation, ...r.bullpen];
+  const taken = new Set(others.filter((x) => x !== cur).map((x) => x.mlbId).filter(Boolean));
+  $('rspNow').innerHTML = `Now: <b>${cur ? esc(cur.name) : 'open spot'}</b> &middot; ${curCost} pts &middot; up to <b>${Math.max(0, room).toLocaleString()}</b> pts for this spot`;
   const q = P.q.trim().toLowerCase();
   let list = [];
   if (isH) {
     for (const h of POOL_H.values()) {
-      if (P.only && P.slot !== 'DH' && !h.def[P.slot]) continue;
+      if (P.kind === 'h' && P.only && P.slot !== 'DH' && !h.def[P.slot]) continue;
       if (P.club && h.club !== P.club) continue;
       if (q && !h.name.toLowerCase().includes(q) && h.club.toLowerCase() !== q) continue;
-      const rr = hitterAt(h, P.slot);
-      list.push({ p: h, r: rr, ovr: hitterOvr(rr, P.slot), cost: hitterCost(rr) });
+      const at = P.kind === 'h' ? P.slot : h.main, rr = hitterAt(h, at);
+      list.push({ p: h, r: rr, ovr: hitterOvr(rr, at), cost: hitterCost(rr) });
     }
   } else {
-    const want = +P.slot === 0 ? 'SP' : 'RP';
+    const want = P.kind === 's' ? 'SP' : 'RP';
     for (const p of POOL_P.values()) {
       if (P.only && p.role !== want) continue;
       if (P.club && p.club !== P.club) continue;
@@ -294,7 +325,7 @@ function rsPickList() {
   const cols = isH ? HIT_KEYS.map(([k]) => k) : PIT_KEYS.map(([k]) => k);
   const head = `<tr><th>PLAYER</th><th>TEAM</th><th>${isH ? 'PLAYS' : 'ROLE'}</th>${(isH ? HIT_KEYS : PIT_KEYS).map(([, l, tip]) => `<th title="${tip}">${l}</th>`).join('')}${isH ? '' : '<th>PITCHES</th>'}<th>OVR</th><th>PTS</th><th>+/&minus;</th><th></th></tr>`;
   const rows = list.map(({ p, r: rr, ovr, cost }) => {
-    const diff = cost - curCost, isCur = cur.mlbId === p.id, onTeam = taken.has(p.id), over = cost > room;
+    const diff = cost - curCost, isCur = !!cur && cur.mlbId === p.id, onTeam = taken.has(p.id), over = cost > room;
     const why = isCur ? 'Signed' : onTeam ? 'On your team' : over ? 'Over the cap' : '';
     const plays = isH ? (p.elig.length ? p.elig.join(' ') : 'DH') : p.role;
     return `<tr class="${why ? 'no' : ''}"><td class="who"><b>${esc(p.name)}</b></td><td>${esc(p.club)}</td><td class="plays">${plays}</td>`
@@ -312,9 +343,14 @@ function rsSign(id) {
     const h = POOL_H.get(id); if (!h) return;
     const i = d.hitters.findIndex((x) => x.pos === P.slot);
     d.hitters[i] = hitterSnap(h, P.slot);
+  } else if (P.kind === 'b') {
+    const h = POOL_H.get(id); if (!h) return;
+    const i = Math.min(+P.slot, d.bench.length);
+    d.bench[i] = hitterSnap(h, h.main);
   } else {
     const p = POOL_P.get(id); if (!p) return;
-    d.pitchers[+P.slot] = pitcherSnap(p);
+    const list = P.kind === 's' ? d.rotation : d.bullpen, i = Math.min(+P.slot, list.length);
+    list[i] = pitcherSnap(p);
   }
   rsClosePick();
   SND.init(); if (SND.ctx) SND.tick();
@@ -350,7 +386,14 @@ function buildRosterUI() {
       [d.order[i], d.order[j]] = [d.order[j], d.order[i]]; rsTouched(true); return;
     }
     if (b.dataset.swapH) { rsOpenPick('h', b.dataset.swapH); return; }
-    if (b.dataset.swapP) { rsOpenPick('p', b.dataset.swapP); return; }
+    if (b.dataset.swapB != null) { rsOpenPick('b', b.dataset.swapB); return; }
+    if (b.dataset.swapS != null) { rsOpenPick('s', b.dataset.swapS); return; }
+    if (b.dataset.swapR != null) { rsOpenPick('r', b.dataset.swapR); return; }
+    if (b.dataset.drop) {
+      const list = d[b.dataset.drop];
+      if (list && (b.dataset.drop === 'bench' || list.length > 1)) { list.splice(+b.dataset.i, 1); rsTouched(true); }
+      return;
+    }
     const act = b.dataset.act;
     if (act === 'dup') { const c = cleanRoster({ ...JSON.parse(JSON.stringify(d)), id: 'X' + randId(), name: d.name + ' 2', updated: Date.now() }); ROSTERS.push(c); RS.sel = c.id; RS.dirty = c.id; saveRostersLocal(); rsFlush(); rsRenderList(); rsRenderEdit(); }
     else if (act === 'del') {

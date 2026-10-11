@@ -82,7 +82,7 @@ function makeUmps() {
 function setupFielders() {
   const team = fieldingTeam();
   G.fielders = ROLES.map((role) => {
-    const pl = role === 'P' ? curPitcher() : team.hitters.find((h) => h.pos === role);
+    const pl = role === 'P' ? curPitcher() : G.pos[1 - G.half][role];
     const f = new Fielder(pl, role, getModel(pl, role === 'C' ? 'catcher' : undefined));
     f.setHome(...ROLE_POS[role]);
     return f;
@@ -159,7 +159,7 @@ function startGame(cfg) {
   if (G.drill && youBat) G.teams = [home, away];
   if (G.drill) G.innings = 99;
   // look players up by id (lock, online, HUD); a custom team's players are only registered for the game they play in
-  for (const t of G.teams) for (const p of [...t.hitters, ...t.pitchers]) PBYID[p.id] = p;
+  for (const t of G.teams) for (const p of teamPlayers(t)) PBYID[p.id] = p;
   G.lock = null;
   if (cfg.mode === 'exhibition' || cfg.mode === 'lock') { G.ctrl = ['cpu', 'cpu']; G.ctrl[cfg.side] = 'local'; }
   else if (cfg.mode === 'derby') G.ctrl = ['local', 'cpu'];
@@ -177,7 +177,10 @@ function startGame(cfg) {
   Object.assign(G, { remotePos: null, potg: null, inning: 1, half: 0, outs: 0, balls: 0, strikes: 0, score: [0, 0], line: [[], []], hits: [0, 0], errs: [0, 0], bases: [null, null, null, null], order: [0, 0], pen: [0, 0], ff: 1, paused: false, replay: null, play: null, abEnd: null, postNext: null, cpuPick: null, abPicks: 0 });
   G.prac = { pitches: 0, strikes: 0, swings: 0, contact: 0, evSum: 0, evN: 0, hits: 0, hr: 0, k: 0, bb: 0, sb: 0, cs: 0, runs: 0, picked: 0, chances: 0, outs: 0, errors: 0, allowed: 0 };
   G.stats = new Map(); G.pstats = new Map();
-  G.pitcher = [G.teams[0].pitchers[0], G.teams[1].pitchers[0]];
+  // each side's game roster: batting order, positions, bench and bullpen (61-manager.js)
+  G.lu = []; G.pos = []; G.bench = []; G.bullpen = []; G.gone = []; G.played = []; G.pitched = [];
+  G.pitcher = [];
+  for (let ti = 0; ti < 2; ti++) initGameRoster(ti, cfg.starters && cfg.starters[ti]);
   for (const m of MODELS) m.root.visible = false;
   setCrowdColors(G.teams[1], G.teams[0]);
   hudTeams();
@@ -214,7 +217,7 @@ function startHalf() {
   G.outs = 0; G.balls = 0; G.strikes = 0; G.bases = [null, null, null, null]; G.selRunner = null;
   while (G.line[G.half].length < G.inning) G.line[G.half].push(0);
   if (G.inning > G.innings) {
-    const t = battingTeam(); G.bases[2] = t.lineup[(G.order[G.half] + 8) % 9];
+    G.bases[2] = G.lu[G.half][(G.order[G.half] + 8) % 9];
   }
   setupFielders();
   hudScore(); hudCount();
@@ -222,7 +225,7 @@ function startHalf() {
   hudBanner(title, G.drill ? 'Practice · quit from the pause menu' : `${battingTeam().city} ${battingTeam().name} batting`, '');
   if (G.inning > G.innings) Caster.line(`Extra innings. ${shortName(G.bases[2].name)} starts at second base.`, true, { queue: true });
   setPhase('halfIntro', G.mode === 'spectate' ? 1.8 : 2.6);
-  G.batter = battingTeam().lineup[G.order[G.half] % 9];
+  G.batter = G.lu[G.half][G.order[G.half] % 9];
   G.batSide = sideFor(G.batter);
   G.batterModel = getModel(G.batter);
   applyAlignment();
@@ -235,17 +238,22 @@ function sideFor(pl) { const p = curPitcher(); return pl.bats === 'S' ? (p.throw
 function maybePitchingChange() {
   if (G.mode === 'derby') return false;
   const ti = 1 - G.half, p = curPitcher();
-  if (fatigue(p) < 0.6 || G.pen[ti] >= 3) return false;
+  if (fatigue(p) < 0.6 || !G.bullpen[ti].length) return false;
   if (G.lock === p.id && fatigue(p) < 0.97) return false;
+  // a human manager makes his own pitching changes (the bullpen is in the Team panel)
+  if (sideCtrl(ti) !== 'cpu' && G.lock !== p.id && fatigue(p) < 0.95) return false;
   bringReliever(ti);
   return true;
 }
-function bringReliever(ti) {
-  const team = G.teams[ti];
-  if (G.pen[ti] >= 3) return false;
+// bring in a reliever: the one you picked, or the CPU manager's choice for the situation
+function bringReliever(ti, pick) {
+  const team = G.teams[ti], pen = G.bullpen[ti];
+  if (!pen || !pen.length) return false;
+  const np = pick && pen.includes(pick) ? pick : pickReliever(ti);
+  G.bullpen[ti] = pen.filter((x) => x !== np);
   G.pen[ti]++;
-  const np = team.pitchers[G.pen[ti]];
-  G.pitcher[ti] = np;
+  G.gone[ti].add(G.pitcher[ti].id);
+  G.pitcher[ti] = np; G.pitched[ti].push(np);
   if (ti === 1 - G.half) {
     const f = new Fielder(np, 'P', getModel(np)); f.setHome(...ROLE_POS.P);
     G.fielders[0] = f; G.fByRole.P = f;
@@ -256,7 +264,8 @@ function bringReliever(ti) {
 }
 function newBatter() {
   const team = battingTeam();
-  const pl = G.mode === 'derby' ? G.derby.batter : team.lineup[G.order[G.half] % 9];
+  if (G.mode !== 'derby') cpuManager();   // pinch hitters, pinch runners, pitching changes
+  const pl = G.mode === 'derby' ? G.derby.batter : G.lu[G.half][G.order[G.half] % 9];
   maybePitchingChange();
   G.batter = pl; G.balls = 0; G.strikes = 0; G.abPitches = []; G.abEnd = null; G.simAB = false; G.lockInv = false; G.abPicks = 0;
   G.batSide = sideFor(pl);
@@ -816,7 +825,7 @@ function halfOver() {
 }
 // baserunning drill: put runners on so there's something to do
 function practiceRunners() {
-  const lu = battingTeam().lineup, bi = G.order[G.half] % 9, guy = (k) => lu[(bi + 9 - k) % 9], x = Math.random();
+  const lu = G.lu[G.half], bi = G.order[G.half] % 9, guy = (k) => lu[(bi + 9 - k) % 9], x = Math.random();
   if (x < 0.6) G.bases[1] = guy(1);
   else if (x < 0.82) G.bases[2] = guy(1);
   else { G.bases[1] = guy(1); G.bases[2] = guy(2); }

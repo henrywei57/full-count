@@ -274,6 +274,19 @@ button:focus-visible,select:focus-visible{outline:2px solid var(--gold);outline-
 #pracHud b{display:block;font-size:22px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums}
 #pracHud span{font-size:10px;letter-spacing:.12em;color:var(--dust);white-space:nowrap}
 
+/* ---------- team panel ---------- */
+#teamScreen{align-items:flex-start}
+.tm-card{width:min(960px,100%);margin:auto}
+.tm-card h3{margin:6px 0 0;font-family:var(--f-display);font-weight:700;letter-spacing:.14em;font-size:14px;color:var(--gold)}
+.tm-card h3 small{color:var(--dust);letter-spacing:.02em;font-weight:500;margin-left:8px;font-family:var(--f-body)}
+.tm-sub{flex:1;color:var(--dust);font-size:13px}
+.tm-table td.tm-line{font-size:12px;color:var(--dust);white-space:nowrap;text-align:left}
+.tm-table tr.sel{background:rgba(90,168,255,.16)}
+.tm-empty{color:var(--dust);text-align:left!important;padding:8px!important}
+.tm-stam{height:6px;border-radius:3px;background:rgba(255,255,255,.1);overflow:hidden;max-width:320px}
+.tm-stam i{display:block;height:100%}
+.fr-note a{color:var(--play)}
+
 /* ---------- tutorial ---------- */
 #tutCard{position:fixed;right:16px;top:calc(110px + env(safe-area-inset-top,0px));z-index:6;width:min(330px,calc(100vw - 32px));background:var(--panel);border:1px solid var(--gold);border-radius:6px;padding:12px 14px;display:flex;flex-direction:column;gap:8px;box-shadow:0 10px 30px rgba(0,0,0,.45)}
 #tutCard.big{left:50%;top:50%;right:auto;transform:translate(-50%,-50%);width:min(460px,calc(100vw - 32px));padding:20px 22px;z-index:9}
@@ -392,6 +405,11 @@ body.letterbox #tutCard{display:none}
 .rs-table td.rv{font-family:var(--f-display);font-weight:700;font-size:16px;font-variant-numeric:tabular-nums}
 .rs-table td.rv.hi{color:var(--gold)}.rs-table td.rv.lo{color:#d78b8b}
 .rs-swap{padding:5px 10px;font-size:13px}
+.rs-btns{white-space:nowrap}
+.rs-x{padding:5px 9px;font-size:14px;margin-left:4px}
+.rs-empty-row td{opacity:.75}
+.rs-open{font-family:var(--f-display);font-weight:700;letter-spacing:.12em;font-size:12px;color:var(--dust)}
+.rs-plays{display:inline-block;margin-left:6px;font-family:var(--f-display);font-weight:600;font-size:11px;color:var(--dust)}
 span.chip{cursor:default}
 #rsPick{position:fixed;inset:0;z-index:12;display:flex;align-items:flex-start;justify-content:center;padding:24px 16px;background:rgba(3,6,12,.72);overflow-y:auto}
 .rsp-card{width:min(1100px,100%);margin:auto;background:var(--panel);border:1px solid var(--gold);border-radius:6px;padding:16px;display:flex;flex-direction:column;gap:10px;max-height:calc(100vh - 48px)}
@@ -484,6 +502,7 @@ span.chip{cursor:default}
   <div id="pitchInfo"><b id="piMph">0<small>MPH</small></b><span id="piType">Fastball</span></div>
   <div id="topbar">
     <span id="netPing" class="hidden"></span>
+    <button id="btnTeamHud" class="hidden" title="Team: lineup, bench and bullpen (U)" aria-label="Team"><svg viewBox="0 0 24 24"><path d="M9 11a4 4 0 100-8 4 4 0 000 8zm8 0a3 3 0 100-6 3 3 0 000 6zM9 13c-3.3 0-7 1.6-7 4v2h14v-2c0-2.4-3.7-4-7-4zm8 0c-.5 0-1 0-1.6.1 1.1.9 1.6 2 1.6 3.9v2h5v-2c0-2.2-2.6-4-5-4z"/></svg></button>
     <button id="btnMute" title="Sound (M)" aria-label="Toggle sound"><svg viewBox="0 0 24 24"><path id="muteIcon" d="M3 9v6h4l5 5V4L7 9H3zm13.5 3A4.5 4.5 0 0014 8v8a4.5 4.5 0 002.5-4zM14 3.2v2.1a7 7 0 010 13.4v2.1A9 9 0 0014 3.2z"/></svg></button>
     <button id="btnPause" title="Pause (Esc)" aria-label="Pause"><svg viewBox="0 0 24 24"><path d="M6 5h4v14H6zm8 0h4v14h-4z"/></svg></button>
   </div>
@@ -614,6 +633,13 @@ span.chip{cursor:default}
 <div id="toast" class="hidden" role="status"></div>
 <div id="tutCard" class="hidden" role="dialog" aria-label="Tutorial"></div>
 
+<div id="teamScreen" class="screen modal hidden">
+  <div class="card tm-card">
+    <div class="fr-head"><h2>TEAM</h2><span id="tmSub" class="tm-sub"></span><button class="ghost" id="tmClose">Back to the game</button></div>
+    <div id="tmBody" class="stack"></div>
+  </div>
+</div>
+
 <div id="pause" class="screen modal hidden">
   <div class="card">
     <h2>TIMEOUT</h2>
@@ -623,7 +649,7 @@ span.chip{cursor:default}
       <button class="ghost" id="btnVoice">Commentary voice: On</button>
       <button class="ghost" id="btnZone">Strike zone: On</button>
       <button class="ghost" id="btnBatCam">Batting cam: Strike Zone</button>
-      <button class="ghost" id="btnPen">Go to the bullpen</button>
+      <button class="ghost" id="btnTeam">Team: lineup, bench &amp; bullpen</button>
       <button class="ghost" id="btnQuit">Quit to menu</button>
     </div>
   </div>
@@ -663,6 +689,7 @@ span.chip{cursor:default}
       </dl></div>
       <div><h3>GENERAL</h3><dl>
         <dt>Esc</dt><dd>Pause</dd>
+        <dt>U</dt><dd>Team panel: pinch hitters, pinch runners, defensive subs and the bullpen (between pitches)</dd>
         <dt>C</dt><dd>ABS challenge a ball/strike call (2 per team, kept if you win)</dd>
         <dt>Mouse / right stick</dt><dd>Player Lock: swing the camera around your player (click to grab the mouse)</dd>
         <dt>T / right-click</dt><dd>Player Lock: snap the camera back to following the play</dd>

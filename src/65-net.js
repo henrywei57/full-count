@@ -198,7 +198,7 @@ function hostOnMsg(m) {
     case 'skip': skip(true); break;
     case 'trot': if (pl && (pl.hr || pl.awarded) && pl.t > 2) pl.skipTrot(); break;
     case 'pause': togglePause(!!m.v, true); break;
-    case 'pen': { const s = 1 - localSide(); if (s === 1 - G.half && G.phase === 'prePitch' && bringReliever(s)) enterPrePitch(); break; }
+    case 'sub': { const s = G.ctrl.indexOf('remote'); if (s >= 0 && ['ph', 'pr', 'def', 'pen'].includes(m.kind)) doSub(s, m.kind, m.target == null ? null : String(m.target), String(m.inId || '')); break; }
     case 'again': if (G.phase === 'final') hostRestart(); break;
     case 'challenge': if (G.challengeable && G.challengeable.who === 'remote') startChallenge(G.challengeable.side); break;
   }
@@ -255,6 +255,8 @@ function netGS() {
     bases: G.bases.map((p) => (p ? p.id : null)), batter: G.batter ? G.batter.id : null, batSide: G.batSide,
     pitcher: G.pitcher.map((p) => (p ? p.id : null)), stats: [...G.stats], pstats: [...G.pstats],
     abPitches: G.abPitches, lastP: G.lastP || null,
+    // each side's game roster, so the guest's Team panel shows the real thing
+    ros: [0, 1].map((ti) => ({ lu: G.lu[ti].map((p) => [p.id, p.pos]), bench: G.bench[ti].map((p) => p.id), pen: G.bullpen[ti].map((p) => p.id) })),
     chal: G.challenges, ump: G.ump, chk: G.challengeable && G.challengeable.who === 'remote' ? G.challengeable.side : -1,
   };
 }
@@ -324,6 +326,7 @@ function pingHUD() {
 // ------------------------------------------------------------ guest side ----
 function guestStart() {
   setPhase('wait');
+  G.lu = [[], []]; G.pos = [{}, {}]; G.bench = [[], []]; G.bullpen = [[], []];
   G.fielders = []; G.fByRole = {}; G.swing = null; G.P = null; G.localPitch = false; G.lastP = null; G.batter = null;
   Object.assign(NET, { lastAbLen: 0, snap: null, lastSeq: -1, bb: null, ball: null, pclock: { pid: -1, t: 0 } });
   NET.pred = { m: null, key: null, on: false, v: 0, lastIn: -9, hold: 0 };
@@ -354,6 +357,13 @@ function netApplyGS(s) {
   G.batter = s.batter ? PBYID[s.batter] : null;
   if (G.batter) G.batterModel = getModel(G.batter);
   G.stats = new Map(s.stats); G.pstats = new Map(s.pstats);
+  if (Array.isArray(s.ros)) s.ros.forEach((r, ti) => {
+    G.lu[ti] = (r.lu || []).map(([id, pos]) => gamePlayer(PBYID[id], pos)).filter(Boolean);
+    G.pos[ti] = Object.fromEntries(G.lu[ti].map((p) => [p.pos, p]));
+    G.bench[ti] = (r.bench || []).map((id) => PBYID[id]).filter(Boolean);
+    G.bullpen[ti] = (r.pen || []).map((id) => PBYID[id]).filter(Boolean);
+  });
+  renderTeam();
   G.challenges = s.chal || [0, 0]; G.ump = s.ump ?? G.ump;
   const canChallenge = s.chk >= 0 && s.chk === localSide();
   if (canChallenge && G.chkSide !== s.chk) setHint(`<kbd>C</kbd> challenge the call &middot; ${G.challenges[s.chk]} left`);

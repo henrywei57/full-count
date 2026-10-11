@@ -281,6 +281,19 @@ button:focus-visible,select:focus-visible{outline:2px solid var(--gold);outline-
 #pracHud b{display:block;font-size:22px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums}
 #pracHud span{font-size:10px;letter-spacing:.12em;color:var(--dust);white-space:nowrap}
 
+/* ---------- team panel ---------- */
+#teamScreen{align-items:flex-start}
+.tm-card{width:min(960px,100%);margin:auto}
+.tm-card h3{margin:6px 0 0;font-family:var(--f-display);font-weight:700;letter-spacing:.14em;font-size:14px;color:var(--gold)}
+.tm-card h3 small{color:var(--dust);letter-spacing:.02em;font-weight:500;margin-left:8px;font-family:var(--f-body)}
+.tm-sub{flex:1;color:var(--dust);font-size:13px}
+.tm-table td.tm-line{font-size:12px;color:var(--dust);white-space:nowrap;text-align:left}
+.tm-table tr.sel{background:rgba(90,168,255,.16)}
+.tm-empty{color:var(--dust);text-align:left!important;padding:8px!important}
+.tm-stam{height:6px;border-radius:3px;background:rgba(255,255,255,.1);overflow:hidden;max-width:320px}
+.tm-stam i{display:block;height:100%}
+.fr-note a{color:var(--play)}
+
 /* ---------- tutorial ---------- */
 #tutCard{position:fixed;right:16px;top:calc(110px + env(safe-area-inset-top,0px));z-index:6;width:min(330px,calc(100vw - 32px));background:var(--panel);border:1px solid var(--gold);border-radius:6px;padding:12px 14px;display:flex;flex-direction:column;gap:8px;box-shadow:0 10px 30px rgba(0,0,0,.45)}
 #tutCard.big{left:50%;top:50%;right:auto;transform:translate(-50%,-50%);width:min(460px,calc(100vw - 32px));padding:20px 22px;z-index:9}
@@ -399,6 +412,11 @@ body.letterbox #tutCard{display:none}
 .rs-table td.rv{font-family:var(--f-display);font-weight:700;font-size:16px;font-variant-numeric:tabular-nums}
 .rs-table td.rv.hi{color:var(--gold)}.rs-table td.rv.lo{color:#d78b8b}
 .rs-swap{padding:5px 10px;font-size:13px}
+.rs-btns{white-space:nowrap}
+.rs-x{padding:5px 9px;font-size:14px;margin-left:4px}
+.rs-empty-row td{opacity:.75}
+.rs-open{font-family:var(--f-display);font-weight:700;letter-spacing:.12em;font-size:12px;color:var(--dust)}
+.rs-plays{display:inline-block;margin-left:6px;font-family:var(--f-display);font-weight:600;font-size:11px;color:var(--dust)}
 span.chip{cursor:default}
 #rsPick{position:fixed;inset:0;z-index:12;display:flex;align-items:flex-start;justify-content:center;padding:24px 16px;background:rgba(3,6,12,.72);overflow-y:auto}
 .rsp-card{width:min(1100px,100%);margin:auto;background:var(--panel);border:1px solid var(--gold);border-radius:6px;padding:16px;display:flex;flex-direction:column;gap:10px;max-height:calc(100vh - 48px)}
@@ -491,6 +509,7 @@ span.chip{cursor:default}
   <div id="pitchInfo"><b id="piMph">0<small>MPH</small></b><span id="piType">Fastball</span></div>
   <div id="topbar">
     <span id="netPing" class="hidden"></span>
+    <button id="btnTeamHud" class="hidden" title="Team: lineup, bench and bullpen (U)" aria-label="Team"><svg viewBox="0 0 24 24"><path d="M9 11a4 4 0 100-8 4 4 0 000 8zm8 0a3 3 0 100-6 3 3 0 000 6zM9 13c-3.3 0-7 1.6-7 4v2h14v-2c0-2.4-3.7-4-7-4zm8 0c-.5 0-1 0-1.6.1 1.1.9 1.6 2 1.6 3.9v2h5v-2c0-2.2-2.6-4-5-4z"/></svg></button>
     <button id="btnMute" title="Sound (M)" aria-label="Toggle sound"><svg viewBox="0 0 24 24"><path id="muteIcon" d="M3 9v6h4l5 5V4L7 9H3zm13.5 3A4.5 4.5 0 0014 8v8a4.5 4.5 0 002.5-4zM14 3.2v2.1a7 7 0 010 13.4v2.1A9 9 0 0014 3.2z"/></svg></button>
     <button id="btnPause" title="Pause (Esc)" aria-label="Pause"><svg viewBox="0 0 24 24"><path d="M6 5h4v14H6zm8 0h4v14h-4z"/></svg></button>
   </div>
@@ -621,6 +640,13 @@ span.chip{cursor:default}
 <div id="toast" class="hidden" role="status"></div>
 <div id="tutCard" class="hidden" role="dialog" aria-label="Tutorial"></div>
 
+<div id="teamScreen" class="screen modal hidden">
+  <div class="card tm-card">
+    <div class="fr-head"><h2>TEAM</h2><span id="tmSub" class="tm-sub"></span><button class="ghost" id="tmClose">Back to the game</button></div>
+    <div id="tmBody" class="stack"></div>
+  </div>
+</div>
+
 <div id="pause" class="screen modal hidden">
   <div class="card">
     <h2>TIMEOUT</h2>
@@ -630,7 +656,7 @@ span.chip{cursor:default}
       <button class="ghost" id="btnVoice">Commentary voice: On</button>
       <button class="ghost" id="btnZone">Strike zone: On</button>
       <button class="ghost" id="btnBatCam">Batting cam: Strike Zone</button>
-      <button class="ghost" id="btnPen">Go to the bullpen</button>
+      <button class="ghost" id="btnTeam">Team: lineup, bench &amp; bullpen</button>
       <button class="ghost" id="btnQuit">Quit to menu</button>
     </div>
   </div>
@@ -670,6 +696,7 @@ span.chip{cursor:default}
       </dl></div>
       <div><h3>GENERAL</h3><dl>
         <dt>Esc</dt><dd>Pause</dd>
+        <dt>U</dt><dd>Team panel: pinch hitters, pinch runners, defensive subs and the bullpen (between pitches)</dd>
         <dt>C</dt><dd>ABS challenge a ball/strike call (2 per team, kept if you win)</dd>
         <dt>Mouse / right stick</dt><dd>Player Lock: swing the camera around your player (click to grab the mouse)</dd>
         <dt>T / right-click</dt><dd>Player Lock: snap the camera back to following the play</dd>
@@ -2185,38 +2212,38 @@ const MLB_PITCHERS = [
 [672442,"Yovanny Cruz",29,"RP","R",48,100,64,61,35,6,"SL91 FF100 SI100 FS90"],
 [687849,"Zak Kent",29,"RP","R",57,93,75,53,61,3,"FF93 SL88 CU82"]
 ];
-// each club: [club, lineup in batting order as [position, mlb id], staff (ace first) as mlb ids]
+// each club: [club, lineup in batting order as [position, mlb id], rotation (ace first), bullpen (closer first), bench], players by mlb id
 const MLB_TEAMS = [
-[0,[["SS",672695],["C",672515],["2B",606466],["RF",682998],["3B",571448],["DH",543510],["1B",545121],["CF",663457],["LF",694374]],[593958,642701,666661,805299]],
-[1,[["SS",805779],["CF",643446],["C",669127],["1B",701762],["LF",691016],["RF",667670],["2B",622268],["DH",666126],["3B",680869]],[605488,663687,686993,665660]],
-[2,[["SS",643289],["C",686948],["CF",671739],["1B",621566],["RF",660670],["DH",642086],["2B",645277],["LF",573262],["3B",663586]],[656550,628452,663158,669276]],
-[3,[["CF",677942],["1B",624413],["3B",687952],["DH",691723],["C",694212],["SS",683002],["RF",641933],["LF",687637],["2B",702616]],[669358,670329,552640,666974]],
-[4,[["2B",702332],["LF",807799],["1B",575929],["RF",677800],["3B",678554],["C",681508],["DH",668939],["CF",678882],["SS",655316]],[543243,547973,676477,669711]],
-[5,[["SS",663538],["3B",608324],["CF",691718],["RF",673548],["LF",621438],["1B",683737],["C",608348],["2B",699393],["DH",624424]],[592332,666171,657097,573204]],
-[6,[["2B",803011],["3B",678246],["RF",545341],["1B",808959],["LF",643217],["CF",671976],["SS",805367],["DH",502054],["C",691019]],[641743,691799,656794,673929]],
-[7,[["LF",694362],["3B",701398],["SS",682829],["DH",553993],["2B",668715],["CF",668709],["C",663886],["RF",667472],["1B",680574]],[671096,641941,663574,656271]],
-[8,[["CF",680757],["3B",608070],["RF",800050],["DH",666176],["LF",682657],["1B",663993],["SS",677587],["2B",683953],["C",595978]],[676440,671922,683769,681870]],
-[9,[["CF",664983],["1B",681198],["C",696100],["RF",666160],["SS",694249],["3B",691720],["LF",687859],["DH",664954],["2B",650489]],[608372,605447,675848,623474]],
-[10,[["SS",805808],["2B",650402],["CF",682985],["C",693307],["LF",681481],["3B",690993],["DH",701678],["1B",679529],["RF",656716]],[664285,445276,640448,641755]],
-[11,[["DH",665161],["LF",670541],["C",673237],["3B",670623],["SS",621043],["2B",514888],["1B",572233],["CF",676694],["RF",701358]],[663567,623352,650556,687911]],
-[12,[["SS",677951],["2B",672580],["1B",686469],["C",695600],["RF",695506],["DH",521692],["LF",686681],["3B",679845],["CF",670231]],[608379,668674,608032,656638]],
-[13,[["RF",685133],["1B",694384],["CF",545361],["SS",687263],["2B",687093],["LF",642350],["C",694208],["DH",624428],["3B",660162]],[672282,696147,670245,820862]],
-[14,[["C",669257],["SS",605141],["DH",660271],["3B",571970],["CF",681624],["1B",518692],["2B",500743],["RF",663656],["LF",669743]],[808967,656945,681911,621242]],
-[15,[["CF",691594],["2B",669364],["SS",672640],["RF",665052],["1B",669065],["LF",681715],["C",691788],["3B",688363],["DH",805300]],[645261,664126,676534,656848]],
-[16,[["SS",806198],["C",661388],["CF",694192],["RF",641343],["2B",668930],["3B",683734],["DH",596142],["LF",592885],["1B",687401]],[669160,656730,682842,668941]],
-[17,[["2B",807712],["C",680777],["CF",621439],["LF",665019],["1B",605137],["RF",663616],["SS",686797],["3B",668904],["DH",668885]],[671737,656546,672782,702193]],
-[18,[["CF",701807],["RF",665742],["SS",596019],["C",682626],["1B",676724],["3B",666182],["DH",676572],["2B",683146],["LF",805999]],[690997,642207,657585,681320]],
-[19,[["CF",641355],["RF",592450],["2B",671277],["C",700250],["1B",502671],["3B",642708],["DH",663757],["LF",671218],["SS",680474]],[693645,670280,518585,670167]],
-[20,[["DH",607208],["2B",650333],["RF",547180],["LF",656941],["3B",664761],["SS",681082],["CF",669016],["1B",805249],["C",592663]],[650911,661395,689147,641745]],
-[21,[["SS",693304],["1B",687462],["2B",664040],["CF",665833],["RF",668804],["DH",656811],["C",682848],["LF",663968],["3B",694378]],[694973,642397,596133,682254]],
-[22,[["2B",665487],["LF",609280],["1B",664034],["CF",701538],["RF",657656],["3B",592518],["C",669134],["DH",657757],["SS",593428]],[650633,695243,670970,592094]],
-[23,[["CF",808982],["RF",687551],["2B",669477],["1B",646240],["DH",805811],["SS",642715],["LF",664056],["3B",656305],["C",691740]],[694738,666808,676254,669270]],
-[24,[["2B",680977],["1B",647304],["RF",686527],["C",663728],["LF",668227],["CF",677594],["SS",641487],["DH",621493],["3B",660844]],[669302,662253,678606,622554]],
-[25,[["SS",802139],["RF",676475],["3B",691458],["DH",691023],["C",671056],["CF",665877],["LF",701675],["2B",695336],["1B",691026]],[700241,676617,592773,666277]],
-[26,[["C",689414],["1B",650490],["3B",691406],["RF",683748],["DH",666018],["CF",676356],["2B",668723],["LF",666158],["SS",810938]],[642547,641329,687330,664076]],
-[27,[["RF",677649],["3B",673962],["SS",608369],["1B",592626],["2B",679822],["LF",607043],["DH",669394],["CF",694671],["C",643376]],[669022,656641,596001,681217]],
-[28,[["LF",664702],["C",672386],["CF",543807],["DH",672960],["3B",680718],["1B",665489],["SS",676391],["RF",664770],["2B",649966]],[667755,686973,643511,623149]],
-[29,[["CF",696285],["C",660688],["RF",695578],["1B",665953],["SS",682928],["LF",695734],["3B",691781],["DH",686611],["2B",678391]],[676917,690925,687377,656234]]
+[0,[["SS",672695],["C",672515],["2B",606466],["RF",682998],["3B",571448],["DH",543510],["1B",545121],["CF",663457],["LF",694374]],[593958,518876,647336,668678,694297],[642701,666661,805299,656464,642528,664199,657044],[680728,656976,814439,699912]],
+[1,[["SS",805779],["CF",643446],["C",669127],["1B",701762],["LF",691016],["RF",667670],["2B",622268],["DH",666126],["3B",680869]],[605488,669372,682052,695611,622663],[663687,686993,665660,643410,665622,688297,685801],[641680,675961,703607,671732]],
+[2,[["SS",643289],["C",686948],["CF",671739],["1B",621566],["RF",660670],["DH",642086],["2B",645277],["LF",573262],["3B",663586]],[656550,519242,641816,693821,527048],[628452,663158,669276,800311,689266,608718,682989],[669221,673490,657041,642133]],
+[3,[["CF",677942],["1B",624413],["3B",687952],["DH",691723],["C",694212],["SS",683002],["RF",641933],["LF",687637],["2B",702616]],[669358,669432,680694,687064,605135],[670329,552640,666974,664854,664991,689296,642585],[665966,663624,673357,669236]],
+[4,[["2B",702332],["LF",807799],["1B",575929],["RF",677800],["3B",678554],["C",681508],["DH",668939],["CF",678882],["SS",655316]],[543243,624133,801139,687562,663776],[547973,676477,669711,669062,686580,594027,677161],[657136,678011,701350,663330]],
+[5,[["SS",663538],["3B",608324],["CF",691718],["RF",673548],["LF",621438],["1B",683737],["C",608348],["2B",699393],["DH",624424]],[592332,684007,656849,571510,607067],[666171,657097,573204,694037,664208,663423,669020],[665804,807713,664023,621020]],
+[6,[["2B",803011],["3B",678246],["RF",545341],["1B",808959],["LF",643217],["CF",671976],["SS",805367],["DH",502054],["C",691019]],[641743,663436,680732,622491,607200],[691799,656794,673929,623211,670950,663542,663855],[663698,695657,695731,700337]],
+[7,[["LF",694362],["3B",701398],["SS",682829],["DH",553993],["2B",668715],["CF",668709],["C",663886],["RF",667472],["1B",680574]],[671096,663903,695505,695076,666157],[641941,663574,656271,668933,572955,622088,682825],[624431,682622,699302,663647]],
+[8,[["CF",680757],["3B",608070],["RF",800050],["DH",666176],["LF",682657],["1B",663993],["SS",677587],["2B",683953],["C",595978]],[676440,668909,800048,656492,676282],[671922,683769,681870,682120,542888,670036,670059],[681807,656555,690984,700932]],
+[9,[["CF",664983],["1B",681198],["C",696100],["RF",666160],["SS",694249],["3B",691720],["LF",687859],["DH",664954],["2B",650489]],[608372,607536,663372,687312,685299],[605447,675848,623474,677955,657514,688642,680604],[690924,681393,687597,678662]],
+[10,[["SS",805808],["2B",650402],["CF",682985],["C",693307],["LF",681481],["3B",690993],["DH",701678],["1B",679529],["RF",656716]],[664285,672456,656427,675512,695549],[445276,640448,641755,676684,663947,805427,669724],[680664,595879,703601,672761]],
+[11,[["DH",665161],["LF",670541],["C",673237],["3B",670623],["SS",621043],["2B",514888],["1B",572233],["CF",676694],["RF",701358]],[663567,686613,681347,837227,664299],[623352,650556,687911,595345,660853,805123,656986],[543877,664774,662139,666211]],
+[12,[["SS",677951],["2B",672580],["1B",686469],["C",695600],["RF",695506],["DH",521692],["LF",686681],["3B",679845],["CF",670231]],[608379,607625,702070,677976,663568],[668674,608032,656638,683232,663878,663738,518886],[571912,663697,686555,668942]],
+[13,[["RF",685133],["1B",694384],["CF",545361],["SS",687263],["2B",687093],["LF",642350],["C",694208],["DH",624428],["3B",660162]],[672282,700712,680570,696270,579328],[696147,670245,820862,642048,696519,690829,815083],[623168,694203,666139,518595]],
+[14,[["C",669257],["SS",605141],["DH",660271],["3B",571970],["CF",681624],["1B",518692],["2B",500743],["RF",663656],["LF",669743]],[808967,669373,808963,686218,680736],[656945,681911,621242,676263,683618,592779,595014],[687221,669242,606192,676439]],
+[15,[["CF",691594],["2B",669364],["SS",672640],["RF",665052],["1B",669065],["LF",681715],["C",691788],["3B",688363],["DH",805300]],[645261,691587,676083,676974,687473],[664126,676534,656848,680767,669622,678692,676604],[682663,665923,683357,640459]],
+[16,[["SS",806198],["C",661388],["CF",694192],["RF",641343],["2B",668930],["3B",683734],["DH",596142],["LF",592885],["1B",687401]],[669160,694819,690986,688107,687075],[656730,682842,668941,676879,681982,657649,672582],[666310,666152,669003,686217]],
+[17,[["2B",807712],["C",680777],["CF",621439],["LF",665019],["1B",605137],["RF",663616],["SS",686797],["3B",668904],["DH",668885]],[671737,657746,641927,805673,687570],[656546,672782,702193,681892,573124,607455,621345],[605170,668952,670242,656484]],
+[18,[["CF",701807],["RF",665742],["SS",596019],["C",682626],["1B",676724],["3B",666182],["DH",676572],["2B",683146],["LF",805999]],[690997,681035,640455,804267,476594],[642207,657585,681320,650960,673380,672335,702752],[620443,593871,666624,543760]],
+[19,[["CF",641355],["RF",592450],["2B",671277],["C",700250],["1B",502671],["3B",642708],["DH",663757],["LF",671218],["SS",680474]],[693645,701542,677960,543037,608331],[670280,518585,670167,687396,657612,621112,642232],[669224,665862,519317,682987]],
+[20,[["DH",607208],["2B",650333],["RF",547180],["LF",656941],["3B",664761],["SS",681082],["CF",669016],["1B",805249],["C",592663]],[650911,605400,666200,554430,691725],[661395,689147,641745,621237,548384,680742,668873],[665561,624641,656537,702222]],
+[21,[["SS",693304],["1B",687462],["2B",664040],["CF",665833],["RF",668804],["DH",656811],["C",682848],["LF",663968],["3B",694378]],[694973,696149,677952,656605,683003],[642397,596133,682254,670990,676755,489446,681895],[680779,804606,699013,669707]],
+[22,[["2B",665487],["LF",609280],["1B",664034],["CF",701538],["RF",657656],["3B",592518],["C",669134],["DH",657757],["SS",593428]],[621111,650633,592662,663554,681190],[695243,670970,592094,669093,673513,699134,593974],[666023,650859,669720,630105]],
+[23,[["CF",808982],["RF",687551],["2B",669477],["1B",646240],["DH",805811],["SS",642715],["LF",664056],["3B",656305],["C",691740]],[694738,657277,605288,686790,694918],[666808,676254,669270,676775,681916,656529,664141],[701852,691785,813841,683766]],
+[24,[["2B",680977],["1B",647304],["RF",686527],["C",663728],["LF",668227],["CF",677594],["SS",641487],["DH",621493],["3B",660844]],[669302,693433,669923,676106,682243],[662253,678606,622554,660825,642100,571948,666374],[640902,670042,645302,702284]],
+[25,[["SS",802139],["RF",676475],["3B",691458],["DH",691023],["C",671056],["CF",665877],["LF",701675],["2B",695336],["1B",691026]],[669461,700241,669467,681517,687273],[676617,592773,666277,677865,700669,694335,681676],[686780,663494,687363,669357]],
+[26,[["C",689414],["1B",650490],["3B",691406],["RF",683748],["DH",666018],["CF",676356],["2B",668723],["LF",666158],["SS",810938]],[642547,607259,656876,663556,671212],[641329,687330,664076,669330,592155,642121,670955],[663743,680700,802415,656775]],
+[27,[["RF",677649],["3B",673962],["SS",608369],["1B",592626],["2B",679822],["LF",607043],["DH",669394],["CF",694671],["C",643376]],[669022,594798,677958,543135,615698],[656641,596001,681217,676395,641302,668390,656222],[543309,670032,694497,696030]],
+[28,[["LF",664702],["C",672386],["CF",543807],["DH",672960],["3B",680718],["1B",665489],["SS",676391],["RF",664770],["2B",649966]],[667755,656302,702056,681293,592791],[686973,643511,623149,689254,663893,680755,695445],[678218,676914,669701,665926]],
+[29,[["CF",696285],["C",660688],["RF",695578],["1B",665953],["SS",682928],["LF",695734],["3B",691781],["DH",686611],["2B",678391]],[676917,663623,813349,674841,800600],[690925,687377,656234,681402,680899,663992,695378],[686452,677588,683083,694673]]
 ];
 // ============================================================================
 // The MLB player pool and the 30 built-in clubs, unpacked from src/12-mlb.js.
@@ -2243,27 +2270,37 @@ function hitterAt(h, pos) {
 }
 const stuffBreak = (s) => 0.8 + ((s - 40) / 59) * 0.45;   // stuff: how much his pitches move
 
-function buildMlbTeam([club, lineup, staff], idx) {
+// a game-ready hitter (at a position) or pitcher, from the pool
+function mlbHitter(team, pid, pos, id) {
+  const h = POOL_H.get(pid);
+  return { id, mlbId: pid, name: h.name, num: h.num, pos, bats: h.bats, throws: h.throws, ...hitterAt(h, pos), skin: SKINS[h.skinIdx % SKINS.length], team };
+}
+function mlbPitcher(team, pid, role, id) {
+  const p = POOL_P.get(pid), brk = stuffBreak(p.stuff);
+  return {
+    id, mlbId: pid, name: p.name, num: p.num, pos: role, throws: p.throws, bats: p.throws, skin: SKINS[p.skinIdx % SKINS.length], team,
+    velo: p.velo, ctl: p.ctl, stam: p.stam, spd: 45, arm: 72, fld: 62, con: 22, pow: 15, eye: 25,
+    pitches: p.pitches.map((x) => ({ type: x.type, velo: x.velo, brk })),
+  };
+}
+// Every team: nine starters (team.hitters, in batting order as team.lineup), a bench, a
+// rotation and a bullpen. team.pitchers is today's starter followed by the bullpen.
+function buildMlbTeam([club, lineup, rotation, bullpen, bench], idx) {
   const [abbr, city, name, c1, c2] = MLB_CLUBS[club];
-  const team = { id: abbr, key: abbr, ver: '', idx, city, name, c1, c2, hitters: [], pitchers: [] };
-  for (const [pos, pid] of lineup) {
-    const h = POOL_H.get(pid);
-    team.hitters.push({ id: abbr + '-' + pos, mlbId: pid, name: h.name, num: h.num, pos, bats: h.bats, throws: h.throws, ...hitterAt(h, pos), skin: SKINS[h.skinIdx % SKINS.length], team });
-  }
+  const team = { id: abbr, key: abbr, ver: '', idx, city, name, c1, c2 };
+  team.hitters = lineup.map(([pos, pid]) => mlbHitter(team, pid, pos, abbr + '-' + pos));
   team.lineup = [...team.hitters];   // MLB_TEAMS lists the lineup in batting order
-  staff.forEach((pid, i) => {
-    const p = POOL_P.get(pid), brk = stuffBreak(p.stuff);
-    team.pitchers.push({
-      id: abbr + '-P' + i, mlbId: pid, name: p.name, num: p.num, pos: i ? 'RP' : 'SP', throws: p.throws, bats: p.throws, skin: SKINS[p.skinIdx % SKINS.length], team,
-      velo: p.velo, ctl: p.ctl, stam: p.stam, spd: 45, arm: 72, fld: 62, con: 22, pow: 15, eye: 25,
-      pitches: p.pitches.map((x) => ({ type: x.type, velo: x.velo, brk })),
-    });
-  });
+  team.bench = bench.map((pid, i) => { const h = POOL_H.get(pid); return mlbHitter(team, pid, h.main, abbr + '-B' + i); });
+  team.rotation = rotation.map((pid, i) => mlbPitcher(team, pid, 'SP', abbr + '-S' + i));
+  team.bullpen = bullpen.map((pid, i) => mlbPitcher(team, pid, 'RP', abbr + '-R' + i));
+  team.pitchers = [team.rotation[0], ...team.bullpen];
   team.ovr = teamOvr(team);
   return team;
 }
 const TEAMS = MLB_TEAMS.map(buildMlbTeam);
-for (const t of TEAMS) for (const p of [...t.hitters, ...t.pitchers]) PBYID[p.id] = p;
+for (const t of TEAMS) for (const p of teamPlayers(t)) PBYID[p.id] = p;
+// everyone on a team: starters, bench, rotation and bullpen
+function teamPlayers(t) { return [...t.hitters, ...(t.bench || []), ...(t.rotation || []), ...t.pitchers]; }
 // ============================================================================
 // World: renderer, lights, ballpark, crowd, videoboards, ball, overlays, camera
 // ============================================================================
@@ -4271,7 +4308,7 @@ function makeUmps() {
 function setupFielders() {
   const team = fieldingTeam();
   G.fielders = ROLES.map((role) => {
-    const pl = role === 'P' ? curPitcher() : team.hitters.find((h) => h.pos === role);
+    const pl = role === 'P' ? curPitcher() : G.pos[1 - G.half][role];
     const f = new Fielder(pl, role, getModel(pl, role === 'C' ? 'catcher' : undefined));
     f.setHome(...ROLE_POS[role]);
     return f;
@@ -4348,7 +4385,7 @@ function startGame(cfg) {
   if (G.drill && youBat) G.teams = [home, away];
   if (G.drill) G.innings = 99;
   // look players up by id (lock, online, HUD); a custom team's players are only registered for the game they play in
-  for (const t of G.teams) for (const p of [...t.hitters, ...t.pitchers]) PBYID[p.id] = p;
+  for (const t of G.teams) for (const p of teamPlayers(t)) PBYID[p.id] = p;
   G.lock = null;
   if (cfg.mode === 'exhibition' || cfg.mode === 'lock') { G.ctrl = ['cpu', 'cpu']; G.ctrl[cfg.side] = 'local'; }
   else if (cfg.mode === 'derby') G.ctrl = ['local', 'cpu'];
@@ -4366,7 +4403,10 @@ function startGame(cfg) {
   Object.assign(G, { remotePos: null, potg: null, inning: 1, half: 0, outs: 0, balls: 0, strikes: 0, score: [0, 0], line: [[], []], hits: [0, 0], errs: [0, 0], bases: [null, null, null, null], order: [0, 0], pen: [0, 0], ff: 1, paused: false, replay: null, play: null, abEnd: null, postNext: null, cpuPick: null, abPicks: 0 });
   G.prac = { pitches: 0, strikes: 0, swings: 0, contact: 0, evSum: 0, evN: 0, hits: 0, hr: 0, k: 0, bb: 0, sb: 0, cs: 0, runs: 0, picked: 0, chances: 0, outs: 0, errors: 0, allowed: 0 };
   G.stats = new Map(); G.pstats = new Map();
-  G.pitcher = [G.teams[0].pitchers[0], G.teams[1].pitchers[0]];
+  // each side's game roster: batting order, positions, bench and bullpen (61-manager.js)
+  G.lu = []; G.pos = []; G.bench = []; G.bullpen = []; G.gone = []; G.played = []; G.pitched = [];
+  G.pitcher = [];
+  for (let ti = 0; ti < 2; ti++) initGameRoster(ti, cfg.starters && cfg.starters[ti]);
   for (const m of MODELS) m.root.visible = false;
   setCrowdColors(G.teams[1], G.teams[0]);
   hudTeams();
@@ -4403,7 +4443,7 @@ function startHalf() {
   G.outs = 0; G.balls = 0; G.strikes = 0; G.bases = [null, null, null, null]; G.selRunner = null;
   while (G.line[G.half].length < G.inning) G.line[G.half].push(0);
   if (G.inning > G.innings) {
-    const t = battingTeam(); G.bases[2] = t.lineup[(G.order[G.half] + 8) % 9];
+    G.bases[2] = G.lu[G.half][(G.order[G.half] + 8) % 9];
   }
   setupFielders();
   hudScore(); hudCount();
@@ -4411,7 +4451,7 @@ function startHalf() {
   hudBanner(title, G.drill ? 'Practice · quit from the pause menu' : `${battingTeam().city} ${battingTeam().name} batting`, '');
   if (G.inning > G.innings) Caster.line(`Extra innings. ${shortName(G.bases[2].name)} starts at second base.`, true, { queue: true });
   setPhase('halfIntro', G.mode === 'spectate' ? 1.8 : 2.6);
-  G.batter = battingTeam().lineup[G.order[G.half] % 9];
+  G.batter = G.lu[G.half][G.order[G.half] % 9];
   G.batSide = sideFor(G.batter);
   G.batterModel = getModel(G.batter);
   applyAlignment();
@@ -4424,17 +4464,22 @@ function sideFor(pl) { const p = curPitcher(); return pl.bats === 'S' ? (p.throw
 function maybePitchingChange() {
   if (G.mode === 'derby') return false;
   const ti = 1 - G.half, p = curPitcher();
-  if (fatigue(p) < 0.6 || G.pen[ti] >= 3) return false;
+  if (fatigue(p) < 0.6 || !G.bullpen[ti].length) return false;
   if (G.lock === p.id && fatigue(p) < 0.97) return false;
+  // a human manager makes his own pitching changes (the bullpen is in the Team panel)
+  if (sideCtrl(ti) !== 'cpu' && G.lock !== p.id && fatigue(p) < 0.95) return false;
   bringReliever(ti);
   return true;
 }
-function bringReliever(ti) {
-  const team = G.teams[ti];
-  if (G.pen[ti] >= 3) return false;
+// bring in a reliever: the one you picked, or the CPU manager's choice for the situation
+function bringReliever(ti, pick) {
+  const team = G.teams[ti], pen = G.bullpen[ti];
+  if (!pen || !pen.length) return false;
+  const np = pick && pen.includes(pick) ? pick : pickReliever(ti);
+  G.bullpen[ti] = pen.filter((x) => x !== np);
   G.pen[ti]++;
-  const np = team.pitchers[G.pen[ti]];
-  G.pitcher[ti] = np;
+  G.gone[ti].add(G.pitcher[ti].id);
+  G.pitcher[ti] = np; G.pitched[ti].push(np);
   if (ti === 1 - G.half) {
     const f = new Fielder(np, 'P', getModel(np)); f.setHome(...ROLE_POS.P);
     G.fielders[0] = f; G.fByRole.P = f;
@@ -4445,7 +4490,8 @@ function bringReliever(ti) {
 }
 function newBatter() {
   const team = battingTeam();
-  const pl = G.mode === 'derby' ? G.derby.batter : team.lineup[G.order[G.half] % 9];
+  if (G.mode !== 'derby') cpuManager();   // pinch hitters, pinch runners, pitching changes
+  const pl = G.mode === 'derby' ? G.derby.batter : G.lu[G.half][G.order[G.half] % 9];
   maybePitchingChange();
   G.batter = pl; G.balls = 0; G.strikes = 0; G.abPitches = []; G.abEnd = null; G.simAB = false; G.lockInv = false; G.abPicks = 0;
   G.batSide = sideFor(pl);
@@ -5005,7 +5051,7 @@ function halfOver() {
 }
 // baserunning drill: put runners on so there's something to do
 function practiceRunners() {
-  const lu = battingTeam().lineup, bi = G.order[G.half] % 9, guy = (k) => lu[(bi + 9 - k) % 9], x = Math.random();
+  const lu = G.lu[G.half], bi = G.order[G.half] % 9, guy = (k) => lu[(bi + 9 - k) % 9], x = Math.random();
   if (x < 0.6) G.bases[1] = guy(1);
   else if (x < 0.82) G.bases[2] = guy(1);
   else { G.bases[1] = guy(1); G.bases[2] = guy(2); }
@@ -5437,6 +5483,217 @@ function endDerbyResult() {
   enterPrePitch();
 }
 // ============================================================================
+// The game roster and the manager: each side's batting order, who plays where,
+// the bench and the bullpen. Pinch hitters, pinch runners, defensive subs and
+// pitching changes, for you (the Team panel) and for the CPU (cpuManager).
+// A player who comes out of the game can't go back in.
+// ============================================================================
+
+function initGameRoster(ti, starter) {
+  const t = G.teams[ti];
+  G.lu[ti] = t.lineup.slice();
+  G.pos[ti] = Object.fromEntries(t.hitters.map((h) => [h.pos, h]));
+  G.bench[ti] = (t.bench || []).slice();
+  G.bullpen[ti] = (t.bullpen || t.pitchers.slice(1)).slice();
+  G.pitcher[ti] = starter || (t.rotation ? t.rotation[0] : t.pitchers[0]);
+  G.bullpen[ti] = G.bullpen[ti].filter((p) => p !== G.pitcher[ti]);
+  G.pen[ti] = 0; G.gone[ti] = new Set();
+  G.played[ti] = t.lineup.map((h) => ({ pl: h, pos: h.pos }));   // for the box score, in order of appearance
+  G.pitched[ti] = [G.pitcher[ti]];
+}
+// the same player at another position: his arm and glove there (a step worse where he doesn't play)
+function gamePlayer(pl, pos) {
+  if (!pl || pl.pos === pos) return pl;
+  const P = pl.mlbId && POOL_H.get(pl.mlbId);
+  const r = P ? hitterAt(P, pos) : pos === 'DH' ? { fld: 45 } : { arm: Math.max(38, pl.arm - 8), fld: Math.max(38, pl.fld - 12) };
+  return { ...pl, pos, ...(r.arm != null ? { arm: r.arm } : {}), fld: r.fld };
+}
+const batScore = (h) => h.con + h.pow * 1.1 + h.eye * 0.6;
+// the CPU's reliever for the situation: the closer for a save chance in the last inning,
+// a top arm late and close, otherwise someone from the back of the pen
+function pickReliever(ti) {
+  const pen = G.bullpen[ti].slice().sort((a, b) => pitcherOvr(b) - pitcherOvr(a));
+  const lead = G.score[ti] - G.score[1 - ti], last = G.inning >= G.innings;
+  if (last && lead >= 0 && lead <= 3) return pen[0];
+  if (G.inning >= G.innings - 1 && Math.abs(lead) <= 2) return pen[Math.min(1, pen.length - 1)];
+  return pen[pen.length - 1];
+}
+
+// ------------------------------------------------------------ substitutions ----
+// swap a bench player in for someone in the lineup; he takes that player's spot and position
+function subIn(ti, outPl, inPl, pos = outPl.pos) {
+  const i = G.lu[ti].findIndex((p) => p.id === outPl.id);
+  if (i < 0 || !G.bench[ti].includes(inPl)) return null;
+  const np = gamePlayer(inPl, pos);
+  G.lu[ti][i] = np;
+  if (G.pos[ti][outPl.pos] && G.pos[ti][outPl.pos].id === outPl.id) delete G.pos[ti][outPl.pos];
+  G.pos[ti][pos] = np;
+  G.bench[ti] = G.bench[ti].filter((p) => p !== inPl);
+  G.gone[ti].add(outPl.id);
+  G.played[ti].push({ pl: np, pos, for: outPl.id });
+  PBYID[np.id] = np;
+  return np;
+}
+// is this side yours to manage right now, and what can you do?
+function canManage(ti) {
+  return G.teams && !G.drill && G.mode !== 'derby' && G.mode !== 'lock' && !G.replay && (G.phase === 'prePitch' || G.phase === 'halfIntro') && !(G.phase === 'prePitch' && G.pitchUI.state !== 'aim' && pitchCtrl() === 'local');
+}
+function subRules(ti) {
+  const ok = canManage(ti), bat = ti === G.half, pre = G.phase === 'prePitch';
+  return {
+    ph: ok && bat && pre && !G.abPitches.length && G.bench[ti].length > 0,
+    pr: ok && bat && pre && G.bench[ti].length > 0,
+    def: ok && G.bench[ti].length > 0,
+    pen: ok && !bat && pre && G.bullpen[ti].length > 0,
+  };
+}
+// kind: 'ph' (bat for the batter), 'pr' (run for the runner on base `target`), 'def' (replace
+// the player at position `target`), 'pen' (bring in reliever `inId`)
+function doSub(ti, kind, target, inId) {
+  const R = subRules(ti);
+  if (kind === 'pen') {
+    const p = G.bullpen[ti].find((x) => x.id === inId);
+    if (!R.pen || !p || !bringReliever(ti, p)) return false;
+    enterPrePitch(); hudPitcher(); return true;
+  }
+  const inPl = G.bench[ti].find((x) => x.id === inId);
+  if (!inPl) return false;
+  if (kind === 'ph') {
+    if (!R.ph || G.batter.id === G.lock) return false;
+    const old = G.batter, np = subIn(ti, old, inPl); if (!np) return false;
+    hudBanner('PINCH HITTER', `${np.name} bats for ${lastName(old.name)}`, '');
+    Caster.line(`${np.name} will pinch-hit for ${lastName(old.name)}.`);
+    G.batter = np; G.batSide = sideFor(np); G.batterModel = getModel(np);
+    applyAlignment(); enterPrePitch(); hudBatter(); return true;
+  }
+  if (kind === 'pr') {
+    const old = G.bases[+target];
+    if (!R.pr || !old) return false;
+    const np = subIn(ti, old, inPl); if (!np) return false;
+    G.bases[+target] = np;
+    hudBanner('PINCH RUNNER', `${np.name} runs for ${lastName(old.name)}`, '');
+    Caster.line(`${np.name} comes in to run for ${lastName(old.name)}.`);
+    enterPrePitch(); return true;
+  }
+  if (kind === 'def') {
+    const old = G.pos[ti][target];
+    if (!R.def || !old) return false;
+    const np = subIn(ti, old, inPl, target); if (!np) return false;
+    if (old === G.batter) { G.batter = np; G.batterModel = getModel(np); }
+    for (const b of [1, 2, 3]) if (G.bases[b] && G.bases[b].id === old.id) G.bases[b] = np;
+    if (ti === 1 - G.half && target !== 'DH') setupFielders();
+    hudBanner('DEFENSIVE CHANGE', `${np.name} in at ${target}`, '');
+    Caster.line(`A defensive change: ${np.name} comes in to play ${POS_NAME[target]}.`, false);
+    if (G.phase === 'prePitch') enterPrePitch();
+    return true;
+  }
+  return false;
+}
+const POS_NAME = { C: 'catcher', '1B': 'first', '2B': 'second', '3B': 'third', SS: 'short', LF: 'left', CF: 'center', RF: 'right', DH: 'designated hitter' };
+
+// the CPU manager, before each batter: pinch-hit a weak bat late and close, pinch-run for a
+// slow runner in scoring position, and (in maybePitchingChange) go to the bullpen
+function cpuManager() {
+  if (G.drill || G.mode === 'derby') return;
+  const ti = G.half;
+  if (sideCtrl(ti) !== 'cpu' || G.lock) return;
+  const lateClose = G.inning >= G.innings - 1 && Math.abs(G.score[0] - G.score[1]) <= 2;
+  if (!lateClose || !G.bench[ti].length) return;
+  const next = G.lu[ti][G.order[ti] % 9];
+  const best = G.bench[ti].slice().sort((a, b) => batScore(b) - batScore(a))[0];
+  // keep the only catcher in the game
+  const lastC = next.pos === 'C' && !G.bench[ti].some((p) => p.mlbId && POOL_H.get(p.mlbId) && POOL_H.get(p.mlbId).def.C);
+  if (best && !lastC && batScore(best) - batScore(next) >= 18 && Math.random() < 0.7) {
+    const np = subIn(ti, next, best);
+    if (np) { hudBanner('PINCH HITTER', `${np.name} bats for ${lastName(next.name)}`, ''); Caster.line(`${np.name} will pinch-hit for ${lastName(next.name)}.`, true, { queue: true }); }
+  }
+  for (const b of [3, 2]) {
+    const r = G.bases[b];
+    if (!r || r.spd >= 60) continue;
+    const fast = G.bench[ti].slice().sort((a, c) => c.spd - a.spd)[0];
+    if (fast && fast.spd - r.spd >= 22 && Math.random() < 0.6) {
+      const np = subIn(ti, r, fast);
+      if (np) { G.bases[b] = np; hudBanner('PINCH RUNNER', `${np.name} runs for ${lastName(r.name)}`, ''); }
+      break;
+    }
+  }
+}
+
+// ---------------------------------------------------------------- Team panel ----
+const TM = { pending: null };   // { kind: 'ph' | 'pr' | 'def', target }
+function mySide() { return G.mode === 'online' ? localSide() : G.ctrl ? G.ctrl.indexOf('local') : -1; }
+function openTeam() {
+  const ti = mySide();
+  if (ti < 0 || !G.teams || G.mode === 'lock' || G.drill || G.mode === 'derby') return;
+  TM.pending = null;
+  $('teamScreen').classList.remove('hidden');
+  // the game waits while you think (online it keeps going: your friend is waiting too)
+  if (!G.paused && G.mode !== 'online') { TM.paused = true; togglePause(true); $('pause').classList.add('hidden'); } else TM.paused = false;
+  renderTeam();
+}
+function closeTeam() {
+  $('teamScreen').classList.add('hidden');
+  if (TM.paused) { TM.paused = false; togglePause(false); }
+}
+function renderTeam() {
+  if ($('teamScreen').classList.contains('hidden')) return;
+  const ti = mySide(), t = G.teams[ti], R = subRules(ti), bat = ti === G.half, P = TM.pending;
+  const stat = (pl) => { const s = G.stats.get(pl.id); return s && s.pa ? statLine(s) : '&ndash;'; };
+  const situation = !canManage(ti) ? 'Changes can be made between pitches.' : bat ? 'Your team is batting.' : 'Your team is in the field.';
+  const hit = (pl, k) => `<td class="rv">${pl[k]}</td>`;
+  const lu = G.lu[ti].map((pl, i) => {
+    const onBase = [1, 2, 3].find((b) => G.bases[b] && G.bases[b].id === pl.id && bat);
+    const isBatter = bat && G.batter && G.batter.id === pl.id;
+    const btns = [];
+    if (isBatter && R.ph) btns.push(`<button class="ghost fr-mini" data-tm="ph">Pinch hit</button>`);
+    if (onBase && R.pr) btns.push(`<button class="ghost fr-mini" data-tm="pr" data-t="${onBase}">Pinch run</button>`);
+    if (R.def && !isBatter) btns.push(`<button class="ghost fr-mini" data-tm="def" data-t="${pl.pos}">Replace</button>`);
+    const sel = P && ((P.kind === 'ph' && isBatter) || (P.kind === 'pr' && +P.target === onBase) || (P.kind === 'def' && P.target === pl.pos));
+    return `<tr class="${sel ? 'sel' : ''}"><td>${i + 1}</td><td class="pos">${pl.pos}</td><td class="who"><b>${esc(pl.name)}</b>${isBatter ? '<span class="rs-club">AT BAT</span>' : onBase ? `<span class="rs-club">ON ${['', '1ST', '2ND', '3RD'][onBase]}</span>` : ''}</td>`
+      + ['con', 'pow', 'eye', 'spd'].map((k) => hit(pl, k)).join('') + `<td class="tm-line">${stat(pl)}</td><td>${btns.join('')}</td></tr>`;
+  }).join('');
+  const bench = G.bench[ti].map((pl) => {
+    const P2 = pl.mlbId && POOL_H.get(pl.mlbId), plays = P2 ? (P2.elig.join(' ') || 'DH') : pl.pos;
+    return `<tr><td class="who"><b>${esc(pl.name)}</b></td><td class="plays">${plays}</td>` + ['con', 'pow', 'eye', 'spd', 'arm', 'fld'].map((k) => hit(pl, k)).join('')
+      + `<td>${P ? `<button class="cta fr-mini" data-tmin="${esc(pl.id)}">PUT IN</button>` : ''}</td></tr>`;
+  }).join('') || '<tr><td colspan="9" class="tm-empty">Nobody left on the bench.</td></tr>';
+  const cur = G.pitcher[ti], cps = pstat(cur), st = clamp(1 - cps.pc / pitchLimit(cur), 0, 1);
+  const pen = G.bullpen[ti].map((p) => `<tr><td class="who"><b>${esc(p.name)}</b></td><td>${p.throws}</td>` + ['velo', 'ctl', 'stam'].map((k) => `<td class="rv">${p[k]}</td>`).join('')
+    + `<td class="rv">${p.pitches.length ? p.pitches.map((x) => PITCH_TYPES[x.type].short).join(' ') : ''}</td><td>${R.pen ? `<button class="cta fr-mini" data-tmpen="${esc(p.id)}">BRING IN</button>` : ''}</td></tr>`).join('')
+    || '<tr><td colspan="7" class="tm-empty">The bullpen is empty.</td></tr>';
+  $('tmSub').textContent = `${t.city} ${t.name} · ${situation}`;
+  $('tmBody').innerHTML = `
+    ${P ? `<p class="fr-note good">Pick a bench player to ${P.kind === 'ph' ? 'bat for ' + esc(lastName(G.batter.name)) : P.kind === 'pr' ? 'run for ' + esc(lastName(G.bases[P.target].name)) : 'play ' + POS_NAME[P.target]} &middot; <a href="#" data-tm="cancel">cancel</a></p>` : ''}
+    <h3>LINEUP</h3>
+    <div class="rs-scroll"><table class="rs-table tm-table"><thead><tr><th>#</th><th>POS</th><th>PLAYER</th><th>CON</th><th>POW</th><th>EYE</th><th>SPD</th><th>TODAY</th><th></th></tr></thead><tbody>${lu}</tbody></table></div>
+    <h3>BENCH</h3>
+    <div class="rs-scroll"><table class="rs-table tm-table"><thead><tr><th>PLAYER</th><th>PLAYS</th><th>CON</th><th>POW</th><th>EYE</th><th>SPD</th><th>ARM</th><th>FLD</th><th></th></tr></thead><tbody>${bench}</tbody></table></div>
+    <h3>PITCHING <small>${esc(cur.name)} &middot; ${cps.pc} pitches &middot; ${st > 0.45 ? 'fresh' : st > 0.2 ? 'tiring' : 'gassed'}</small></h3>
+    <div class="tm-stam"><i style="width:${st * 100}%;background:${st > 0.45 ? 'var(--ball)' : st > 0.2 ? 'var(--gold)' : 'var(--strike)'}"></i></div>
+    <div class="rs-scroll"><table class="rs-table tm-table"><thead><tr><th>BULLPEN</th><th>T</th><th>VELO</th><th>CTL</th><th>STA</th><th>PITCHES</th><th></th></tr></thead><tbody>${pen}</tbody></table></div>`;
+}
+// ask for a move: done here, or sent to the host when you're the online guest
+function teamMove(kind, target, inId) {
+  const ti = mySide();
+  if (isGuest()) { netSend({ t: 'act', a: 'sub', kind, target, inId }); TM.pending = null; setTimeout(renderTeam, 400); return; }
+  if (doSub(ti, kind, target, inId)) { TM.pending = null; SND.init(); if (SND.ctx) SND.tick(); }
+  renderTeam();
+}
+function buildTeamUI() {
+  $('tmClose').addEventListener('click', closeTeam);
+  $('btnTeam').addEventListener('click', () => { togglePause(false); openTeam(); });
+  $('btnTeamHud').addEventListener('click', openTeam);
+  $('tmBody').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-tm],[data-tmin],[data-tmpen]'); if (!b) return;
+    e.preventDefault();
+    if (b.dataset.tmpen) { teamMove('pen', null, b.dataset.tmpen); return; }
+    if (b.dataset.tmin) { const P = TM.pending; if (P) teamMove(P.kind, P.target, b.dataset.tmin); return; }
+    const k = b.dataset.tm;
+    TM.pending = k === 'cancel' ? null : { kind: k, target: b.dataset.t || null };
+    renderTeam();
+  });
+}
+// ============================================================================
 // Online 1v1 over WebRTC (PeerJS). The host runs the whole simulation and the
 // guest renders it. What keeps the guest's side feeling local:
 //  - snapshots go 60 times a second over a second, unreliable and unordered
@@ -5636,7 +5893,7 @@ function hostOnMsg(m) {
     case 'skip': skip(true); break;
     case 'trot': if (pl && (pl.hr || pl.awarded) && pl.t > 2) pl.skipTrot(); break;
     case 'pause': togglePause(!!m.v, true); break;
-    case 'pen': { const s = 1 - localSide(); if (s === 1 - G.half && G.phase === 'prePitch' && bringReliever(s)) enterPrePitch(); break; }
+    case 'sub': { const s = G.ctrl.indexOf('remote'); if (s >= 0 && ['ph', 'pr', 'def', 'pen'].includes(m.kind)) doSub(s, m.kind, m.target == null ? null : String(m.target), String(m.inId || '')); break; }
     case 'again': if (G.phase === 'final') hostRestart(); break;
     case 'challenge': if (G.challengeable && G.challengeable.who === 'remote') startChallenge(G.challengeable.side); break;
   }
@@ -5693,6 +5950,8 @@ function netGS() {
     bases: G.bases.map((p) => (p ? p.id : null)), batter: G.batter ? G.batter.id : null, batSide: G.batSide,
     pitcher: G.pitcher.map((p) => (p ? p.id : null)), stats: [...G.stats], pstats: [...G.pstats],
     abPitches: G.abPitches, lastP: G.lastP || null,
+    // each side's game roster, so the guest's Team panel shows the real thing
+    ros: [0, 1].map((ti) => ({ lu: G.lu[ti].map((p) => [p.id, p.pos]), bench: G.bench[ti].map((p) => p.id), pen: G.bullpen[ti].map((p) => p.id) })),
     chal: G.challenges, ump: G.ump, chk: G.challengeable && G.challengeable.who === 'remote' ? G.challengeable.side : -1,
   };
 }
@@ -5762,6 +6021,7 @@ function pingHUD() {
 // ------------------------------------------------------------ guest side ----
 function guestStart() {
   setPhase('wait');
+  G.lu = [[], []]; G.pos = [{}, {}]; G.bench = [[], []]; G.bullpen = [[], []];
   G.fielders = []; G.fByRole = {}; G.swing = null; G.P = null; G.localPitch = false; G.lastP = null; G.batter = null;
   Object.assign(NET, { lastAbLen: 0, snap: null, lastSeq: -1, bb: null, ball: null, pclock: { pid: -1, t: 0 } });
   NET.pred = { m: null, key: null, on: false, v: 0, lastIn: -9, hold: 0 };
@@ -5792,6 +6052,13 @@ function netApplyGS(s) {
   G.batter = s.batter ? PBYID[s.batter] : null;
   if (G.batter) G.batterModel = getModel(G.batter);
   G.stats = new Map(s.stats); G.pstats = new Map(s.pstats);
+  if (Array.isArray(s.ros)) s.ros.forEach((r, ti) => {
+    G.lu[ti] = (r.lu || []).map(([id, pos]) => gamePlayer(PBYID[id], pos)).filter(Boolean);
+    G.pos[ti] = Object.fromEntries(G.lu[ti].map((p) => [p.pos, p]));
+    G.bench[ti] = (r.bench || []).map((id) => PBYID[id]).filter(Boolean);
+    G.bullpen[ti] = (r.pen || []).map((id) => PBYID[id]).filter(Boolean);
+  });
+  renderTeam();
   G.challenges = s.chal || [0, 0]; G.ump = s.ump ?? G.ump;
   const canChallenge = s.chk >= 0 && s.chk === localSide();
   if (canChallenge && G.chkSide !== s.chk) setHint(`<kbd>C</kbd> challenge the call &middot; ${G.challenges[s.chk]} left`);
@@ -6054,7 +6321,11 @@ function ratingCost(v) { v = clamp(Math.round(v), 40, RATING_MAX); return v - 40
 const veloRating = (mph) => 40 + ((mph - VELO_MIN) * 59) / (VELO_MAX - VELO_MIN);
 function hitterCost(h) { return HIT_KEYS.reduce((s, [k]) => s + ratingCost(h[k]), 0); }
 function pitcherCost(p) { return ratingCost(veloRating(p.velo)) + ratingCost(p.ctl) + ratingCost(p.stuff) + ratingCost(p.stam); }
-function rosterCost(d) { const r = resolveRoster(d); return r.hitters.reduce((s, h) => s + hitterCost(h), 0) + r.pitchers.reduce((s, p) => s + pitcherCost(p), 0); }
+function rosterCost(d) {
+  const r = resolveRoster(d);
+  return [...r.hitters, ...r.bench].reduce((s, h) => s + hitterCost(h), 0) + [...r.rotation, ...r.bullpen].reduce((s, p) => s + pitcherCost(p), 0);
+}
+const ROSTER_SIZES = { bench: 4, rotation: 5, bullpen: 7 };
 // overall: the whole player at a fielding spot; a DH is judged on his bat alone
 function hitterOvr(h, pos) { return pos === 'DH' ? Math.round((h.con * 1.2 + h.pow * 1.2 + h.eye * 0.8 + h.spd * 0.4) / 3.6) : Math.round((h.con * 1.2 + h.pow * 1.2 + h.eye * 0.8 + h.spd * 0.6 + h.arm * 0.5 + h.fld * 0.7) / 5); }
 function pitcherOvr(p) { return Math.round((veloRating(p.velo) * 1.1 + p.ctl * 1.2 + p.stuff * 1.0 + p.stam * 0.3) / 3.6); }
@@ -6071,36 +6342,43 @@ function cleanRoster(r) {
   const hand = (v, ok, d) => (ok.includes(v) ? v : d);
   const mlb = (v) => (Number.isInteger(+v) && +v > 0 ? +v : undefined);
   const d = {
-    v: 2, id: /^X[a-z0-9]{4,16}$/i.test(r.id) ? r.id : 'X' + randId(), updated: Number.isFinite(+r.updated) ? +r.updated : Date.now(),
+    v: 3, id: /^X[a-z0-9]{4,16}$/i.test(r.id) ? r.id : 'X' + randId(), updated: Number.isFinite(+r.updated) ? +r.updated : Date.now(),
     city: str(r.city, 18, 'Hometown'), name: str(r.name, 18, 'Sluggers'),
     abbr: String(r.abbr || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 4) || 'CUS',
-    c1: hex(r.c1, '#2b4c7e'), c2: hex(r.c2, '#f2c14e'), hitters: [], order: [], pitchers: [],
+    c1: hex(r.c1, '#2b4c7e'), c2: hex(r.c2, '#f2c14e'), hitters: [], order: [],
   };
   if (d.abbr.length < 2) d.abbr = (d.abbr + 'X').slice(0, 2);
-  const src = Array.isArray(r.hitters) ? r.hitters : [];
-  POS_LIST.forEach((pos, i) => {
-    const h = src.find((x) => x && x.pos === pos) || {};
+  const cleanH = (h, pos, i) => {
+    h = h || {};
     const o = { pos, mlbId: mlb(h.mlbId), name: str(h.name, 30, `${pos} Player`), num: no(h.num, i + 1), bats: hand(h.bats, ['R', 'L', 'S'], 'R'), throws: hand(h.throws, ['R', 'L'], 'R'), skin: skin(h.skin) };
     for (const [k] of HIT_KEYS) o[k] = rat(h[k]);
-    d.hitters.push(o);
-  });
-  const seen = new Set();
-  for (const p of Array.isArray(r.order) ? r.order : []) if (POS_LIST.includes(p) && !seen.has(p)) { seen.add(p); d.order.push(p); }
-  for (const p of POS_LIST) if (!seen.has(p)) d.order.push(p);
-  const ps = Array.isArray(r.pitchers) ? r.pitchers : [];
-  for (let i = 0; i < 4; i++) {
-    const p = ps[i] || {};
+    return o;
+  };
+  const cleanP = (p, i, rp) => {
+    p = p || {};
     const pitches = [], pv = [];
     (Array.isArray(p.pitches) ? p.pitches : []).forEach((t, k) => {
       if (!PITCH_TYPES[t] || pitches.includes(t) || pitches.length >= 5) return;
       pitches.push(t); pv.push(clamp(Math.round(+((p.pv || [])[k]) || 0), 0, 105));
     });
     for (const t of ['FF', 'SL']) if (pitches.length < 2 && !pitches.includes(t)) { pitches.push(t); pv.push(0); }
-    d.pitchers.push({
-      mlbId: mlb(p.mlbId), name: str(p.name, 30, i ? `Reliever ${i}` : 'Starter'), num: no(p.num, 40 + i), throws: hand(p.throws, ['R', 'L'], 'R'), skin: skin(p.skin),
-      velo: clamp(Math.round(Number.isFinite(+p.velo) ? +p.velo : 93), VELO_MIN, 103), ctl: rat(p.ctl), stuff: rat(p.stuff), stam: rat(p.stam, i ? 45 : 85), pitches, pv,
-    });
-  }
+    return {
+      mlbId: mlb(p.mlbId), name: str(p.name, 30, rp ? `Reliever ${i + 1}` : `Starter ${i + 1}`), num: no(p.num, 40 + i), throws: hand(p.throws, ['R', 'L'], 'R'), skin: skin(p.skin),
+      velo: clamp(Math.round(Number.isFinite(+p.velo) ? +p.velo : 93), VELO_MIN, 103), ctl: rat(p.ctl), stuff: rat(p.stuff), stam: rat(p.stam, rp ? 45 : 85), pitches, pv,
+    };
+  };
+  const src = Array.isArray(r.hitters) ? r.hitters : [];
+  POS_LIST.forEach((pos, i) => d.hitters.push(cleanH(src.find((x) => x && x.pos === pos), pos, i)));
+  const seen = new Set();
+  for (const p of Array.isArray(r.order) ? r.order : []) if (POS_LIST.includes(p) && !seen.has(p)) { seen.add(p); d.order.push(p); }
+  for (const p of POS_LIST) if (!seen.has(p)) d.order.push(p);
+  // the bench, rotation and bullpen (older rosters had one starter and three relievers in r.pitchers)
+  const old = Array.isArray(r.pitchers) ? r.pitchers : [];
+  const rot = Array.isArray(r.rotation) ? r.rotation : old.slice(0, 1), pen = Array.isArray(r.bullpen) ? r.bullpen : old.slice(1);
+  d.bench = (Array.isArray(r.bench) ? r.bench : []).slice(0, ROSTER_SIZES.bench).map((h, i) => cleanH(h, POS_LIST.includes(h && h.pos) ? h.pos : 'DH', 10 + i));
+  d.rotation = (rot.length ? rot : [{}]).slice(0, ROSTER_SIZES.rotation).map((x, i) => cleanP(x, i, false));
+  d.bullpen = (pen.length ? pen : [{}]).slice(0, ROSTER_SIZES.bullpen).map((x, i) => cleanP(x, i, true));
+  delete d.pitchers;
   return d;
 }
 // real players' current numbers, from the pool (a snapshot only stands in if he's gone from it)
@@ -6111,19 +6389,19 @@ function pitcherSnap(p) {
   return { mlbId: p.id, name: p.name, num: p.num, throws: p.throws, skin: SKINS[p.skinIdx % SKINS.length], velo: p.velo, ctl: p.ctl, stuff: p.stuff, stam: p.stam, pitches: p.pitches.map((x) => x.type), pv: p.pitches.map((x) => x.velo) };
 }
 function resolveRoster(d) {
-  return {
-    ...d,
-    hitters: d.hitters.map((h) => { const P = h.mlbId && POOL_H.get(h.mlbId); return P ? hitterSnap(P, h.pos) : h; }),
-    pitchers: d.pitchers.map((p) => { const P = p.mlbId && POOL_P.get(p.mlbId); return P ? pitcherSnap(P) : p; }),
-  };
+  const rh = (h) => { const P = h.mlbId && POOL_H.get(h.mlbId); return P ? hitterSnap(P, h.pos) : h; };
+  const rp = (p) => { const P = p.mlbId && POOL_P.get(p.mlbId); return P ? pitcherSnap(P) : p; };
+  return { ...d, hitters: d.hitters.map(rh), bench: (d.bench || []).map(rh), rotation: (d.rotation || []).map(rp), bullpen: (d.bullpen || []).map(rp) };
 }
 // a built-in club as a roster: where a new roster starts, and how mirror matchups work online
 function teamToDef(t, id) {
+  const hs = (h, pos) => (POOL_H.get(h.mlbId) ? hitterSnap(POOL_H.get(h.mlbId), pos) : { ...h, pos, team: undefined });
+  const ps = (p) => (POOL_P.get(p.mlbId) ? pitcherSnap(POOL_P.get(p.mlbId)) : { ...p, team: undefined, pitches: p.pitches.map((x) => x.type), pv: p.pitches.map((x) => x.velo) });
   return cleanRoster({
     id: id || 'X' + randId(), updated: Date.now(), city: t.city, name: t.name, abbr: t.id, c1: t.c1, c2: t.c2,
-    hitters: t.hitters.map((h) => (POOL_H.get(h.mlbId) ? hitterSnap(POOL_H.get(h.mlbId), h.pos) : { ...h, team: undefined })),
-    order: t.lineup.map((h) => h.pos),
-    pitchers: t.pitchers.map((p) => (POOL_P.get(p.mlbId) ? pitcherSnap(POOL_P.get(p.mlbId)) : { ...p, team: undefined, pitches: p.pitches.map((x) => x.type), pv: p.pitches.map((x) => x.velo) })),
+    hitters: t.hitters.map((h) => hs(h, h.pos)), order: t.lineup.map((h) => h.pos),
+    bench: (t.bench || []).map((h) => hs(h, h.pos)),
+    rotation: (t.rotation || t.pitchers.slice(0, 1)).map(ps), bullpen: (t.bullpen || t.pitchers.slice(1)).map(ps),
   });
 }
 const _teamCache = new Map();
@@ -6131,22 +6409,20 @@ function buildCustomTeam(def) {
   const d = cleanRoster(def), sig = JSON.stringify(d);
   if (_teamCache.has(sig)) return _teamCache.get(sig);
   const r = resolveRoster(d);
-  const team = { id: d.abbr, key: 'X:' + d.id, ver: String(d.updated), city: d.city, name: d.name, c1: d.c1, c2: d.c2, custom: true, roster: d, hitters: [], pitchers: [] };
+  const team = { id: d.abbr, key: 'X:' + d.id, ver: String(d.updated), city: d.city, name: d.name, c1: d.c1, c2: d.c2, custom: true, roster: d };
   const pid = (s) => d.id + '-' + s;
-  for (const h of r.hitters) {
-    const o = { id: pid(h.pos), mlbId: h.mlbId, name: h.name, num: h.num, pos: h.pos, bats: h.bats, throws: h.throws, skin: h.skin, team };
-    for (const [k] of HIT_KEYS) o[k] = h[k];
-    team.hitters.push(o);
-  }
-  team.lineup = d.order.map((pos) => team.hitters.find((h) => h.pos === pos));
-  r.pitchers.forEach((p, i) => {
-    const brk = stuffBreak(p.stuff);
-    team.pitchers.push({
-      id: pid('P' + i), mlbId: p.mlbId, name: p.name, num: p.num, pos: i ? 'RP' : 'SP', throws: p.throws, bats: p.throws, skin: p.skin, team,
-      velo: p.velo, ctl: p.ctl, stam: p.stam, spd: 45, arm: 72, fld: 62, con: 22, pow: 15, eye: 25,
-      pitches: p.pitches.map((t, k) => ({ type: t, velo: (p.pv && p.pv[k]) || p.velo + PITCH_TYPES[t].d, brk })),
-    });
+  const hitter = (h, id) => { const o = { id, mlbId: h.mlbId, name: h.name, num: h.num, pos: h.pos, bats: h.bats, throws: h.throws, skin: h.skin, team }; for (const [k] of HIT_KEYS) o[k] = h[k]; return o; };
+  const pitcher = (p, id, role) => ({
+    id, mlbId: p.mlbId, name: p.name, num: p.num, pos: role, throws: p.throws, bats: p.throws, skin: p.skin, team,
+    velo: p.velo, ctl: p.ctl, stam: p.stam, spd: 45, arm: 72, fld: 62, con: 22, pow: 15, eye: 25,
+    pitches: p.pitches.map((t, k) => ({ type: t, velo: (p.pv && p.pv[k]) || p.velo + PITCH_TYPES[t].d, brk: stuffBreak(p.stuff) })),
   });
+  team.hitters = r.hitters.map((h) => hitter(h, pid(h.pos)));
+  team.lineup = d.order.map((pos) => team.hitters.find((h) => h.pos === pos));
+  team.bench = r.bench.map((h, i) => hitter(h, pid('B' + i)));
+  team.rotation = r.rotation.map((p, i) => pitcher(p, pid('S' + i), 'SP'));
+  team.bullpen = r.bullpen.map((p, i) => pitcher(p, pid('R' + i), 'RP'));
+  team.pitchers = [team.rotation[0], ...team.bullpen];
   team.ovr = teamOvr(team);
   team.cost = rosterCost(d);
   _teamCache.set(sig, team);
@@ -6246,10 +6522,25 @@ function rsRenderEdit() {
       + HIT_KEYS.map(([k]) => `<td class="rv ${h[k] >= 85 ? 'hi' : h[k] < 60 ? 'lo' : ''}">${h[k]}</td>`).join('')
       + `<td class="ovr">${hitterOvr(h, pos)}</td><td class="cost">${hitterCost(h)}</td><td><button class="ghost rs-swap" data-swap-h="${pos}">Change</button></td></tr>`;
   }).join('');
-  const pRows = r.pitchers.map((p, i) => `<tr data-p="${i}"><td class="pos">${i ? 'RP' + i : 'SP'}</td><td class="who"><b>${esc(p.name)}</b>${clubTag(p.mlbId, POOL_P)}</td><td>${p.throws}</td>`
-    + PIT_KEYS.map(([k]) => `<td class="rv">${p[k]}</td>`).join('')
-    + `<td class="chips">${p.pitches.map((t, k) => `<span class="chip on" style="--pc:${PITCH_TYPES[t].col}" title="${PITCH_TYPES[t].name}">${PITCH_TYPES[t].short} ${(p.pv && p.pv[k]) || p.velo + PITCH_TYPES[t].d}</span>`).join('')}</td>`
-    + `<td class="ovr">${pitcherOvr(p)}</td><td class="cost">${pitcherCost(p)}</td><td><button class="ghost rs-swap" data-swap-p="${i}">Change</button></td></tr>`).join('');
+  const pRow = (p, i, list) => {
+    const role = list === 'rotation' ? 'SP' + (i + 1) : i === 0 ? 'CL' : 'RP' + i, min = 1;
+    if (!p) return `<tr class="rs-empty-row"><td class="pos">${role}</td><td class="who" colspan="9"><span class="rs-open">Open spot</span></td><td><button class="cta rs-swap" data-swap-${list === 'rotation' ? 's' : 'r'}="${i}">SIGN</button></td></tr>`;
+    return `<tr><td class="pos">${role}</td><td class="who"><b>${esc(p.name)}</b>${clubTag(p.mlbId, POOL_P)}</td><td>${p.throws}</td>`
+      + PIT_KEYS.map(([k]) => `<td class="rv">${p[k]}</td>`).join('')
+      + `<td class="chips">${p.pitches.map((t, k) => `<span class="chip on" style="--pc:${PITCH_TYPES[t].col}" title="${PITCH_TYPES[t].name}">${PITCH_TYPES[t].short} ${(p.pv && p.pv[k]) || p.velo + PITCH_TYPES[t].d}</span>`).join('')}</td>`
+      + `<td class="ovr">${pitcherOvr(p)}</td><td class="cost">${pitcherCost(p)}</td><td class="rs-btns"><button class="ghost rs-swap" data-swap-${list === 'rotation' ? 's' : 'r'}="${i}">Change</button>${r[list].length > min ? `<button class="ghost rs-x" data-drop="${list}" data-i="${i}" title="Release him">&times;</button>` : ''}</td></tr>`;
+  };
+  const slots = (list, n) => Array.from({ length: n }, (_, i) => r[list][i] || null);
+  const rotRows = slots('rotation', ROSTER_SIZES.rotation).map((p, i) => pRow(p, i, 'rotation')).join('');
+  const penRows = slots('bullpen', ROSTER_SIZES.bullpen).map((p, i) => pRow(p, i, 'bullpen')).join('');
+  const benchRows = slots('bench', ROSTER_SIZES.bench).map((h, i) => {
+    if (!h) return `<tr class="rs-empty-row"><td class="pos">BN</td><td class="who" colspan="10"><span class="rs-open">Open spot</span></td><td><button class="cta rs-swap" data-swap-b="${i}">SIGN</button></td></tr>`;
+    const P = h.mlbId && POOL_H.get(h.mlbId), plays = P ? P.elig.join(' ') || 'DH' : h.pos;
+    return `<tr><td class="pos">BN</td><td class="who"><b>${esc(h.name)}</b>${clubTag(h.mlbId, POOL_H)}<span class="rs-plays">${plays}</span></td><td>${h.bats}</td>`
+      + HIT_KEYS.map(([k]) => `<td class="rv ${h[k] >= 85 ? 'hi' : h[k] < 60 ? 'lo' : ''}">${h[k]}</td>`).join('')
+      + `<td class="ovr">${hitterOvr(h, h.pos)}</td><td class="cost">${hitterCost(h)}</td><td class="rs-btns"><button class="ghost rs-swap" data-swap-b="${i}">Change</button><button class="ghost rs-x" data-drop="bench" data-i="${i}" title="Release him">&times;</button></td></tr>`;
+  }).join('');
+  const pHead = `<thead><tr><th>ROLE</th><th>PLAYER</th><th title="Throws">T</th>${PIT_KEYS.map(([, l, tip]) => `<th title="${tip}">${l}</th>`).join('')}<th>PITCHES</th><th>OVR</th><th>PTS</th><th></th></tr></thead>`;
   el.innerHTML = `
     <div class="rs-ident">${rsBadge(d)}
       <label>City<input data-f="city" maxlength="18" value="${esc(d.city)}"></label>
@@ -6258,22 +6549,27 @@ function rsRenderEdit() {
       <label class="short">Colors<span class="cols"><input type="color" data-f="c1" value="${d.c1}" aria-label="Primary color"><input type="color" data-f="c2" value="${d.c2}" aria-label="Secondary color"></span></label>
     </div>
     <div class="rs-points"><div class="rs-track"><i id="rsBar"></i></div><div id="rsPts"></div></div>
-    <p class="rs-help">Sign real MLB players to every spot. Each one costs points from his ratings (a point a step above 40, two above 70, three above 85), and the whole roster has to fit under the ${ROSTER_BUDGET.toLocaleString()}-point cap, what the priciest real club costs. Click <b>Change</b> to swap anyone out. Hover a column for what it means.</p>
+    <p class="rs-help">Sign real MLB players to every spot. Each one costs points from his ratings (a point a step above 40, two above 70, three above 85), and the whole roster has to fit under the ${ROSTER_BUDGET.toLocaleString()}-point cap, what the priciest real club costs. Click <b>Change</b> to swap anyone out, or <b>&times;</b> to release a bench player or pitcher and free up points. Hover a column for what it means.</p>
     <h3>LINEUP <small>batting order top to bottom</small></h3>
     <div class="rs-scroll"><table class="rs-table"><thead><tr><th>#</th><th>POS</th><th>PLAYER</th><th title="Bats">B</th>${HIT_KEYS.map(([, l, tip]) => `<th title="${tip}">${l}</th>`).join('')}<th>OVR</th><th>PTS</th><th></th></tr></thead><tbody>${hRows}</tbody></table></div>
-    <h3>PITCHING STAFF <small>a starter and three relievers</small></h3>
-    <div class="rs-scroll"><table class="rs-table"><thead><tr><th>ROLE</th><th>PLAYER</th><th title="Throws">T</th>${PIT_KEYS.map(([, l, tip]) => `<th title="${tip}">${l}</th>`).join('')}<th>PITCHES</th><th>OVR</th><th>PTS</th><th></th></tr></thead><tbody>${pRows}</tbody></table></div>
+    <h3>BENCH <small>pinch hitters, pinch runners and defensive subs, up to ${ROSTER_SIZES.bench}</small></h3>
+    <div class="rs-scroll"><table class="rs-table"><thead><tr><th>POS</th><th>PLAYER</th><th title="Bats">B</th>${HIT_KEYS.map(([, l, tip]) => `<th title="${tip}">${l}</th>`).join('')}<th>OVR</th><th>PTS</th><th></th></tr></thead><tbody>${benchRows}</tbody></table></div>
+    <h3>ROTATION <small>SP1 starts single games; a season rotates through all ${ROSTER_SIZES.rotation}</small></h3>
+    <div class="rs-scroll"><table class="rs-table">${pHead}<tbody>${rotRows}</tbody></table></div>
+    <h3>BULLPEN <small>the closer first, up to ${ROSTER_SIZES.bullpen} arms</small></h3>
+    <div class="rs-scroll"><table class="rs-table">${pHead}<tbody>${penRows}</tbody></table></div>
     <div class="row-actions rs-actions"><button class="ghost" data-act="dup">Duplicate</button><button class="ghost danger" data-act="del">Delete roster</button></div>`;
   rsPoints();
 }
 
 // --------------------------------------------------------- player picker ----
-// RS.pick = { kind: 'h' | 'p', slot: position or staff index, q, only, club, sort }
+// RS.pick = { kind: 'h' (lineup spot) | 'b' (bench) | 's' (rotation) | 'r' (bullpen), slot, q, only, club, sort }
 function rsOpenPick(kind, slot) {
-  RS.pick = { kind, slot, q: '', only: true, club: '', sort: 'ovr' };
-  const el = $('rsPick'), word = kind === 'h' ? posWord[slot] : +slot === 0 ? 'starting pitcher' : 'reliever';
-  const onlyLabel = kind === 'h' ? (slot === 'DH' ? '' : `Only players who play ${slot}`) : +slot === 0 ? 'Only starters' : 'Only relievers';
-  const sorts = kind === 'h' ? [['ovr', 'Best overall'], ['cost', 'Cheapest'], ['con', 'Contact'], ['pow', 'Power'], ['eye', 'Eye'], ['spd', 'Speed'], ['fld', 'Fielding']]
+  RS.pick = { kind, slot, q: '', only: kind !== 'b', club: '', sort: 'ovr' };
+  const isH = kind === 'h' || kind === 'b', el = $('rsPick');
+  const word = kind === 'h' ? posWord[slot] : kind === 'b' ? 'bench player' : kind === 's' ? 'starting pitcher' : +slot === 0 ? 'closer' : 'reliever';
+  const onlyLabel = kind === 'h' ? (slot === 'DH' ? '' : `Only players who play ${slot}`) : kind === 'b' ? '' : kind === 's' ? 'Only starters' : 'Only relievers';
+  const sorts = isH ? [['ovr', 'Best overall'], ['cost', 'Cheapest'], ['con', 'Contact'], ['pow', 'Power'], ['eye', 'Eye'], ['spd', 'Speed'], ['fld', 'Fielding']]
     : [['ovr', 'Best overall'], ['cost', 'Cheapest'], ['velo', 'Velocity'], ['ctl', 'Control'], ['stuff', 'Stuff'], ['stam', 'Stamina']];
   el.innerHTML = `<div class="rsp-card" role="dialog" aria-label="Sign a player">
     <div class="rsp-head"><h3>SIGN A ${word.toUpperCase()}</h3><span id="rspNow"></span><button class="ghost" data-pk="close">Close</button></div>
@@ -6289,23 +6585,25 @@ function rsOpenPick(kind, slot) {
 function rsClosePick() { RS.pick = null; $('rsPick').classList.add('hidden'); $('rsPick').innerHTML = ''; }
 function rsPickList() {
   const P = RS.pick, d = rsCur(); if (!P || !d) return;
-  const isH = P.kind === 'h', r = resolveRoster(d);
-  const cur = isH ? r.hitters.find((h) => h.pos === P.slot) : r.pitchers[+P.slot];
-  const curCost = isH ? hitterCost(cur) : pitcherCost(cur), room = ROSTER_BUDGET - (rosterCost(d) - curCost);
-  const taken = new Set((isH ? r.hitters.filter((h) => h.pos !== P.slot) : r.pitchers.filter((p, i) => i !== +P.slot)).map((x) => x.mlbId).filter(Boolean));
-  $('rspNow').innerHTML = `Now: <b>${esc(cur.name)}</b> &middot; ${curCost} pts &middot; up to <b>${Math.max(0, room).toLocaleString()}</b> pts for this spot`;
+  const isH = P.kind === 'h' || P.kind === 'b', r = resolveRoster(d);
+  const list0 = P.kind === 'h' ? null : P.kind === 'b' ? r.bench : P.kind === 's' ? r.rotation : r.bullpen;
+  const cur = P.kind === 'h' ? r.hitters.find((h) => h.pos === P.slot) : list0[+P.slot] || null;
+  const curCost = cur ? (isH ? hitterCost(cur) : pitcherCost(cur)) : 0, room = ROSTER_BUDGET - (rosterCost(d) - curCost);
+  const others = isH ? [...r.hitters, ...r.bench] : [...r.rotation, ...r.bullpen];
+  const taken = new Set(others.filter((x) => x !== cur).map((x) => x.mlbId).filter(Boolean));
+  $('rspNow').innerHTML = `Now: <b>${cur ? esc(cur.name) : 'open spot'}</b> &middot; ${curCost} pts &middot; up to <b>${Math.max(0, room).toLocaleString()}</b> pts for this spot`;
   const q = P.q.trim().toLowerCase();
   let list = [];
   if (isH) {
     for (const h of POOL_H.values()) {
-      if (P.only && P.slot !== 'DH' && !h.def[P.slot]) continue;
+      if (P.kind === 'h' && P.only && P.slot !== 'DH' && !h.def[P.slot]) continue;
       if (P.club && h.club !== P.club) continue;
       if (q && !h.name.toLowerCase().includes(q) && h.club.toLowerCase() !== q) continue;
-      const rr = hitterAt(h, P.slot);
-      list.push({ p: h, r: rr, ovr: hitterOvr(rr, P.slot), cost: hitterCost(rr) });
+      const at = P.kind === 'h' ? P.slot : h.main, rr = hitterAt(h, at);
+      list.push({ p: h, r: rr, ovr: hitterOvr(rr, at), cost: hitterCost(rr) });
     }
   } else {
-    const want = +P.slot === 0 ? 'SP' : 'RP';
+    const want = P.kind === 's' ? 'SP' : 'RP';
     for (const p of POOL_P.values()) {
       if (P.only && p.role !== want) continue;
       if (P.club && p.club !== P.club) continue;
@@ -6320,7 +6618,7 @@ function rsPickList() {
   const cols = isH ? HIT_KEYS.map(([k]) => k) : PIT_KEYS.map(([k]) => k);
   const head = `<tr><th>PLAYER</th><th>TEAM</th><th>${isH ? 'PLAYS' : 'ROLE'}</th>${(isH ? HIT_KEYS : PIT_KEYS).map(([, l, tip]) => `<th title="${tip}">${l}</th>`).join('')}${isH ? '' : '<th>PITCHES</th>'}<th>OVR</th><th>PTS</th><th>+/&minus;</th><th></th></tr>`;
   const rows = list.map(({ p, r: rr, ovr, cost }) => {
-    const diff = cost - curCost, isCur = cur.mlbId === p.id, onTeam = taken.has(p.id), over = cost > room;
+    const diff = cost - curCost, isCur = !!cur && cur.mlbId === p.id, onTeam = taken.has(p.id), over = cost > room;
     const why = isCur ? 'Signed' : onTeam ? 'On your team' : over ? 'Over the cap' : '';
     const plays = isH ? (p.elig.length ? p.elig.join(' ') : 'DH') : p.role;
     return `<tr class="${why ? 'no' : ''}"><td class="who"><b>${esc(p.name)}</b></td><td>${esc(p.club)}</td><td class="plays">${plays}</td>`
@@ -6338,9 +6636,14 @@ function rsSign(id) {
     const h = POOL_H.get(id); if (!h) return;
     const i = d.hitters.findIndex((x) => x.pos === P.slot);
     d.hitters[i] = hitterSnap(h, P.slot);
+  } else if (P.kind === 'b') {
+    const h = POOL_H.get(id); if (!h) return;
+    const i = Math.min(+P.slot, d.bench.length);
+    d.bench[i] = hitterSnap(h, h.main);
   } else {
     const p = POOL_P.get(id); if (!p) return;
-    d.pitchers[+P.slot] = pitcherSnap(p);
+    const list = P.kind === 's' ? d.rotation : d.bullpen, i = Math.min(+P.slot, list.length);
+    list[i] = pitcherSnap(p);
   }
   rsClosePick();
   SND.init(); if (SND.ctx) SND.tick();
@@ -6376,7 +6679,14 @@ function buildRosterUI() {
       [d.order[i], d.order[j]] = [d.order[j], d.order[i]]; rsTouched(true); return;
     }
     if (b.dataset.swapH) { rsOpenPick('h', b.dataset.swapH); return; }
-    if (b.dataset.swapP) { rsOpenPick('p', b.dataset.swapP); return; }
+    if (b.dataset.swapB != null) { rsOpenPick('b', b.dataset.swapB); return; }
+    if (b.dataset.swapS != null) { rsOpenPick('s', b.dataset.swapS); return; }
+    if (b.dataset.swapR != null) { rsOpenPick('r', b.dataset.swapR); return; }
+    if (b.dataset.drop) {
+      const list = d[b.dataset.drop];
+      if (list && (b.dataset.drop === 'bench' || list.length > 1)) { list.splice(+b.dataset.i, 1); rsTouched(true); }
+      return;
+    }
     const act = b.dataset.act;
     if (act === 'dup') { const c = cleanRoster({ ...JSON.parse(JSON.stringify(d)), id: 'X' + randId(), name: d.name + ' 2', updated: Date.now() }); ROSTERS.push(c); RS.sel = c.id; RS.dirty = c.id; saveRostersLocal(); rsFlush(); rsRenderList(); rsRenderEdit(); }
     else if (act === 'del') {
@@ -7311,7 +7621,7 @@ function skipText() {
   if (G.simAB) return 'Skipping to the next batter';
   const fielding = G.half === 1 - G.lockSide;
   if (fielding && !G.lockFieldSim && G.fielders.some((f) => f.pl.id === G.lock)) return 'In the field: waiting for a ball hit to the outfield or your way';
-  const idx = G.teams[G.lockSide].lineup.findIndex((p) => p.id === G.lock);
+  const idx = G.lu[G.lockSide].findIndex((p) => p.id === G.lock);
   if (idx < 0) return fielding ? 'Your team is in the field' : 'Your team is batting';
   const k = (idx - G.order[G.lockSide] + 9) % 9;
   if (fielding) return k ? `Next: your at-bat (${ordinal(k + 1)} up next inning)` : 'Next: your at-bat (leading off next inning)';
@@ -7702,6 +8012,7 @@ window.addEventListener('keydown', (e) => {
   const k = e.key.toLowerCase();
   if (k === 'escape' && !$('rosterScreen').classList.contains('hidden')) { if (RS.pick) rsClosePick(); else closeRosters(); return; }
   if (k === 'escape' && !$('friendsScreen').classList.contains('hidden')) { closeFriends(); return; }
+  if (k === 'escape' && !$('teamScreen').classList.contains('hidden')) { closeTeam(); return; }
   if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA')) return;
   if (k === 'escape' || (k === 'p' && G.phase !== 'menu')) { togglePause(); return; }
   if (G.phase === 'menu' || G.phase === 'boot' || G.paused) return;
@@ -7744,6 +8055,7 @@ window.addEventListener('keydown', (e) => {
   else if (k === 't') lookRecenter();
   else if (k === 'tab') startSim();
   else if (k === 'v' && G.mode === 'lock') toggleView();
+  else if (k === 'u') openTeam();
 });
 // V cycles third person -> first person -> broadcast
 function toggleView() {
@@ -7867,8 +8179,8 @@ function togglePause(force, remote) {
   batCamLabel();
   if (isHost()) netSend({ t: 'pause', v });
   const me = localSide();
-  const penOK = ['exhibition', 'online'].includes(G.mode) && me >= 0 && me === 1 - G.half && G.phase === 'prePitch' && G.pen[me] < 3;
-  $('btnPen').disabled = !penOK; $('btnPen').style.opacity = penOK ? 1 : 0.45;
+  const teamOK = me >= 0 && G.mode !== 'lock' && G.mode !== 'derby' && !G.drill;
+  $('btnTeam').classList.toggle('hidden', !teamOK);
   try { if (G.paused) speechSynthesis.pause(); else speechSynthesis.resume(); } catch (e) { /* none */ }
 }
 
@@ -8039,10 +8351,7 @@ function buildMenu() {
   $('btnVoice').addEventListener('click', () => { settings.voice = !settings.voice; saveSettings(); $('btnVoice').textContent = `Commentary voice: ${settings.voice ? 'On' : 'Off'}`; if (!settings.voice) try { speechSynthesis.cancel(); } catch (e) { /* none */ } });
   $('btnZone').addEventListener('click', toggleZone);
   $('btnBatCam').addEventListener('click', cycleBatCam);
-  $('btnPen').addEventListener('click', () => {
-    if (isGuest()) { netSend({ t: 'act', a: 'pen' }); togglePause(false); return; }
-    if (bringReliever(localSide())) { togglePause(false); enterPrePitch(); hudPitcher(); }
-  });
+
   $('btnQuit').addEventListener('click', () => { togglePause(false); toMenu(); });
   $('btnMenu').addEventListener('click', toMenu);
   $('btnAgain').addEventListener('click', () => {
@@ -8176,6 +8485,7 @@ function frameStep(dt) {
     } else { const n = G.ff > 1 ? G.ff : 1; for (let i = 0; i < n; i++) update(dt); }
   }
   updateSkipUI();
+  $('btnTeamHud').classList.toggle('hidden', !(G.teams && G.mode !== 'menu' && mySide() >= 0 && G.mode !== 'lock' && G.mode !== 'derby' && !G.drill && G.phase !== 'final'));
   netTick();
   camUpdate(dt);
   const d = camera.position.distanceTo(ballMesh.position);
@@ -8191,6 +8501,7 @@ function boot() {
   netInstallHooks();
   buildRosterUI();
   buildTutorialUI();
+  buildTeamUI();
   $('btnRosters').addEventListener('click', openRosters);
   buildMenu();
   buildCloudUI();
@@ -8221,7 +8532,7 @@ window.__fullcount = {
   run(sec, dt = 1 / 60) { for (let t = 0; t < sec && G.phase !== 'final'; t += dt) frameStep(dt); renderer.render(scene, camera); },
   cam: () => ({ pos: camRig.pos.toArray().map((v) => +v.toFixed(1)), look: camRig.look.toArray().map((v) => +v.toFixed(1)), fl: { ...FL }, fpvOn, tp: { ...TP } }),
   tick(dt = 1 / 30) { if (isGuest()) guestUpdate(dt); else update(dt); netTick(); },
-  setBases(list) { const lu = battingTeam().lineup; G.bases = [null, null, null, null]; for (const b of list) G.bases[b] = lu[(b + 4) % 9]; placeForPitch(); },
+  setBases(list) { const lu = G.lu[G.half]; G.bases = [null, null, null, null]; for (const b of list) G.bases[b] = lu[(b + 4) % 9]; placeForPitch(); },
   // put a specific ball in play from the current pitch setup (for testing fielding / running)
   forceBall(ev, la, spray) {
     G.P = G.P || { type: 'FF', mph: 94 }; G.cross = G.cross || { x: 0, y: 2.5 };

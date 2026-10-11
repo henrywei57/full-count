@@ -482,7 +482,7 @@ function skipText() {
   if (G.simAB) return 'Skipping to the next batter';
   const fielding = G.half === 1 - G.lockSide;
   if (fielding && !G.lockFieldSim && G.fielders.some((f) => f.pl.id === G.lock)) return 'In the field: waiting for a ball hit to the outfield or your way';
-  const idx = G.teams[G.lockSide].lineup.findIndex((p) => p.id === G.lock);
+  const idx = G.lu[G.lockSide].findIndex((p) => p.id === G.lock);
   if (idx < 0) return fielding ? 'Your team is in the field' : 'Your team is batting';
   const k = (idx - G.order[G.lockSide] + 9) % 9;
   if (fielding) return k ? `Next: your at-bat (${ordinal(k + 1)} up next inning)` : 'Next: your at-bat (leading off next inning)';
@@ -873,6 +873,7 @@ window.addEventListener('keydown', (e) => {
   const k = e.key.toLowerCase();
   if (k === 'escape' && !$('rosterScreen').classList.contains('hidden')) { if (RS.pick) rsClosePick(); else closeRosters(); return; }
   if (k === 'escape' && !$('friendsScreen').classList.contains('hidden')) { closeFriends(); return; }
+  if (k === 'escape' && !$('teamScreen').classList.contains('hidden')) { closeTeam(); return; }
   if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA')) return;
   if (k === 'escape' || (k === 'p' && G.phase !== 'menu')) { togglePause(); return; }
   if (G.phase === 'menu' || G.phase === 'boot' || G.paused) return;
@@ -915,6 +916,7 @@ window.addEventListener('keydown', (e) => {
   else if (k === 't') lookRecenter();
   else if (k === 'tab') startSim();
   else if (k === 'v' && G.mode === 'lock') toggleView();
+  else if (k === 'u') openTeam();
 });
 // V cycles third person -> first person -> broadcast
 function toggleView() {
@@ -1038,8 +1040,8 @@ function togglePause(force, remote) {
   batCamLabel();
   if (isHost()) netSend({ t: 'pause', v });
   const me = localSide();
-  const penOK = ['exhibition', 'online'].includes(G.mode) && me >= 0 && me === 1 - G.half && G.phase === 'prePitch' && G.pen[me] < 3;
-  $('btnPen').disabled = !penOK; $('btnPen').style.opacity = penOK ? 1 : 0.45;
+  const teamOK = me >= 0 && G.mode !== 'lock' && G.mode !== 'derby' && !G.drill;
+  $('btnTeam').classList.toggle('hidden', !teamOK);
   try { if (G.paused) speechSynthesis.pause(); else speechSynthesis.resume(); } catch (e) { /* none */ }
 }
 
@@ -1210,10 +1212,7 @@ function buildMenu() {
   $('btnVoice').addEventListener('click', () => { settings.voice = !settings.voice; saveSettings(); $('btnVoice').textContent = `Commentary voice: ${settings.voice ? 'On' : 'Off'}`; if (!settings.voice) try { speechSynthesis.cancel(); } catch (e) { /* none */ } });
   $('btnZone').addEventListener('click', toggleZone);
   $('btnBatCam').addEventListener('click', cycleBatCam);
-  $('btnPen').addEventListener('click', () => {
-    if (isGuest()) { netSend({ t: 'act', a: 'pen' }); togglePause(false); return; }
-    if (bringReliever(localSide())) { togglePause(false); enterPrePitch(); hudPitcher(); }
-  });
+
   $('btnQuit').addEventListener('click', () => { togglePause(false); toMenu(); });
   $('btnMenu').addEventListener('click', toMenu);
   $('btnAgain').addEventListener('click', () => {
@@ -1347,6 +1346,7 @@ function frameStep(dt) {
     } else { const n = G.ff > 1 ? G.ff : 1; for (let i = 0; i < n; i++) update(dt); }
   }
   updateSkipUI();
+  $('btnTeamHud').classList.toggle('hidden', !(G.teams && G.mode !== 'menu' && mySide() >= 0 && G.mode !== 'lock' && G.mode !== 'derby' && !G.drill && G.phase !== 'final'));
   netTick();
   camUpdate(dt);
   const d = camera.position.distanceTo(ballMesh.position);
@@ -1362,6 +1362,7 @@ function boot() {
   netInstallHooks();
   buildRosterUI();
   buildTutorialUI();
+  buildTeamUI();
   $('btnRosters').addEventListener('click', openRosters);
   buildMenu();
   buildCloudUI();
@@ -1392,7 +1393,7 @@ window.__fullcount = {
   run(sec, dt = 1 / 60) { for (let t = 0; t < sec && G.phase !== 'final'; t += dt) frameStep(dt); renderer.render(scene, camera); },
   cam: () => ({ pos: camRig.pos.toArray().map((v) => +v.toFixed(1)), look: camRig.look.toArray().map((v) => +v.toFixed(1)), fl: { ...FL }, fpvOn, tp: { ...TP } }),
   tick(dt = 1 / 30) { if (isGuest()) guestUpdate(dt); else update(dt); netTick(); },
-  setBases(list) { const lu = battingTeam().lineup; G.bases = [null, null, null, null]; for (const b of list) G.bases[b] = lu[(b + 4) % 9]; placeForPitch(); },
+  setBases(list) { const lu = G.lu[G.half]; G.bases = [null, null, null, null]; for (const b of list) G.bases[b] = lu[(b + 4) % 9]; placeForPitch(); },
   // put a specific ball in play from the current pitch setup (for testing fielding / running)
   forceBall(ev, la, spray) {
     G.P = G.P || { type: 'FF', mph: 94 }; G.cross = G.cross || { x: 0, y: 2.5 };

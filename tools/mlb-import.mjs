@@ -292,13 +292,26 @@ function buildTeam(t, ci) {
   take((h) => h.pow + h.con * 0.5);
   pool.sort((a, b) => b.con + b.pow - (a.con + a.pow));
   order.push(...pool);
-  // the ace (most starts), then the top three relief arms (saves, holds, innings)
+  // the rotation: the five with the most starts (the ace first), then the bullpen: the top
+  // seven relief arms by saves, holds and innings, the closer first
   const arms = [...PIT.values()].filter((p) => p.club === ci);
-  const sp = arms.slice().sort((a, b) => sumPit(b.id).gsS - sumPit(a.id).gsS || sumPit(b.id).ipS - sumPit(a.id).ipS)[0];
+  const starts = (p) => sumPit(p.id).gsS * 10 + sumPit(p.id).gs + sumPit(p.id).ipS * 0.05;
+  const rotation = arms.filter((p) => p.role === 'SP').sort((a, b) => starts(b) - starts(a)).slice(0, 5);
+  for (const p of arms.slice().sort((a, b) => starts(b) - starts(a))) if (rotation.length < 5 && !rotation.includes(p)) rotation.push(p);
   const lev = (p) => { const o = sumPit(p.id); return o.sv * 3 + o.hld * 2 + o.ip * 0.3 - o.gs * 4; };
-  const staff = [sp, ...arms.filter((p) => p !== sp).sort((a, b) => lev(b) - lev(a)).slice(0, 3)].filter(Boolean);
-  if (staff.length < 4) throw new Error(`${t.abbreviation}: only ${staff.length} pitchers with stats`);
-  return { club: ci, lineup: order.map((h) => [lineup.find((x) => x.h === h).pos, h.id]), staff: staff.map((p) => p.id) };
+  const bullpen = arms.filter((p) => !rotation.includes(p)).sort((a, b) => lev(b) - lev(a)).slice(0, 7);
+  if (rotation.length < 1 || bullpen.length < 3) throw new Error(`${t.abbreviation}: only ${rotation.length + bullpen.length} pitchers with stats`);
+  // the bench: a backup catcher if there is one, then the best infielder, outfielder and bat left
+  const left = hitters.filter((h) => !used.has(h.id) && h !== dh), bench = [];
+  const addBench = (f, pos) => { const h = best(left.filter((x) => !bench.includes(x) && f(x)), pos); if (h) bench.push(h); };
+  addBench((h) => defAt(h, 'C'), 'C');
+  addBench((h) => h.def.some((d) => IF.has(d[0])), 'SS');
+  addBench((h) => h.def.some((d) => OF.has(d[0])), 'CF');
+  while (bench.length < 4 && left.some((x) => !bench.includes(x))) addBench(() => true, 'DH');
+  return {
+    club: ci, lineup: order.map((h) => [lineup.find((x) => x.h === h).pos, h.id]),
+    rotation: rotation.map((p) => p.id), bullpen: bullpen.map((p) => p.id), bench: bench.map((h) => h.id),
+  };
 }
 const teams = [];
 clubs.forEach((t, ci) => { try { teams.push(buildTeam(t, ci)); } catch (e) { console.warn(`  ${t.name}: ${e.message}`); } });
@@ -323,8 +336,8 @@ const MLB_CLUBS = ${rowsOut(clubRows)};
 const MLB_HITTERS = ${rowsOut(hitRows)};
 // [mlb id, name, club, SP/RP, throws, number, VELO, CTL, STF, STA, skin, "pitch+mph ..." most used first]
 const MLB_PITCHERS = ${rowsOut(pitRows)};
-// each club: [club, lineup in batting order as [position, mlb id], staff (ace first) as mlb ids]
-const MLB_TEAMS = ${rowsOut(teams.map((t) => [t.club, t.lineup, t.staff]))};
+// each club: [club, lineup in batting order as [position, mlb id], rotation (ace first), bullpen (closer first), bench], players by mlb id
+const MLB_TEAMS = ${rowsOut(teams.map((t) => [t.club, t.lineup, t.rotation, t.bullpen, t.bench]))};
 `;
 await writeFile(new URL('../src/12-mlb.js', import.meta.url), out);
 console.log(`  wrote src/12-mlb.js (${(out.length / 1024).toFixed(0)} KB)`);
