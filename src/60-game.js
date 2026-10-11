@@ -15,7 +15,7 @@ const G = {
   pci: { x: 0, y: 2.5 }, glove: new V3(0, 2.4, 1.7), rec: [], recOn: false, replay: null, derby: null,
   abEnd: null, contactT: 0, menuAng: 0,
   ctrl: ['cpu', 'cpu'], lock: null, remoteIn: { x: 0, z: 0 }, remoteTake: false, camFocus: null, localPitch: false,
-  ump: 1, challenges: [2, 2], challengeable: null, challenge: null, cpuChallengeAt: 0, reviews: [1, 1], review: null, view: 0, lockSide: 1, lockSkip: false, skipping: false, lockInv: false, beat: 0,
+  parkKey: 'FC', ump: 1, challenges: [2, 2], challengeable: null, challenge: null, cpuChallengeAt: 0, reviews: [1, 1], review: null, view: 0, lockSide: 1, lockSkip: false, skipping: false, lockInv: false, beat: 0,
 };
 const battingTeam = () => G.teams[G.half];
 const fieldingTeam = () => G.teams[1 - G.half];
@@ -95,7 +95,10 @@ function applyAlignment() {
   for (const f of G.fielders) {
     let [x, z] = ROLE_POS[f.role];
     if (f.isOF || f.role === 'SS' || f.role === '2B') {
-      const r = Math.hypot(x, z), th = Math.atan2(x, -z) + pull * (f.isOF ? 6 : 4) * DEG;
+      let r = Math.hypot(x, z);
+      const th = Math.atan2(x, -z) + pull * (f.isOF ? 6 : 4) * DEG;
+      // outfielders play deeper in a big park and shallower in a small one
+      if (f.isOF) r *= clamp(fenceDist(th / DEG) / parkDist(PARKS.FC, th / DEG), 0.92, 1.05);
       x = r * Math.sin(th); z = -r * Math.cos(th);
     }
     if (infieldIn && !f.isOF && f.role !== 'P' && f.role !== 'C') { const r = Math.hypot(x, z), k = (r - 22) / r; x *= k; z *= k; }
@@ -151,6 +154,9 @@ function startGame(cfg) {
   // cfg.teams = [away, home] as team specs (built-in key or a whole custom roster)
   const specs = distinctSpecs(...(cfg.teams || [{ b: TEAMS[cfg.away || 0].key }, { b: TEAMS[cfg.home ?? 3].key }]));
   const away = teamFromSpec(specs[0]), home = teamFromSpec(specs[1]);
+  // the home team's ballpark, unless another one was picked
+  const park = cfg.park && PARKS[cfg.park] ? cfg.park : PARKS[home.key] ? home.key : 'FC';
+  if (G.parkKey !== park) { G.parkKey = park; setPark(park); }
   G.teams = cfg.mode === 'derby' ? [home, away] : [away, home];
   // practice: your team is the home pick; it bats in the batting and baserunning drills
   G.drill = cfg.mode === 'practice' || cfg.mode === 'tutorial' ? (DRILLS[cfg.drill] ? cfg.drill : 'bat') : null;
@@ -210,7 +216,7 @@ function startGame(cfg) {
     const me = PBYID[G.lock];
     Caster.line(`Player Lock: you are ${me.name}. The rest of the game sims until you are involved.`);
   } else if (G.drill) { if (G.mode !== 'tutorial') Caster.line(DRILLS[G.drill].intro, false); }
-  else Caster.line(`Good evening and welcome to the ballpark. The ${G.teams[0].name} visit the ${G.teams[1].name} tonight.`);
+  else Caster.line(`Good evening and welcome to ${PARK.name}. The ${G.teams[0].name} visit the ${G.teams[1].name} tonight.`);
   hudLock();
   startHalf();
 }
@@ -223,7 +229,7 @@ function startHalf() {
   setupFielders();
   hudScore(); hudCount();
   const title = G.mode === 'tutorial' ? 'TUTORIAL' : G.drill ? DRILLS[G.drill].name.toUpperCase() : `${G.half ? 'BOTTOM' : 'TOP'} OF THE ${ordinal(G.inning).toUpperCase()}`;
-  hudBanner(title, G.drill ? 'Practice · quit from the pause menu' : `${battingTeam().city} ${battingTeam().name} batting`, '');
+  hudBanner(title, G.drill ? 'Practice · quit from the pause menu' : `${battingTeam().city} ${battingTeam().name} batting` + (G.inning === 1 && G.half === 0 ? ` · ${PARK.name}` : ''), '');
   if (G.inning > G.innings) Caster.line(`Extra innings. ${shortName(G.bases[2].name)} starts at second base.`, true, { queue: true });
   setPhase('halfIntro', G.mode === 'spectate' ? 1.8 : 2.6);
   G.batter = G.lu[G.half][G.order[G.half] % 9];

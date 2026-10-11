@@ -14,7 +14,7 @@ function buildPitch(pitcher, pitch, target, power, scale, fatigue, rel) {
   const dz = -rel.z;
   const vStart = mph * MPH / scale;
   const T = dz / (vStart * 0.96);
-  const brk = pitch.brk * (0.88 + 0.16 * power) * (1 - fatigue * 0.12);
+  const brk = pitch.brk * (0.88 + 0.16 * power) * (1 - fatigue * 0.12) * lerp(1, PARK.air || 1, 0.6);   // thin air: less break
   const hM = (PT.h * brk) / 12, vM = (PT.v * brk) / 12;
   const a = new V3((2 * hM * armX) / (T * T), -G_ACC / (scale * scale) + (2 * vM) / (T * T), (-0.08 * vStart) / T);
   const tgt = new V3(target.x, target.y, 0);
@@ -45,16 +45,16 @@ function simBatted(origin, ev, la, spray, opts = {}) {
   const out = [];
   let t = 0, bounced = false, rolling = false, hr = false, gr = false, dead = false, wall = false;
   let landT = null, landPos = null, hrT = null, deadT = null, maxH = pos.y;
-  const acc = new V3(), Ld = new V3();
+  const acc = new V3(), Ld = new V3(), air = PARK.air || 1, K = BB_K * air, KL = BB_KL * air;   // thin air: less drag and lift
   for (let n = 0; n < 120 * 16; n++) {
     if (!rolling) {
       const sp = vel.length();
-      acc.set(0, -G_ACC, 0).addScaledVector(vel, -BB_K * sp);
+      acc.set(0, -G_ACC, 0).addScaledVector(vel, -K * sp);
       if (spin !== 0 && sp > 1) {
         const h = Math.hypot(vel.x, vel.z) || 1e-6;
         Ld.set((-vel.x * vel.y) / h, h, (-vel.z * vel.y) / h);
         const ln = Ld.length();
-        if (ln > 1e-6) acc.addScaledVector(Ld, (BB_KL * spin * sp * sp) / ln);
+        if (ln > 1e-6) acc.addScaledVector(Ld, (KL * spin * sp * sp) / ln);
       }
       vel.addScaledVector(acc, BB_DT); pos.addScaledVector(vel, BB_DT);
       if (pos.y > maxH) maxH = pos.y;
@@ -82,7 +82,7 @@ function simBatted(origin, ev, la, spray, opts = {}) {
       if (Math.abs(th) <= 45.4) {
         const fd = fenceDist(th);
         if (r >= fd - 0.35) {
-          if (pos.y > FENCE_H) {
+          if (pos.y > fenceH(th)) {
             if (!bounced) { hr = true; hrT = t; } else { gr = true; hrT = t; }
           } else {
             const nx = pos.x / r, nz = pos.z / r, vr = vel.x * nx + vel.z * nz;

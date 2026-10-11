@@ -75,6 +75,17 @@ Who wins the race comes down to the runner's speed (fast runners also get better
 
 When you're pitching with runners on, Shift + 1 / 2 / 3 throws over. The runner dives back and is usually safe, but a runner who was going on that pitch gets caught leaning: he's either picked off or hung up between bases. CPU pitchers throw over too, mostly to fast runners.
 
+## Ballparks
+
+Games are played in the home team's real ballpark: all 30 MLB parks, with their wall distances down each line, in the alleys and to center, and their wall heights. Pick any park from the **Ballpark** menu instead. (The dimensions are close approximations.)
+
+- **Fenway Park**: the 37-foot Green Monster in left (Monster seats on top), Pesky's short porch in right.
+- **Yankee Stadium**: the short porch in right; **Oracle Park**: the 24-foot brick wall in right and deep Triples Alley.
+- **PNC Park**: the 21-foot Clemente Wall; **Daikin Park**: the Crawford Boxes in left; **Target Field**, **Camden Yards** and **Angel Stadium**: tall walls in right.
+- **Coors Field**: deep fences, but the ball carries in the thin air (about 7% farther), and breaking balls break a little less. Chase Field and Truist Park get a touch of that too.
+
+Balls hit the wall or clear it according to its height where they get there, outfielders play deeper in big parks and shallower in small ones, and the distance markers, foul poles and outfield seats follow the park. Custom teams play at Full Count Park unless you pick another one. Online, the host's pick is used.
+
 ## More rules
 
 - **Wild pitches and passed balls.** A pitch in the dirt or far off the plate can get past the catcher, more often with a weak glove behind the plate, and now and then he just misses one. The ball rolls toward the backstop, the catcher chases it, the pitcher covers home, and the runners can go (they have a secondary lead). On defense you can steer the catcher and throw like any other play.

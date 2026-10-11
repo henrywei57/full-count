@@ -1067,7 +1067,7 @@ function togglePause(force, remote) {
 }
 
 // ------------------------------------------------------------------ menus ----
-const menu = { mode: 'exhibition', away: 'NYY', home: 'LAD', side: 1, innings: 3, diff: 1, manual: 1, batter: 3, lockPick: 'h3', ump: 1, view: 2, lockField: 1, lockSkip: 1, batCam: settings.batCam || 0, netTeam: 'LAD', drill: 0, tutLesson: -1 };
+const menu = { mode: 'exhibition', away: 'NYY', home: 'LAD', park: '', side: 1, innings: 3, diff: 1, manual: 1, batter: 3, lockPick: 'h3', ump: 1, view: 2, lockField: 1, lockSkip: 1, batCam: settings.batCam || 0, netTeam: 'LAD', drill: 0, tutLesson: -1 };
 try { Object.assign(menu, JSON.parse(localStorage.getItem('fullcount.menu') || '{}')); } catch (e) { /* ignore */ }
 menu.batCam = settings.batCam || 0;   // the pause screen can change it too; settings wins
 // teams used to be saved as an index into the built-in list
@@ -1136,7 +1136,15 @@ function renderMenu() {
   $('optLockField').classList.toggle('hidden', !lock);
   $('optLockSkip').classList.toggle('hidden', !lock);
   $('optUmp').classList.toggle('hidden', derby || tut || !showTeams);
-  for (const el of ['optSide', 'optInn', 'optDiff', 'optUmp']) $(el).style.pointerEvents = guest ? 'none' : '';
+  $('optPark').classList.toggle('hidden', tut || !showTeams);
+  for (const el of ['optSide', 'optInn', 'optDiff', 'optUmp', 'optPark']) $(el).style.pointerEvents = guest ? 'none' : '';
+  if (showTeams) {
+    // the ballpark: the home team's, or any of the others
+    const hk = online ? onlinePicks().teams[1] : menuTeam('home'), hp = (hk && PARKS[hk.key]) || PARKS.FC;
+    const pp = $('parkPick'), parks = Object.entries(PARKS).sort((x, y) => x[1].name.localeCompare(y[1].name));
+    pp.innerHTML = `<option value="">Home team's park (${esc(hp.name)})</option>` + parks.map(([k, p]) => `<option value="${k}">${esc(p.name)}${k === 'FC' ? '' : ' (' + k + ')'}</option>`).join('');
+    pp.value = (guest ? L.park : menu.park) || '';
+  }
   for (const b of $('modes').querySelectorAll('button')) b.classList.toggle('on', b.dataset.mode === m);
   for (const seg of document.querySelectorAll('.seg[data-key]')) {
     let v = L[seg.dataset.key] ?? menu[seg.dataset.key];
@@ -1208,6 +1216,7 @@ function buildMenu() {
   });
   $('derbyBatter').addEventListener('change', (e) => { menu.batter = +e.target.value; renderMenu(); });
   $('lockPick').addEventListener('change', (e) => { menu.lockPick = e.target.value; renderMenu(); });
+  $('parkPick').addEventListener('change', (e) => { menu.park = PARKS[e.target.value] ? e.target.value : ''; renderMenu(); });
   $('btnHost').addEventListener('click', () => { SND.init(); netHost(); });
   $('btnJoin').addEventListener('click', () => { SND.init(); netJoin($('joinCode').value); });
   $('joinCode').addEventListener('keydown', (e) => { if (e.key === 'Enter') { SND.init(); netJoin($('joinCode').value); } });
@@ -1221,7 +1230,7 @@ function buildMenu() {
     if (menu.mode === 'online') { hostStartOnline(); return; }
     if (menu.mode === 'tutorial') { tutStart(menu.tutLesson >= 0 ? menu.tutLesson : null); return; }
     const teams = [teamSpec(menuTeam('away')), teamSpec(menuTeam('home'))];
-    startGame({ mode: menu.mode, teams, drill: ['bat', 'pitch', 'run', 'field'][menu.drill] || 'bat', side: menu.side, innings: menu.innings, diff: menu.diff, manual: menu.manual, batter: menu.batter, lockPick: menu.lockPick, ump: menu.ump, view: menu.view, lockField: menu.lockField, lockSkip: menu.lockSkip });
+    startGame({ mode: menu.mode, teams, drill: ['bat', 'pitch', 'run', 'field'][menu.drill] || 'bat', side: menu.side, innings: menu.innings, diff: menu.diff, manual: menu.manual, batter: menu.batter, lockPick: menu.lockPick, ump: menu.ump, view: menu.view, lockField: menu.lockField, lockSkip: menu.lockSkip, park: menu.park || '' });
   });
   const openHelp = () => { $('help').classList.remove('hidden'); };
   $('btnHow').addEventListener('click', openHelp);
@@ -1410,7 +1419,7 @@ function boot() {
 }
 // Debug handle: lets a test harness advance the simulation without waiting on animation frames.
 window.__fullcount = {
-  G, TEAMS, settings, NET, keys, BAT_CAMS, Play, Runner, BASES, simBatted, V3, getModel, ballMesh, startPickoff, stealCmd, TUT, tutStart, rosterCost, teamToDef, cleanRoster, buildCustomTeam, Cloud, cloudRender, inviteToast, get ROSTERS() { return ROSTERS; },
+  G, TEAMS, settings, NET, keys, BAT_CAMS, Play, Runner, BASES, simBatted, V3, getModel, ballMesh, startPickoff, stealCmd, camTo, setPark, PARKS, fenceDist, fenceH, TUT, tutStart, rosterCost, teamToDef, cleanRoster, buildCustomTeam, Cloud, cloudRender, inviteToast, get ROSTERS() { return ROSTERS; },
   step(sec, dt = 1 / 60) {
     const n = Math.round(sec / dt);
     for (let i = 0; i < n && !G.paused; i++) { if (isGuest()) guestUpdate(dt); else update(dt); netTick(); }

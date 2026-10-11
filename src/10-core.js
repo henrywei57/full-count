@@ -42,30 +42,73 @@ function esc(s) { return String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&am
 const BASES = [new V3(0, 0, 0), new V3(63.64, 0, -63.64), new V3(0, 0, -127.28), new V3(-63.64, 0, -63.64), new V3(0, 0, 0)];
 const MOUND_Z = -60.5, MOUND_H = 0.83, MOUND_R = 9;
 const ZONE = { halfW: 0.83, bot: 1.55, top: 3.45 };
-const FENCE_H = 9.5;
+const FENCE_H = 9.5;   // a standard outfield wall
 const BALL_R = 0.12;
 
-function fenceDist(th) {
-  const a = Math.min(45, Math.abs(th));
-  const pts = [[0, 400], [10, 394], [20, 377], [30, 358], [38, 342], [45, 330]];
-  for (let i = 1; i < pts.length; i++) {
-    if (a <= pts[i][0]) { const [a0, d0] = pts[i - 1], [a1, d1] = pts[i]; return lerp(d0, d1, (a - a0) / (a1 - a0)); }
-  }
-  return 330;
+// ------------------------------------------------------------- ballparks ----
+// The 30 MLB parks (dimensions approximate): the wall's distance down the left-field line, to
+// left-center, center, right-center and down the right-field line, and its height in left,
+// center and right. Angles are spray angles: negative is left field. air: how thin the air is
+// up there (Coors Field is a mile high): less drag, so the ball carries, and less break.
+const PARKS = {
+  FC: { name: 'Full Count Park', d: [330, 372, 400, 372, 330], h: [9.5, 9.5, 9.5] },
+  AZ: { name: 'Chase Field', d: [330, 374, 407, 374, 334], h: [7.6, 25, 7.6], air: 0.96 },
+  ATH: { name: 'Sutter Health Park', d: [330, 388, 403, 388, 325], h: [8, 12, 8] },
+  ATL: { name: 'Truist Park', d: [335, 385, 400, 375, 325], h: [11, 8, 16], air: 0.97 },
+  BAL: { name: 'Oriole Park at Camden Yards', d: [333, 376, 400, 373, 318], h: [8, 7, 21] },
+  BOS: { name: 'Fenway Park', d: [310, 379, 390, 380, 302], h: [37.2, 17, 5] },
+  CHC: { name: 'Wrigley Field', d: [355, 368, 400, 368, 353], h: [11.5, 11.5, 11.5] },
+  CWS: { name: 'Rate Field', d: [330, 377, 400, 372, 335], h: [8, 8, 8] },
+  CIN: { name: 'Great American Ball Park', d: [328, 379, 404, 370, 325], h: [12, 8, 8] },
+  CLE: { name: 'Progressive Field', d: [325, 370, 400, 375, 325], h: [19, 9, 9] },
+  COL: { name: 'Coors Field', d: [347, 390, 415, 375, 350], h: [8, 8, 14], air: 0.82 },
+  DET: { name: 'Comerica Park', d: [345, 370, 412, 365, 330], h: [7, 7, 8.5] },
+  HOU: { name: 'Daikin Park', d: [315, 362, 409, 373, 326], h: [21, 10, 7] },
+  KC: { name: 'Kauffman Stadium', d: [330, 387, 410, 387, 330], h: [8.5, 8.5, 8.5] },
+  LAA: { name: 'Angel Stadium', d: [347, 387, 396, 370, 350], h: [5, 8, 18] },
+  LAD: { name: 'Dodger Stadium', d: [330, 375, 395, 375, 330], h: [4, 8, 4] },
+  MIA: { name: 'loanDepot park', d: [344, 386, 400, 387, 335], h: [11, 8, 11] },
+  MIL: { name: 'American Family Field', d: [344, 371, 400, 374, 345], h: [8, 8, 8] },
+  MIN: { name: 'Target Field', d: [339, 377, 411, 367, 328], h: [8, 8, 23] },
+  NYM: { name: 'Citi Field', d: [335, 370, 408, 375, 330], h: [8, 8, 8] },
+  NYY: { name: 'Yankee Stadium', d: [318, 399, 408, 385, 314], h: [8, 8, 8] },
+  PHI: { name: 'Citizens Bank Park', d: [329, 374, 401, 369, 330], h: [10.5, 6, 13] },
+  PIT: { name: 'PNC Park', d: [325, 389, 399, 375, 320], h: [6, 10, 21] },
+  SD: { name: 'Petco Park', d: [336, 390, 396, 391, 322], h: [8, 8, 8] },
+  SF: { name: 'Oracle Park', d: [339, 364, 391, 415, 309], h: [8, 8, 24] },
+  SEA: { name: 'T-Mobile Park', d: [331, 378, 401, 381, 326], h: [8, 8, 8] },
+  STL: { name: 'Busch Stadium', d: [336, 375, 400, 375, 335], h: [8, 8, 8] },
+  TB: { name: 'Tropicana Field', d: [315, 370, 404, 370, 322], h: [9.5, 9.5, 9.5] },
+  TEX: { name: 'Globe Life Field', d: [329, 372, 407, 374, 326], h: [8, 8, 8] },
+  TOR: { name: 'Rogers Centre', d: [328, 368, 400, 359, 328], h: [12, 10, 12] },
+  WSH: { name: 'Nationals Park', d: [337, 377, 402, 370, 335], h: [8, 8, 12] },
+};
+let PARK = PARKS.FC;   // the park this game is in (setPark, in 20-world.js)
+// the wall's distance at a spray angle, eased between the five measured points
+function parkDist(P, th) {
+  const u = (clamp(th, -45, 45) + 45) / 22.5, i = Math.min(3, Math.floor(u)), f = u - i;
+  return lerp(P.d[i], P.d[i + 1], (1 - Math.cos(f * Math.PI)) / 2);
 }
-// Closed boundary of the playing field (fence + foul-territory walls + backstop), as [x, z]
-const FENCE_PTS = [];
-const BOUNDARY = (() => {
-  const pts = [];
-  for (let th = -45; th <= 45.001; th += 1.5) { const d = fenceDist(th); const p = [d * Math.sin(th * DEG), -d * Math.cos(th * DEG)]; pts.push(p); FENCE_PTS.push(p); }
+function fenceDist(th) { return parkDist(PARK, th); }
+// the wall's height at a spray angle: left, center or right, blended over a few degrees
+function fenceH(th) {
+  const [l, c, r] = PARK.h, a = clamp(th, -45, 45);
+  return a < 0 ? lerp(l, c, clamp((a + 18) / 6 + 0.5, 0, 1)) : lerp(c, r, clamp((a - 18) / 6 + 0.5, 0, 1));
+}
+// Closed boundary of the playing field (fence + foul-territory walls + backstop), as [x, z].
+// Rebuilt in place for each park, so everything holding these arrays sees the new one.
+const FENCE_PTS = [], BOUNDARY = [];
+function buildBoundary() {
+  FENCE_PTS.length = 0; BOUNDARY.length = 0;
+  for (let th = -45; th <= 45.001; th += 1.5) { const d = fenceDist(th); FENCE_PTS.push([d * Math.sin(th * DEG), -d * Math.cos(th * DEG)]); }
   const u = [Math.SQRT1_2, -Math.SQRT1_2], n = [Math.SQRT1_2, Math.SQRT1_2];
   const side = (s, off) => [u[0] * s + n[0] * off, u[1] * s + n[1] * off];
-  const right = [side(318, 12), side(250, 22), side(170, 34), side(105, 44), [92, -14], [76, 18], [52, 42], [26, 56], [0, 61]];
-  pts.push(...right);
-  const left = right.slice(0, -1).reverse().map(([x, z]) => [-x, z]);
-  pts.push(...left);
-  return pts;
-})();
+  // the foul wall runs from just inside the foul pole back around to the backstop
+  const foul = (line) => [side(line - 12, 12), side(250, 22), side(170, 34), side(105, 44), [92, -14], [76, 18], [52, 42], [26, 56], [0, 61]];
+  const right = foul(fenceDist(45)), left = foul(fenceDist(-45)).slice(0, -1).reverse().map(([x, z]) => [-x, z]);
+  BOUNDARY.push(...FENCE_PTS, ...right, ...left);
+}
+buildBoundary();
 function inPoly(x, z, poly = BOUNDARY) {
   let inside = false;
   for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {

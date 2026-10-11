@@ -92,10 +92,10 @@ function drawFieldCanvas() {
   g.setLineDash([]);
   g.restore();
   g.strokeStyle = 'rgba(255,255,255,0.95)'; g.lineWidth = 0.5;
-  for (const s of [-1, 1]) { g.beginPath(); g.moveTo(0, 0); g.lineTo(s * 233, -233); g.stroke(); }
+  for (const s of [-1, 1]) { const c = fenceDist(s * 45) / Math.SQRT2; g.beginPath(); g.moveTo(0, 0); g.lineTo(s * c, -c); g.stroke(); }
   return cv;
 }
-const fieldMesh = new THREE.Mesh(new THREE.PlaneGeometry(FT.span, FT.span), new THREE.MeshStandardMaterial({ map: canvasTex(drawFieldCanvas()), roughness: 0.95 }));
+const fieldMesh = new THREE.Mesh(new THREE.PlaneGeometry(FT.span, FT.span), new THREE.MeshStandardMaterial({ roughness: 0.95 }));   // the grass is drawn by setPark
 fieldMesh.rotation.x = -Math.PI / 2;
 fieldMesh.position.set(FT.x0 + FT.span / 2, 0, FT.z0 + FT.span / 2);
 fieldMesh.receiveShadow = true;
@@ -194,13 +194,14 @@ function adCanvas(h = 128, pad = '#173a2a') {
 const adTex = canvasTex(adCanvas(), true);
 const adTexLow = canvasTex(adCanvas(96, '#16213a'), true);
 
-function wallStrip(points, h, tex, panelLen) {
+function wallStrip(points, y0, y1, tex, panelLen, color = 0x2a6139) {
+  const at = (v, i) => (Array.isArray(v) ? v[i] : v);
   const pos = [], uv = [], idx = [];
   let acc = 0;
   for (let i = 0; i < points.length; i++) {
     const [x, z] = points[i];
     if (i) acc += Math.hypot(x - points[i - 1][0], z - points[i - 1][1]);
-    pos.push(x, 0, z, x, h, z);
+    pos.push(x, at(y0, i), z, x, at(y1, i), z);
     uv.push(acc / panelLen, 0, acc / panelLen, 1);
     if (i) { const a = (i - 1) * 2; idx.push(a, a + 2, a + 1, a + 1, a + 2, a + 3); }
   }
@@ -208,16 +209,10 @@ function wallStrip(points, h, tex, panelLen) {
   geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
   geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
   geo.setIndex(idx); geo.computeVertexNormals();
-  const m = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ map: tex, roughness: 0.8, side: THREE.DoubleSide }));
+  const m = new THREE.Mesh(geo, new THREE.MeshStandardMaterial(tex ? { map: tex, roughness: 0.8, side: THREE.DoubleSide } : { color, roughness: 0.9, side: THREE.DoubleSide }));
   m.receiveShadow = true;
   return m;
 }
-const fenceDense = [];
-for (let th = -45; th <= 45.001; th += 0.75) { const d = fenceDist(th); fenceDense.push([d * Math.sin(th * DEG), -d * Math.cos(th * DEG)]); }
-scene.add(wallStrip(fenceDense, FENCE_H, adTex, 640 * SPONSORS.length / 64));
-const foulPath = BOUNDARY.slice(FENCE_PTS.length);
-foulPath.unshift(FENCE_PTS[FENCE_PTS.length - 1]); foulPath.push(FENCE_PTS[0]);
-scene.add(wallStrip(foulPath, 4.2, adTexLow, 640 * SPONSORS.length / 40));
 
 // distance markers
 function textPlate(text, w, h, fg = '#ffffff', bg = 'rgba(0,0,0,0)', font = 800) {
@@ -228,29 +223,12 @@ function textPlate(text, w, h, fg = '#ffffff', bg = 'rgba(0,0,0,0)', font = 800)
   const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ map: canvasTex(cv), transparent: true, side: THREE.DoubleSide }));
   return m;
 }
-for (const th of [-44.2, -22, 0, 22, 44.2]) {
-  const d = fenceDist(th) + 1.5, m = textPlate(String(Math.round(fenceDist(th))), 9, 4.5, '#ffd54a', '#173a2a');
-  m.position.set(d * Math.sin(th * DEG), FENCE_H + 2.4, -d * Math.cos(th * DEG));
-  m.lookAt(0, FENCE_H + 2.4, 0);
-  scene.add(m);
-}
-// foul poles
-for (const s of [-1, 1]) {
-  const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 80, 10), new THREE.MeshStandardMaterial({ color: 0xffd23f, emissive: 0x332600 }));
-  pole.position.set(s * 233.6, 40, -233.6); scene.add(pole);
-  const screen = new THREE.Mesh(new THREE.PlaneGeometry(3, 60), new THREE.MeshStandardMaterial({ color: 0xffd23f, transparent: true, opacity: 0.55, side: THREE.DoubleSide }));
-  screen.position.set(s * 233.6 + s * 1.2, 45, -233.6 + 1.2); screen.lookAt(0, 45, 0); scene.add(screen);
-}
-// batter's eye
-{
-  const be = new THREE.Mesh(new THREE.BoxGeometry(84, 34, 10), new THREE.MeshLambertMaterial({ color: 0x0b1410 }));
-  be.position.set(0, 17, -fenceDist(0) - 12); scene.add(be);
-}
 
 // ---------------------------------------------------------------- stands ----
-const crowdSeats = [];
-function buildTiers(path, o) {
-  const n = path.length, N = [];
+// o.h0: the height the first row starts at, one number or one per point of the path
+let crowdSeats = [];
+function buildTiers(path, o, group) {
+  const n = path.length, N = [], H = (i) => (Array.isArray(o.h0) ? o.h0[i] : o.h0);
   for (let i = 0; i < n; i++) {
     const a = path[Math.max(0, i - 1)], b = path[Math.min(n - 1, i + 1)];
     let tx = b[0] - a[0], tz = b[1] - a[1]; const L = Math.hypot(tx, tz) || 1; tx /= L; tz /= L;
@@ -261,13 +239,14 @@ function buildTiers(path, o) {
   const pos = [], col = [];
   const c1 = new THREE.Color(o.color), c2 = new THREE.Color(o.color2 || o.color);
   const quad = (A, B, C, D, c) => { pos.push(...A, ...B, ...C, ...A, ...C, ...D); for (let k = 0; k < 6; k++) col.push(c.r, c.g, c.b); };
+  const at = (p, nn, d, y) => [p[0] + nn[0] * d, y, p[1] + nn[1] * d];
   for (let r = 0; r < o.rows; r++) {
-    const d0 = o.start + r * o.depth, d1 = d0 + o.depth, y0 = o.h0 + r * o.rise, y1 = y0 + o.rise;
+    const d0 = o.start + r * o.depth, d1 = d0 + o.depth;
     const cc = r % 2 ? c1 : c2;
     for (let i = 0; i < n - 1; i++) {
       const P = path[i], Q = path[i + 1], nP = N[i], nQ = N[i + 1];
-      const at = (p, nn, d, y) => [p[0] + nn[0] * d, y, p[1] + nn[1] * d];
-      const A0 = at(P, nP, d0, y0), B0 = at(Q, nQ, d0, y0), A1 = at(P, nP, d0, y1), B1 = at(Q, nQ, d0, y1), A2 = at(P, nP, d1, y1), B2 = at(Q, nQ, d1, y1);
+      const yP0 = H(i) + r * o.rise, yQ0 = H(i + 1) + r * o.rise, yP1 = yP0 + o.rise, yQ1 = yQ0 + o.rise;
+      const A0 = at(P, nP, d0, yP0), B0 = at(Q, nQ, d0, yQ0), A1 = at(P, nP, d0, yP1), B1 = at(Q, nQ, d0, yQ1), A2 = at(P, nP, d1, yP1), B2 = at(Q, nQ, d1, yQ1);
       quad(A0, B0, B1, A1, c1);
       quad(A1, B1, B2, A2, cc);
       if (o.seats) {
@@ -277,20 +256,20 @@ function buildTiers(path, o) {
           const u = (s + 0.5) / steps;
           const x = lerp(A1[0], B1[0], u) * 0.6 + lerp(A2[0], B2[0], u) * 0.4, z = lerp(A1[2], B1[2], u) * 0.6 + lerp(A2[2], B2[2], u) * 0.4;
           const nx = lerp(nP[0], nQ[0], u), nz = lerp(nP[1], nQ[1], u);
-          crowdSeats.push({ x, y: y1, z, yaw: Math.atan2(-nx, -nz), sec: o.sec });
+          crowdSeats.push({ x, y: lerp(yP1, yQ1, u), z, yaw: Math.atan2(-nx, -nz), sec: o.sec });
         }
       }
     }
   }
   // back wall
-  const dEnd = o.start + o.rows * o.depth, yEnd = o.h0 + o.rows * o.rise;
+  const dEnd = o.start + o.rows * o.depth, rise = o.rows * o.rise;
   for (let i = 0; i < n - 1; i++) {
-    const P = path[i], Q = path[i + 1], nP = N[i], nQ = N[i + 1];
-    quad([P[0] + nP[0] * dEnd, yEnd, P[1] + nP[1] * dEnd], [Q[0] + nQ[0] * dEnd, yEnd, Q[1] + nQ[1] * dEnd], [Q[0] + nQ[0] * dEnd, yEnd + o.back, Q[1] + nQ[1] * dEnd], [P[0] + nP[0] * dEnd, yEnd + o.back, P[1] + nP[1] * dEnd], new THREE.Color(0x1a2233));
+    const P = path[i], Q = path[i + 1], nP = N[i], nQ = N[i + 1], yP = H(i) + rise, yQ = H(i + 1) + rise;
+    quad(at(P, nP, dEnd, yP), at(Q, nQ, dEnd, yQ), at(Q, nQ, dEnd, yQ + o.back), at(P, nP, dEnd, yP + o.back), new THREE.Color(0x1a2233));
     if (o.fascia) {
-      const d = o.start - 0.2, top = o.h0, bot = o.h0 - o.fascia;
-      quad([P[0] + nP[0] * d, bot, P[1] + nP[1] * d], [Q[0] + nQ[0] * d, bot, Q[1] + nQ[1] * d], [Q[0] + nQ[0] * d, top, Q[1] + nQ[1] * d], [P[0] + nP[0] * d, top, P[1] + nP[1] * d], new THREE.Color(0x111827));
-      quad([P[0] + nP[0] * d, bot, P[1] + nP[1] * d], [Q[0] + nQ[0] * d, bot, Q[1] + nQ[1] * d], [Q[0] + nQ[0] * dEnd, bot, Q[1] + nQ[1] * dEnd], [P[0] + nP[0] * dEnd, bot, P[1] + nP[1] * dEnd], new THREE.Color(0x0e1420));
+      const d = o.start - 0.2;
+      quad(at(P, nP, d, H(i) - o.fascia), at(Q, nQ, d, H(i + 1) - o.fascia), at(Q, nQ, d, H(i + 1)), at(P, nP, d, H(i)), new THREE.Color(0x111827));
+      quad(at(P, nP, d, H(i) - o.fascia), at(Q, nQ, d, H(i + 1) - o.fascia), at(Q, nQ, dEnd, H(i + 1) - o.fascia), at(P, nP, dEnd, H(i) - o.fascia), new THREE.Color(0x0e1420));
     }
   }
   const geo = new THREE.BufferGeometry();
@@ -298,36 +277,10 @@ function buildTiers(path, o) {
   geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
   geo.computeVertexNormals();
   const mesh = new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide }));
-  scene.add(mesh);
+  group.add(mesh);
   return { mesh, N };
 }
 function offsetPath(path, N, d) { return path.map((p, i) => [p[0] + N[i][0] * d, p[1] + N[i][1] * d]); }
-{
-  const fl = FENCE_PTS.length;
-  const lfBleach = FENCE_PTS.slice(0, Math.floor(fl * 0.4));
-  const rfBleach = FENCE_PTS.slice(Math.ceil(fl * 0.6));
-  buildTiers(lfBleach, { start: 2, rows: 16, depth: 3, rise: 1.5, h0: FENCE_H, color: 0x24324a, color2: 0x2a3a55, seats: true, fill: 0.86, back: 10, sec: 'of' });
-  buildTiers(rfBleach, { start: 2, rows: 16, depth: 3, rise: 1.5, h0: FENCE_H, color: 0x24324a, color2: 0x2a3a55, seats: true, fill: 0.86, back: 10, sec: 'of' });
-  const bowl = [FENCE_PTS[fl - 1], ...BOUNDARY.slice(fl), FENCE_PTS[0]];
-  const lower = buildTiers(bowl, { start: 1, rows: 26, depth: 3, rise: 1.25, h0: 4.2, color: 0x1f2b44, color2: 0x253352, seats: true, fill: 0.9, back: 6, sec: 'lower' });
-  // upper deck only around the infield
-  const near = bowl.filter((p) => Math.hypot(p[0], p[1]) < 270);
-  const nearN = near.map((p) => lower.N[bowl.indexOf(p)]);
-  const up = offsetPath(near, nearN, 0);
-  buildTiers(up, { start: 72, rows: 20, depth: 3.2, rise: 2.0, h0: 44, color: 0x1c2740, color2: 0x223050, seats: true, fill: 0.88, back: 24, fascia: 8, sec: 'upper' });
-  // LED ribbon on the upper-deck fascia
-  const ribbon = makeCanvas(2048, 64), rg = ribbon.getContext('2d');
-  rg.fillStyle = '#05070c'; rg.fillRect(0, 0, 2048, 64);
-  rg.font = '800 44px "Barlow Condensed", Impact, sans-serif'; rg.textBaseline = 'middle';
-  const msgs = ['FULL COUNT BASEBALL', 'TONIGHT AT THE YARD', 'MAKE SOME NOISE', 'PINE TAR & CO.', 'GRAND SLAM BURGERS'];
-  let x = 20; let k = 0;
-  while (x < 2048) { const m = msgs[k++ % msgs.length]; rg.fillStyle = k % 2 ? '#ffc94a' : '#ffffff'; rg.fillText(m, x, 34); x += rg.measureText(m).width + 80; }
-  const rpts = offsetPath(up, nearN, 71.6);
-  const ribbonMesh = wallStrip(rpts, 4, canvasTex(ribbon, true), 300);
-  ribbonMesh.position.y = 37.8;
-  ribbonMesh.material = new THREE.MeshBasicMaterial({ map: ribbonMesh.material.map, side: THREE.DoubleSide });
-  scene.add(ribbonMesh);
-}
 // dugouts
 for (const s of [-1, 1]) {
   const g = new THREE.Group();
@@ -344,7 +297,7 @@ for (const s of [-1, 1]) {
 
 // ----------------------------------------------------------------- crowd ----
 const crowdU = { uTime: { value: 0 }, uEx: { value: 0 } };
-let crowdBody = null, crowdHead = null, crowdExTarget = 0;
+let crowdBody = null, crowdHead = null, crowdExTarget = 0, crowdTeams = null;
 function crowdMaterial() {
   const m = new THREE.MeshLambertMaterial({ color: 0xffffff });
   m.onBeforeCompile = (sh) => {
@@ -356,7 +309,7 @@ function crowdMaterial() {
   };
   return m;
 }
-{
+function buildCrowd(group) {
   const N = crowdSeats.length;
   const bodyGeo = new THREE.BoxGeometry(1.45, 2.2, 1.1); bodyGeo.translate(0, 1.1, 0);
   const headGeo = new THREE.SphereGeometry(0.4, 6, 4); headGeo.translate(0, 2.62, 0.05);
@@ -374,9 +327,11 @@ function crowdMaterial() {
     crowdHead.setColorAt(i, c.set(pick(SKINS)));
     crowdBody.setColorAt(i, c.set(0x888888));
   }
-  scene.add(crowdBody, crowdHead);
+  group.add(crowdBody, crowdHead);
+  if (crowdTeams) setCrowdColors(...crowdTeams);
 }
 function setCrowdColors(home, away) {
+  crowdTeams = [home, away];
   if (!crowdBody) return;
   const c = new THREE.Color();
   const pal = ['#e8e8e8', '#2b2b2b', '#5a6b8c', '#8c3b3b', '#d9c9a3', '#3d6b4f', '#c26a2c', '#6d4c8c', '#f2f2f2'];
@@ -389,6 +344,79 @@ function setCrowdColors(home, away) {
   crowdBody.instanceColor.needsUpdate = true;
 }
 function excite(level, secs = 3) { crowdExTarget = level; clearTimeout(excite.t); excite.t = setTimeout(() => (crowdExTarget = 0), secs * 1000); }
+
+// -------------------------------------------------------------- ballparks ----
+// Everything the park's shape decides (the field, the wall, the foul poles, the stands and
+// the crowd) is built here, and built again when the game moves to another ballpark.
+const parkGroup = new THREE.Group(); scene.add(parkGroup);
+adTex.userData.keep = true; adTexLow.userData.keep = true;
+function clearGroup(g) {
+  for (const o of [...g.children]) {
+    o.traverse((c) => {
+      if (c.geometry) c.geometry.dispose();
+      if (c.material) for (const m of [].concat(c.material)) { if (m.map && !m.map.userData.keep) m.map.dispose(); m.dispose(); }
+    });
+    g.remove(o);
+  }
+}
+function setPark(key) {
+  PARK = PARKS[key] || PARKS.FC;
+  buildBoundary();
+  const old = fieldMesh.material.map;
+  fieldMesh.material.map = canvasTex(drawFieldCanvas()); fieldMesh.material.needsUpdate = true;
+  if (old) old.dispose();
+  clearGroup(parkGroup);
+  // the outfield wall: ad panels along the bottom; a taller wall (the Green Monster) is solid green above them
+  const pts = [], hs = [];
+  for (let th = -45; th <= 45.001; th += 0.75) { const d = fenceDist(th); pts.push([d * Math.sin(th * DEG), -d * Math.cos(th * DEG)]); hs.push(fenceH(th)); }
+  parkGroup.add(wallStrip(pts, 0, hs.map((h) => Math.min(h, FENCE_H)), adTex, 640 * SPONSORS.length / 64));
+  if (hs.some((h) => h > FENCE_H + 0.2)) parkGroup.add(wallStrip(pts, FENCE_H, hs.map((h) => Math.max(h, FENCE_H)), null, 1));
+  const foulPath = BOUNDARY.slice(FENCE_PTS.length);
+  foulPath.unshift(FENCE_PTS[FENCE_PTS.length - 1]); foulPath.push(FENCE_PTS[0]);
+  parkGroup.add(wallStrip(foulPath, 0, 4.2, adTexLow, 640 * SPONSORS.length / 40));
+  for (const th of [-44.2, -22, 0, 22, 44.2]) {
+    const d = fenceDist(th) + 1.5, y = fenceH(th) + 2.4, m = textPlate(String(Math.round(fenceDist(th))), 9, 4.5, '#ffd54a', '#173a2a');
+    m.position.set(d * Math.sin(th * DEG), y, -d * Math.cos(th * DEG));
+    m.lookAt(0, y, 0);
+    parkGroup.add(m);
+  }
+  // foul poles, where the wall meets the lines
+  for (const s of [-1, 1]) {
+    const c = fenceDist(s * 45) / Math.SQRT2;
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 80, 10), new THREE.MeshStandardMaterial({ color: 0xffd23f, emissive: 0x332600 }));
+    pole.position.set(s * c, 40, -c); parkGroup.add(pole);
+    const screen = new THREE.Mesh(new THREE.PlaneGeometry(3, 60), new THREE.MeshStandardMaterial({ color: 0xffd23f, transparent: true, opacity: 0.55, side: THREE.DoubleSide }));
+    screen.position.set(s * c + s * 1.2, 45, -c + 1.2); screen.lookAt(0, 45, 0); parkGroup.add(screen);
+  }
+  // batter's eye
+  const be = new THREE.Mesh(new THREE.BoxGeometry(84, 34, 10), new THREE.MeshLambertMaterial({ color: 0x0b1410 }));
+  be.position.set(0, 17, -fenceDist(0) - 12); parkGroup.add(be);
+  // stands: outfield bleachers on top of the wall, the lower bowl, and an upper deck around the infield
+  crowdSeats = [];
+  const fl = FENCE_PTS.length, n0 = Math.floor(fl * 0.4), n1 = Math.ceil(fl * 0.6), wallAt = (i) => fenceH(-45 + 1.5 * i);
+  const lfBleach = FENCE_PTS.slice(0, n0), rfBleach = FENCE_PTS.slice(n1);
+  buildTiers(lfBleach, { start: 2, rows: 16, depth: 3, rise: 1.5, h0: lfBleach.map((_, i) => wallAt(i)), color: 0x24324a, color2: 0x2a3a55, seats: true, fill: 0.86, back: 10, sec: 'of' }, parkGroup);
+  buildTiers(rfBleach, { start: 2, rows: 16, depth: 3, rise: 1.5, h0: rfBleach.map((_, i) => wallAt(n1 + i)), color: 0x24324a, color2: 0x2a3a55, seats: true, fill: 0.86, back: 10, sec: 'of' }, parkGroup);
+  const bowl = [FENCE_PTS[fl - 1], ...BOUNDARY.slice(fl), FENCE_PTS[0]];
+  const lower = buildTiers(bowl, { start: 1, rows: 26, depth: 3, rise: 1.25, h0: 4.2, color: 0x1f2b44, color2: 0x253352, seats: true, fill: 0.9, back: 6, sec: 'lower' }, parkGroup);
+  const near = bowl.filter((p) => Math.hypot(p[0], p[1]) < 270);
+  const nearN = near.map((p) => lower.N[bowl.indexOf(p)]);
+  const up = offsetPath(near, nearN, 0);
+  buildTiers(up, { start: 72, rows: 20, depth: 3.2, rise: 2.0, h0: 44, color: 0x1c2740, color2: 0x223050, seats: true, fill: 0.88, back: 24, fascia: 8, sec: 'upper' }, parkGroup);
+  // LED ribbon on the upper-deck fascia
+  const ribbon = makeCanvas(2048, 64), rg = ribbon.getContext('2d');
+  rg.fillStyle = '#05070c'; rg.fillRect(0, 0, 2048, 64);
+  rg.font = '800 44px "Barlow Condensed", Impact, sans-serif'; rg.textBaseline = 'middle';
+  const msgs = [`WELCOME TO ${PARK.name.toUpperCase()}`, 'FULL COUNT BASEBALL', 'MAKE SOME NOISE', 'PINE TAR & CO.', 'GRAND SLAM BURGERS'];
+  let x = 20; let k = 0;
+  while (x < 2048) { const m = msgs[k++ % msgs.length]; rg.fillStyle = k % 2 ? '#ffc94a' : '#ffffff'; rg.fillText(m, x, 34); x += rg.measureText(m).width + 80; }
+  const ribbonMesh = wallStrip(offsetPath(up, nearN, 71.6), 0, 4, canvasTex(ribbon, true), 300);
+  ribbonMesh.position.y = 37.8;
+  const rm = ribbonMesh.material; ribbonMesh.material = new THREE.MeshBasicMaterial({ map: rm.map, side: THREE.DoubleSide }); rm.dispose();
+  parkGroup.add(ribbonMesh);
+  buildCrowd(parkGroup);
+}
+setPark('FC');
 
 // ---------------------------------------------------------- light towers ----
 const glowTex = (() => {

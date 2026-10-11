@@ -606,6 +606,7 @@ span.chip{cursor:default}
         <div class="opt hidden" id="optLock"><span>YOUR PLAYER</span><select id="lockPick" aria-label="Player to control"></select></div>
         <div class="opt hidden" id="optBatter"><span>BATTER</span><select id="derbyBatter" aria-label="Derby batter"></select></div>
         <div class="opt" id="optUmp"><span>UMPIRE</span><div class="seg" data-key="ump"><button data-v="0">Human ump (92%)</button><button data-v="1" class="on">ABS challenge</button><button data-v="2">Robot ABS</button></div></div>
+        <div class="opt" id="optPark"><span>BALLPARK</span><select id="parkPick" aria-label="Ballpark"></select></div>
         <div class="opt hidden" id="optLockField"><span>YOUR ROLE</span><div class="seg" data-key="lockField"><button data-v="1" class="on">Bat &amp; field</button><button data-v="0">Bat only (sim fielding)</button></div></div>
         <div class="opt hidden" id="optLockSkip"><span>NOT INVOLVED</span><div class="seg" data-key="lockSkip"><button data-v="1" class="on">Skip ahead</button><button data-v="0">Watch (fast)</button></div></div>
         <div class="opt hidden" id="optView"><span>CAMERA</span><div class="seg" data-key="view"><button data-v="2" class="on">Third person</button><button data-v="1">First person</button><button data-v="0">Broadcast</button></div></div>
@@ -780,30 +781,73 @@ function esc(s) { return String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&am
 const BASES = [new V3(0, 0, 0), new V3(63.64, 0, -63.64), new V3(0, 0, -127.28), new V3(-63.64, 0, -63.64), new V3(0, 0, 0)];
 const MOUND_Z = -60.5, MOUND_H = 0.83, MOUND_R = 9;
 const ZONE = { halfW: 0.83, bot: 1.55, top: 3.45 };
-const FENCE_H = 9.5;
+const FENCE_H = 9.5;   // a standard outfield wall
 const BALL_R = 0.12;
 
-function fenceDist(th) {
-  const a = Math.min(45, Math.abs(th));
-  const pts = [[0, 400], [10, 394], [20, 377], [30, 358], [38, 342], [45, 330]];
-  for (let i = 1; i < pts.length; i++) {
-    if (a <= pts[i][0]) { const [a0, d0] = pts[i - 1], [a1, d1] = pts[i]; return lerp(d0, d1, (a - a0) / (a1 - a0)); }
-  }
-  return 330;
+// ------------------------------------------------------------- ballparks ----
+// The 30 MLB parks (dimensions approximate): the wall's distance down the left-field line, to
+// left-center, center, right-center and down the right-field line, and its height in left,
+// center and right. Angles are spray angles: negative is left field. air: how thin the air is
+// up there (Coors Field is a mile high): less drag, so the ball carries, and less break.
+const PARKS = {
+  FC: { name: 'Full Count Park', d: [330, 372, 400, 372, 330], h: [9.5, 9.5, 9.5] },
+  AZ: { name: 'Chase Field', d: [330, 374, 407, 374, 334], h: [7.6, 25, 7.6], air: 0.96 },
+  ATH: { name: 'Sutter Health Park', d: [330, 388, 403, 388, 325], h: [8, 12, 8] },
+  ATL: { name: 'Truist Park', d: [335, 385, 400, 375, 325], h: [11, 8, 16], air: 0.97 },
+  BAL: { name: 'Oriole Park at Camden Yards', d: [333, 376, 400, 373, 318], h: [8, 7, 21] },
+  BOS: { name: 'Fenway Park', d: [310, 379, 390, 380, 302], h: [37.2, 17, 5] },
+  CHC: { name: 'Wrigley Field', d: [355, 368, 400, 368, 353], h: [11.5, 11.5, 11.5] },
+  CWS: { name: 'Rate Field', d: [330, 377, 400, 372, 335], h: [8, 8, 8] },
+  CIN: { name: 'Great American Ball Park', d: [328, 379, 404, 370, 325], h: [12, 8, 8] },
+  CLE: { name: 'Progressive Field', d: [325, 370, 400, 375, 325], h: [19, 9, 9] },
+  COL: { name: 'Coors Field', d: [347, 390, 415, 375, 350], h: [8, 8, 14], air: 0.82 },
+  DET: { name: 'Comerica Park', d: [345, 370, 412, 365, 330], h: [7, 7, 8.5] },
+  HOU: { name: 'Daikin Park', d: [315, 362, 409, 373, 326], h: [21, 10, 7] },
+  KC: { name: 'Kauffman Stadium', d: [330, 387, 410, 387, 330], h: [8.5, 8.5, 8.5] },
+  LAA: { name: 'Angel Stadium', d: [347, 387, 396, 370, 350], h: [5, 8, 18] },
+  LAD: { name: 'Dodger Stadium', d: [330, 375, 395, 375, 330], h: [4, 8, 4] },
+  MIA: { name: 'loanDepot park', d: [344, 386, 400, 387, 335], h: [11, 8, 11] },
+  MIL: { name: 'American Family Field', d: [344, 371, 400, 374, 345], h: [8, 8, 8] },
+  MIN: { name: 'Target Field', d: [339, 377, 411, 367, 328], h: [8, 8, 23] },
+  NYM: { name: 'Citi Field', d: [335, 370, 408, 375, 330], h: [8, 8, 8] },
+  NYY: { name: 'Yankee Stadium', d: [318, 399, 408, 385, 314], h: [8, 8, 8] },
+  PHI: { name: 'Citizens Bank Park', d: [329, 374, 401, 369, 330], h: [10.5, 6, 13] },
+  PIT: { name: 'PNC Park', d: [325, 389, 399, 375, 320], h: [6, 10, 21] },
+  SD: { name: 'Petco Park', d: [336, 390, 396, 391, 322], h: [8, 8, 8] },
+  SF: { name: 'Oracle Park', d: [339, 364, 391, 415, 309], h: [8, 8, 24] },
+  SEA: { name: 'T-Mobile Park', d: [331, 378, 401, 381, 326], h: [8, 8, 8] },
+  STL: { name: 'Busch Stadium', d: [336, 375, 400, 375, 335], h: [8, 8, 8] },
+  TB: { name: 'Tropicana Field', d: [315, 370, 404, 370, 322], h: [9.5, 9.5, 9.5] },
+  TEX: { name: 'Globe Life Field', d: [329, 372, 407, 374, 326], h: [8, 8, 8] },
+  TOR: { name: 'Rogers Centre', d: [328, 368, 400, 359, 328], h: [12, 10, 12] },
+  WSH: { name: 'Nationals Park', d: [337, 377, 402, 370, 335], h: [8, 8, 12] },
+};
+let PARK = PARKS.FC;   // the park this game is in (setPark, in 20-world.js)
+// the wall's distance at a spray angle, eased between the five measured points
+function parkDist(P, th) {
+  const u = (clamp(th, -45, 45) + 45) / 22.5, i = Math.min(3, Math.floor(u)), f = u - i;
+  return lerp(P.d[i], P.d[i + 1], (1 - Math.cos(f * Math.PI)) / 2);
 }
-// Closed boundary of the playing field (fence + foul-territory walls + backstop), as [x, z]
-const FENCE_PTS = [];
-const BOUNDARY = (() => {
-  const pts = [];
-  for (let th = -45; th <= 45.001; th += 1.5) { const d = fenceDist(th); const p = [d * Math.sin(th * DEG), -d * Math.cos(th * DEG)]; pts.push(p); FENCE_PTS.push(p); }
+function fenceDist(th) { return parkDist(PARK, th); }
+// the wall's height at a spray angle: left, center or right, blended over a few degrees
+function fenceH(th) {
+  const [l, c, r] = PARK.h, a = clamp(th, -45, 45);
+  return a < 0 ? lerp(l, c, clamp((a + 18) / 6 + 0.5, 0, 1)) : lerp(c, r, clamp((a - 18) / 6 + 0.5, 0, 1));
+}
+// Closed boundary of the playing field (fence + foul-territory walls + backstop), as [x, z].
+// Rebuilt in place for each park, so everything holding these arrays sees the new one.
+const FENCE_PTS = [], BOUNDARY = [];
+function buildBoundary() {
+  FENCE_PTS.length = 0; BOUNDARY.length = 0;
+  for (let th = -45; th <= 45.001; th += 1.5) { const d = fenceDist(th); FENCE_PTS.push([d * Math.sin(th * DEG), -d * Math.cos(th * DEG)]); }
   const u = [Math.SQRT1_2, -Math.SQRT1_2], n = [Math.SQRT1_2, Math.SQRT1_2];
   const side = (s, off) => [u[0] * s + n[0] * off, u[1] * s + n[1] * off];
-  const right = [side(318, 12), side(250, 22), side(170, 34), side(105, 44), [92, -14], [76, 18], [52, 42], [26, 56], [0, 61]];
-  pts.push(...right);
-  const left = right.slice(0, -1).reverse().map(([x, z]) => [-x, z]);
-  pts.push(...left);
-  return pts;
-})();
+  // the foul wall runs from just inside the foul pole back around to the backstop
+  const foul = (line) => [side(line - 12, 12), side(250, 22), side(170, 34), side(105, 44), [92, -14], [76, 18], [52, 42], [26, 56], [0, 61]];
+  const right = foul(fenceDist(45)), left = foul(fenceDist(-45)).slice(0, -1).reverse().map(([x, z]) => [-x, z]);
+  BOUNDARY.push(...FENCE_PTS, ...right, ...left);
+}
+buildBoundary();
 function inPoly(x, z, poly = BOUNDARY) {
   let inside = false;
   for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
@@ -2397,10 +2441,10 @@ function drawFieldCanvas() {
   g.setLineDash([]);
   g.restore();
   g.strokeStyle = 'rgba(255,255,255,0.95)'; g.lineWidth = 0.5;
-  for (const s of [-1, 1]) { g.beginPath(); g.moveTo(0, 0); g.lineTo(s * 233, -233); g.stroke(); }
+  for (const s of [-1, 1]) { const c = fenceDist(s * 45) / Math.SQRT2; g.beginPath(); g.moveTo(0, 0); g.lineTo(s * c, -c); g.stroke(); }
   return cv;
 }
-const fieldMesh = new THREE.Mesh(new THREE.PlaneGeometry(FT.span, FT.span), new THREE.MeshStandardMaterial({ map: canvasTex(drawFieldCanvas()), roughness: 0.95 }));
+const fieldMesh = new THREE.Mesh(new THREE.PlaneGeometry(FT.span, FT.span), new THREE.MeshStandardMaterial({ roughness: 0.95 }));   // the grass is drawn by setPark
 fieldMesh.rotation.x = -Math.PI / 2;
 fieldMesh.position.set(FT.x0 + FT.span / 2, 0, FT.z0 + FT.span / 2);
 fieldMesh.receiveShadow = true;
@@ -2499,13 +2543,14 @@ function adCanvas(h = 128, pad = '#173a2a') {
 const adTex = canvasTex(adCanvas(), true);
 const adTexLow = canvasTex(adCanvas(96, '#16213a'), true);
 
-function wallStrip(points, h, tex, panelLen) {
+function wallStrip(points, y0, y1, tex, panelLen, color = 0x2a6139) {
+  const at = (v, i) => (Array.isArray(v) ? v[i] : v);
   const pos = [], uv = [], idx = [];
   let acc = 0;
   for (let i = 0; i < points.length; i++) {
     const [x, z] = points[i];
     if (i) acc += Math.hypot(x - points[i - 1][0], z - points[i - 1][1]);
-    pos.push(x, 0, z, x, h, z);
+    pos.push(x, at(y0, i), z, x, at(y1, i), z);
     uv.push(acc / panelLen, 0, acc / panelLen, 1);
     if (i) { const a = (i - 1) * 2; idx.push(a, a + 2, a + 1, a + 1, a + 2, a + 3); }
   }
@@ -2513,16 +2558,10 @@ function wallStrip(points, h, tex, panelLen) {
   geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
   geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
   geo.setIndex(idx); geo.computeVertexNormals();
-  const m = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ map: tex, roughness: 0.8, side: THREE.DoubleSide }));
+  const m = new THREE.Mesh(geo, new THREE.MeshStandardMaterial(tex ? { map: tex, roughness: 0.8, side: THREE.DoubleSide } : { color, roughness: 0.9, side: THREE.DoubleSide }));
   m.receiveShadow = true;
   return m;
 }
-const fenceDense = [];
-for (let th = -45; th <= 45.001; th += 0.75) { const d = fenceDist(th); fenceDense.push([d * Math.sin(th * DEG), -d * Math.cos(th * DEG)]); }
-scene.add(wallStrip(fenceDense, FENCE_H, adTex, 640 * SPONSORS.length / 64));
-const foulPath = BOUNDARY.slice(FENCE_PTS.length);
-foulPath.unshift(FENCE_PTS[FENCE_PTS.length - 1]); foulPath.push(FENCE_PTS[0]);
-scene.add(wallStrip(foulPath, 4.2, adTexLow, 640 * SPONSORS.length / 40));
 
 // distance markers
 function textPlate(text, w, h, fg = '#ffffff', bg = 'rgba(0,0,0,0)', font = 800) {
@@ -2533,29 +2572,12 @@ function textPlate(text, w, h, fg = '#ffffff', bg = 'rgba(0,0,0,0)', font = 800)
   const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ map: canvasTex(cv), transparent: true, side: THREE.DoubleSide }));
   return m;
 }
-for (const th of [-44.2, -22, 0, 22, 44.2]) {
-  const d = fenceDist(th) + 1.5, m = textPlate(String(Math.round(fenceDist(th))), 9, 4.5, '#ffd54a', '#173a2a');
-  m.position.set(d * Math.sin(th * DEG), FENCE_H + 2.4, -d * Math.cos(th * DEG));
-  m.lookAt(0, FENCE_H + 2.4, 0);
-  scene.add(m);
-}
-// foul poles
-for (const s of [-1, 1]) {
-  const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 80, 10), new THREE.MeshStandardMaterial({ color: 0xffd23f, emissive: 0x332600 }));
-  pole.position.set(s * 233.6, 40, -233.6); scene.add(pole);
-  const screen = new THREE.Mesh(new THREE.PlaneGeometry(3, 60), new THREE.MeshStandardMaterial({ color: 0xffd23f, transparent: true, opacity: 0.55, side: THREE.DoubleSide }));
-  screen.position.set(s * 233.6 + s * 1.2, 45, -233.6 + 1.2); screen.lookAt(0, 45, 0); scene.add(screen);
-}
-// batter's eye
-{
-  const be = new THREE.Mesh(new THREE.BoxGeometry(84, 34, 10), new THREE.MeshLambertMaterial({ color: 0x0b1410 }));
-  be.position.set(0, 17, -fenceDist(0) - 12); scene.add(be);
-}
 
 // ---------------------------------------------------------------- stands ----
-const crowdSeats = [];
-function buildTiers(path, o) {
-  const n = path.length, N = [];
+// o.h0: the height the first row starts at, one number or one per point of the path
+let crowdSeats = [];
+function buildTiers(path, o, group) {
+  const n = path.length, N = [], H = (i) => (Array.isArray(o.h0) ? o.h0[i] : o.h0);
   for (let i = 0; i < n; i++) {
     const a = path[Math.max(0, i - 1)], b = path[Math.min(n - 1, i + 1)];
     let tx = b[0] - a[0], tz = b[1] - a[1]; const L = Math.hypot(tx, tz) || 1; tx /= L; tz /= L;
@@ -2566,13 +2588,14 @@ function buildTiers(path, o) {
   const pos = [], col = [];
   const c1 = new THREE.Color(o.color), c2 = new THREE.Color(o.color2 || o.color);
   const quad = (A, B, C, D, c) => { pos.push(...A, ...B, ...C, ...A, ...C, ...D); for (let k = 0; k < 6; k++) col.push(c.r, c.g, c.b); };
+  const at = (p, nn, d, y) => [p[0] + nn[0] * d, y, p[1] + nn[1] * d];
   for (let r = 0; r < o.rows; r++) {
-    const d0 = o.start + r * o.depth, d1 = d0 + o.depth, y0 = o.h0 + r * o.rise, y1 = y0 + o.rise;
+    const d0 = o.start + r * o.depth, d1 = d0 + o.depth;
     const cc = r % 2 ? c1 : c2;
     for (let i = 0; i < n - 1; i++) {
       const P = path[i], Q = path[i + 1], nP = N[i], nQ = N[i + 1];
-      const at = (p, nn, d, y) => [p[0] + nn[0] * d, y, p[1] + nn[1] * d];
-      const A0 = at(P, nP, d0, y0), B0 = at(Q, nQ, d0, y0), A1 = at(P, nP, d0, y1), B1 = at(Q, nQ, d0, y1), A2 = at(P, nP, d1, y1), B2 = at(Q, nQ, d1, y1);
+      const yP0 = H(i) + r * o.rise, yQ0 = H(i + 1) + r * o.rise, yP1 = yP0 + o.rise, yQ1 = yQ0 + o.rise;
+      const A0 = at(P, nP, d0, yP0), B0 = at(Q, nQ, d0, yQ0), A1 = at(P, nP, d0, yP1), B1 = at(Q, nQ, d0, yQ1), A2 = at(P, nP, d1, yP1), B2 = at(Q, nQ, d1, yQ1);
       quad(A0, B0, B1, A1, c1);
       quad(A1, B1, B2, A2, cc);
       if (o.seats) {
@@ -2582,20 +2605,20 @@ function buildTiers(path, o) {
           const u = (s + 0.5) / steps;
           const x = lerp(A1[0], B1[0], u) * 0.6 + lerp(A2[0], B2[0], u) * 0.4, z = lerp(A1[2], B1[2], u) * 0.6 + lerp(A2[2], B2[2], u) * 0.4;
           const nx = lerp(nP[0], nQ[0], u), nz = lerp(nP[1], nQ[1], u);
-          crowdSeats.push({ x, y: y1, z, yaw: Math.atan2(-nx, -nz), sec: o.sec });
+          crowdSeats.push({ x, y: lerp(yP1, yQ1, u), z, yaw: Math.atan2(-nx, -nz), sec: o.sec });
         }
       }
     }
   }
   // back wall
-  const dEnd = o.start + o.rows * o.depth, yEnd = o.h0 + o.rows * o.rise;
+  const dEnd = o.start + o.rows * o.depth, rise = o.rows * o.rise;
   for (let i = 0; i < n - 1; i++) {
-    const P = path[i], Q = path[i + 1], nP = N[i], nQ = N[i + 1];
-    quad([P[0] + nP[0] * dEnd, yEnd, P[1] + nP[1] * dEnd], [Q[0] + nQ[0] * dEnd, yEnd, Q[1] + nQ[1] * dEnd], [Q[0] + nQ[0] * dEnd, yEnd + o.back, Q[1] + nQ[1] * dEnd], [P[0] + nP[0] * dEnd, yEnd + o.back, P[1] + nP[1] * dEnd], new THREE.Color(0x1a2233));
+    const P = path[i], Q = path[i + 1], nP = N[i], nQ = N[i + 1], yP = H(i) + rise, yQ = H(i + 1) + rise;
+    quad(at(P, nP, dEnd, yP), at(Q, nQ, dEnd, yQ), at(Q, nQ, dEnd, yQ + o.back), at(P, nP, dEnd, yP + o.back), new THREE.Color(0x1a2233));
     if (o.fascia) {
-      const d = o.start - 0.2, top = o.h0, bot = o.h0 - o.fascia;
-      quad([P[0] + nP[0] * d, bot, P[1] + nP[1] * d], [Q[0] + nQ[0] * d, bot, Q[1] + nQ[1] * d], [Q[0] + nQ[0] * d, top, Q[1] + nQ[1] * d], [P[0] + nP[0] * d, top, P[1] + nP[1] * d], new THREE.Color(0x111827));
-      quad([P[0] + nP[0] * d, bot, P[1] + nP[1] * d], [Q[0] + nQ[0] * d, bot, Q[1] + nQ[1] * d], [Q[0] + nQ[0] * dEnd, bot, Q[1] + nQ[1] * dEnd], [P[0] + nP[0] * dEnd, bot, P[1] + nP[1] * dEnd], new THREE.Color(0x0e1420));
+      const d = o.start - 0.2;
+      quad(at(P, nP, d, H(i) - o.fascia), at(Q, nQ, d, H(i + 1) - o.fascia), at(Q, nQ, d, H(i + 1)), at(P, nP, d, H(i)), new THREE.Color(0x111827));
+      quad(at(P, nP, d, H(i) - o.fascia), at(Q, nQ, d, H(i + 1) - o.fascia), at(Q, nQ, dEnd, H(i + 1) - o.fascia), at(P, nP, dEnd, H(i) - o.fascia), new THREE.Color(0x0e1420));
     }
   }
   const geo = new THREE.BufferGeometry();
@@ -2603,36 +2626,10 @@ function buildTiers(path, o) {
   geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
   geo.computeVertexNormals();
   const mesh = new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide }));
-  scene.add(mesh);
+  group.add(mesh);
   return { mesh, N };
 }
 function offsetPath(path, N, d) { return path.map((p, i) => [p[0] + N[i][0] * d, p[1] + N[i][1] * d]); }
-{
-  const fl = FENCE_PTS.length;
-  const lfBleach = FENCE_PTS.slice(0, Math.floor(fl * 0.4));
-  const rfBleach = FENCE_PTS.slice(Math.ceil(fl * 0.6));
-  buildTiers(lfBleach, { start: 2, rows: 16, depth: 3, rise: 1.5, h0: FENCE_H, color: 0x24324a, color2: 0x2a3a55, seats: true, fill: 0.86, back: 10, sec: 'of' });
-  buildTiers(rfBleach, { start: 2, rows: 16, depth: 3, rise: 1.5, h0: FENCE_H, color: 0x24324a, color2: 0x2a3a55, seats: true, fill: 0.86, back: 10, sec: 'of' });
-  const bowl = [FENCE_PTS[fl - 1], ...BOUNDARY.slice(fl), FENCE_PTS[0]];
-  const lower = buildTiers(bowl, { start: 1, rows: 26, depth: 3, rise: 1.25, h0: 4.2, color: 0x1f2b44, color2: 0x253352, seats: true, fill: 0.9, back: 6, sec: 'lower' });
-  // upper deck only around the infield
-  const near = bowl.filter((p) => Math.hypot(p[0], p[1]) < 270);
-  const nearN = near.map((p) => lower.N[bowl.indexOf(p)]);
-  const up = offsetPath(near, nearN, 0);
-  buildTiers(up, { start: 72, rows: 20, depth: 3.2, rise: 2.0, h0: 44, color: 0x1c2740, color2: 0x223050, seats: true, fill: 0.88, back: 24, fascia: 8, sec: 'upper' });
-  // LED ribbon on the upper-deck fascia
-  const ribbon = makeCanvas(2048, 64), rg = ribbon.getContext('2d');
-  rg.fillStyle = '#05070c'; rg.fillRect(0, 0, 2048, 64);
-  rg.font = '800 44px "Barlow Condensed", Impact, sans-serif'; rg.textBaseline = 'middle';
-  const msgs = ['FULL COUNT BASEBALL', 'TONIGHT AT THE YARD', 'MAKE SOME NOISE', 'PINE TAR & CO.', 'GRAND SLAM BURGERS'];
-  let x = 20; let k = 0;
-  while (x < 2048) { const m = msgs[k++ % msgs.length]; rg.fillStyle = k % 2 ? '#ffc94a' : '#ffffff'; rg.fillText(m, x, 34); x += rg.measureText(m).width + 80; }
-  const rpts = offsetPath(up, nearN, 71.6);
-  const ribbonMesh = wallStrip(rpts, 4, canvasTex(ribbon, true), 300);
-  ribbonMesh.position.y = 37.8;
-  ribbonMesh.material = new THREE.MeshBasicMaterial({ map: ribbonMesh.material.map, side: THREE.DoubleSide });
-  scene.add(ribbonMesh);
-}
 // dugouts
 for (const s of [-1, 1]) {
   const g = new THREE.Group();
@@ -2649,7 +2646,7 @@ for (const s of [-1, 1]) {
 
 // ----------------------------------------------------------------- crowd ----
 const crowdU = { uTime: { value: 0 }, uEx: { value: 0 } };
-let crowdBody = null, crowdHead = null, crowdExTarget = 0;
+let crowdBody = null, crowdHead = null, crowdExTarget = 0, crowdTeams = null;
 function crowdMaterial() {
   const m = new THREE.MeshLambertMaterial({ color: 0xffffff });
   m.onBeforeCompile = (sh) => {
@@ -2661,7 +2658,7 @@ function crowdMaterial() {
   };
   return m;
 }
-{
+function buildCrowd(group) {
   const N = crowdSeats.length;
   const bodyGeo = new THREE.BoxGeometry(1.45, 2.2, 1.1); bodyGeo.translate(0, 1.1, 0);
   const headGeo = new THREE.SphereGeometry(0.4, 6, 4); headGeo.translate(0, 2.62, 0.05);
@@ -2679,9 +2676,11 @@ function crowdMaterial() {
     crowdHead.setColorAt(i, c.set(pick(SKINS)));
     crowdBody.setColorAt(i, c.set(0x888888));
   }
-  scene.add(crowdBody, crowdHead);
+  group.add(crowdBody, crowdHead);
+  if (crowdTeams) setCrowdColors(...crowdTeams);
 }
 function setCrowdColors(home, away) {
+  crowdTeams = [home, away];
   if (!crowdBody) return;
   const c = new THREE.Color();
   const pal = ['#e8e8e8', '#2b2b2b', '#5a6b8c', '#8c3b3b', '#d9c9a3', '#3d6b4f', '#c26a2c', '#6d4c8c', '#f2f2f2'];
@@ -2694,6 +2693,79 @@ function setCrowdColors(home, away) {
   crowdBody.instanceColor.needsUpdate = true;
 }
 function excite(level, secs = 3) { crowdExTarget = level; clearTimeout(excite.t); excite.t = setTimeout(() => (crowdExTarget = 0), secs * 1000); }
+
+// -------------------------------------------------------------- ballparks ----
+// Everything the park's shape decides (the field, the wall, the foul poles, the stands and
+// the crowd) is built here, and built again when the game moves to another ballpark.
+const parkGroup = new THREE.Group(); scene.add(parkGroup);
+adTex.userData.keep = true; adTexLow.userData.keep = true;
+function clearGroup(g) {
+  for (const o of [...g.children]) {
+    o.traverse((c) => {
+      if (c.geometry) c.geometry.dispose();
+      if (c.material) for (const m of [].concat(c.material)) { if (m.map && !m.map.userData.keep) m.map.dispose(); m.dispose(); }
+    });
+    g.remove(o);
+  }
+}
+function setPark(key) {
+  PARK = PARKS[key] || PARKS.FC;
+  buildBoundary();
+  const old = fieldMesh.material.map;
+  fieldMesh.material.map = canvasTex(drawFieldCanvas()); fieldMesh.material.needsUpdate = true;
+  if (old) old.dispose();
+  clearGroup(parkGroup);
+  // the outfield wall: ad panels along the bottom; a taller wall (the Green Monster) is solid green above them
+  const pts = [], hs = [];
+  for (let th = -45; th <= 45.001; th += 0.75) { const d = fenceDist(th); pts.push([d * Math.sin(th * DEG), -d * Math.cos(th * DEG)]); hs.push(fenceH(th)); }
+  parkGroup.add(wallStrip(pts, 0, hs.map((h) => Math.min(h, FENCE_H)), adTex, 640 * SPONSORS.length / 64));
+  if (hs.some((h) => h > FENCE_H + 0.2)) parkGroup.add(wallStrip(pts, FENCE_H, hs.map((h) => Math.max(h, FENCE_H)), null, 1));
+  const foulPath = BOUNDARY.slice(FENCE_PTS.length);
+  foulPath.unshift(FENCE_PTS[FENCE_PTS.length - 1]); foulPath.push(FENCE_PTS[0]);
+  parkGroup.add(wallStrip(foulPath, 0, 4.2, adTexLow, 640 * SPONSORS.length / 40));
+  for (const th of [-44.2, -22, 0, 22, 44.2]) {
+    const d = fenceDist(th) + 1.5, y = fenceH(th) + 2.4, m = textPlate(String(Math.round(fenceDist(th))), 9, 4.5, '#ffd54a', '#173a2a');
+    m.position.set(d * Math.sin(th * DEG), y, -d * Math.cos(th * DEG));
+    m.lookAt(0, y, 0);
+    parkGroup.add(m);
+  }
+  // foul poles, where the wall meets the lines
+  for (const s of [-1, 1]) {
+    const c = fenceDist(s * 45) / Math.SQRT2;
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 80, 10), new THREE.MeshStandardMaterial({ color: 0xffd23f, emissive: 0x332600 }));
+    pole.position.set(s * c, 40, -c); parkGroup.add(pole);
+    const screen = new THREE.Mesh(new THREE.PlaneGeometry(3, 60), new THREE.MeshStandardMaterial({ color: 0xffd23f, transparent: true, opacity: 0.55, side: THREE.DoubleSide }));
+    screen.position.set(s * c + s * 1.2, 45, -c + 1.2); screen.lookAt(0, 45, 0); parkGroup.add(screen);
+  }
+  // batter's eye
+  const be = new THREE.Mesh(new THREE.BoxGeometry(84, 34, 10), new THREE.MeshLambertMaterial({ color: 0x0b1410 }));
+  be.position.set(0, 17, -fenceDist(0) - 12); parkGroup.add(be);
+  // stands: outfield bleachers on top of the wall, the lower bowl, and an upper deck around the infield
+  crowdSeats = [];
+  const fl = FENCE_PTS.length, n0 = Math.floor(fl * 0.4), n1 = Math.ceil(fl * 0.6), wallAt = (i) => fenceH(-45 + 1.5 * i);
+  const lfBleach = FENCE_PTS.slice(0, n0), rfBleach = FENCE_PTS.slice(n1);
+  buildTiers(lfBleach, { start: 2, rows: 16, depth: 3, rise: 1.5, h0: lfBleach.map((_, i) => wallAt(i)), color: 0x24324a, color2: 0x2a3a55, seats: true, fill: 0.86, back: 10, sec: 'of' }, parkGroup);
+  buildTiers(rfBleach, { start: 2, rows: 16, depth: 3, rise: 1.5, h0: rfBleach.map((_, i) => wallAt(n1 + i)), color: 0x24324a, color2: 0x2a3a55, seats: true, fill: 0.86, back: 10, sec: 'of' }, parkGroup);
+  const bowl = [FENCE_PTS[fl - 1], ...BOUNDARY.slice(fl), FENCE_PTS[0]];
+  const lower = buildTiers(bowl, { start: 1, rows: 26, depth: 3, rise: 1.25, h0: 4.2, color: 0x1f2b44, color2: 0x253352, seats: true, fill: 0.9, back: 6, sec: 'lower' }, parkGroup);
+  const near = bowl.filter((p) => Math.hypot(p[0], p[1]) < 270);
+  const nearN = near.map((p) => lower.N[bowl.indexOf(p)]);
+  const up = offsetPath(near, nearN, 0);
+  buildTiers(up, { start: 72, rows: 20, depth: 3.2, rise: 2.0, h0: 44, color: 0x1c2740, color2: 0x223050, seats: true, fill: 0.88, back: 24, fascia: 8, sec: 'upper' }, parkGroup);
+  // LED ribbon on the upper-deck fascia
+  const ribbon = makeCanvas(2048, 64), rg = ribbon.getContext('2d');
+  rg.fillStyle = '#05070c'; rg.fillRect(0, 0, 2048, 64);
+  rg.font = '800 44px "Barlow Condensed", Impact, sans-serif'; rg.textBaseline = 'middle';
+  const msgs = [`WELCOME TO ${PARK.name.toUpperCase()}`, 'FULL COUNT BASEBALL', 'MAKE SOME NOISE', 'PINE TAR & CO.', 'GRAND SLAM BURGERS'];
+  let x = 20; let k = 0;
+  while (x < 2048) { const m = msgs[k++ % msgs.length]; rg.fillStyle = k % 2 ? '#ffc94a' : '#ffffff'; rg.fillText(m, x, 34); x += rg.measureText(m).width + 80; }
+  const ribbonMesh = wallStrip(offsetPath(up, nearN, 71.6), 0, 4, canvasTex(ribbon, true), 300);
+  ribbonMesh.position.y = 37.8;
+  const rm = ribbonMesh.material; ribbonMesh.material = new THREE.MeshBasicMaterial({ map: rm.map, side: THREE.DoubleSide }); rm.dispose();
+  parkGroup.add(ribbonMesh);
+  buildCrowd(parkGroup);
+}
+setPark('FC');
 
 // ---------------------------------------------------------- light towers ----
 const glowTex = (() => {
@@ -3232,7 +3304,7 @@ function buildPitch(pitcher, pitch, target, power, scale, fatigue, rel) {
   const dz = -rel.z;
   const vStart = mph * MPH / scale;
   const T = dz / (vStart * 0.96);
-  const brk = pitch.brk * (0.88 + 0.16 * power) * (1 - fatigue * 0.12);
+  const brk = pitch.brk * (0.88 + 0.16 * power) * (1 - fatigue * 0.12) * lerp(1, PARK.air || 1, 0.6);   // thin air: less break
   const hM = (PT.h * brk) / 12, vM = (PT.v * brk) / 12;
   const a = new V3((2 * hM * armX) / (T * T), -G_ACC / (scale * scale) + (2 * vM) / (T * T), (-0.08 * vStart) / T);
   const tgt = new V3(target.x, target.y, 0);
@@ -3263,16 +3335,16 @@ function simBatted(origin, ev, la, spray, opts = {}) {
   const out = [];
   let t = 0, bounced = false, rolling = false, hr = false, gr = false, dead = false, wall = false;
   let landT = null, landPos = null, hrT = null, deadT = null, maxH = pos.y;
-  const acc = new V3(), Ld = new V3();
+  const acc = new V3(), Ld = new V3(), air = PARK.air || 1, K = BB_K * air, KL = BB_KL * air;   // thin air: less drag and lift
   for (let n = 0; n < 120 * 16; n++) {
     if (!rolling) {
       const sp = vel.length();
-      acc.set(0, -G_ACC, 0).addScaledVector(vel, -BB_K * sp);
+      acc.set(0, -G_ACC, 0).addScaledVector(vel, -K * sp);
       if (spin !== 0 && sp > 1) {
         const h = Math.hypot(vel.x, vel.z) || 1e-6;
         Ld.set((-vel.x * vel.y) / h, h, (-vel.z * vel.y) / h);
         const ln = Ld.length();
-        if (ln > 1e-6) acc.addScaledVector(Ld, (BB_KL * spin * sp * sp) / ln);
+        if (ln > 1e-6) acc.addScaledVector(Ld, (KL * spin * sp * sp) / ln);
       }
       vel.addScaledVector(acc, BB_DT); pos.addScaledVector(vel, BB_DT);
       if (pos.y > maxH) maxH = pos.y;
@@ -3300,7 +3372,7 @@ function simBatted(origin, ev, la, spray, opts = {}) {
       if (Math.abs(th) <= 45.4) {
         const fd = fenceDist(th);
         if (r >= fd - 0.35) {
-          if (pos.y > FENCE_H) {
+          if (pos.y > fenceH(th)) {
             if (!bounced) { hr = true; hrT = t; } else { gr = true; hrT = t; }
           } else {
             const nx = pos.x / r, nz = pos.z / r, vr = vel.x * nx + vel.z * nz;
@@ -4345,7 +4417,7 @@ const G = {
   pci: { x: 0, y: 2.5 }, glove: new V3(0, 2.4, 1.7), rec: [], recOn: false, replay: null, derby: null,
   abEnd: null, contactT: 0, menuAng: 0,
   ctrl: ['cpu', 'cpu'], lock: null, remoteIn: { x: 0, z: 0 }, remoteTake: false, camFocus: null, localPitch: false,
-  ump: 1, challenges: [2, 2], challengeable: null, challenge: null, cpuChallengeAt: 0, reviews: [1, 1], review: null, view: 0, lockSide: 1, lockSkip: false, skipping: false, lockInv: false, beat: 0,
+  parkKey: 'FC', ump: 1, challenges: [2, 2], challengeable: null, challenge: null, cpuChallengeAt: 0, reviews: [1, 1], review: null, view: 0, lockSide: 1, lockSkip: false, skipping: false, lockInv: false, beat: 0,
 };
 const battingTeam = () => G.teams[G.half];
 const fieldingTeam = () => G.teams[1 - G.half];
@@ -4425,7 +4497,10 @@ function applyAlignment() {
   for (const f of G.fielders) {
     let [x, z] = ROLE_POS[f.role];
     if (f.isOF || f.role === 'SS' || f.role === '2B') {
-      const r = Math.hypot(x, z), th = Math.atan2(x, -z) + pull * (f.isOF ? 6 : 4) * DEG;
+      let r = Math.hypot(x, z);
+      const th = Math.atan2(x, -z) + pull * (f.isOF ? 6 : 4) * DEG;
+      // outfielders play deeper in a big park and shallower in a small one
+      if (f.isOF) r *= clamp(fenceDist(th / DEG) / parkDist(PARKS.FC, th / DEG), 0.92, 1.05);
       x = r * Math.sin(th); z = -r * Math.cos(th);
     }
     if (infieldIn && !f.isOF && f.role !== 'P' && f.role !== 'C') { const r = Math.hypot(x, z), k = (r - 22) / r; x *= k; z *= k; }
@@ -4481,6 +4556,9 @@ function startGame(cfg) {
   // cfg.teams = [away, home] as team specs (built-in key or a whole custom roster)
   const specs = distinctSpecs(...(cfg.teams || [{ b: TEAMS[cfg.away || 0].key }, { b: TEAMS[cfg.home ?? 3].key }]));
   const away = teamFromSpec(specs[0]), home = teamFromSpec(specs[1]);
+  // the home team's ballpark, unless another one was picked
+  const park = cfg.park && PARKS[cfg.park] ? cfg.park : PARKS[home.key] ? home.key : 'FC';
+  if (G.parkKey !== park) { G.parkKey = park; setPark(park); }
   G.teams = cfg.mode === 'derby' ? [home, away] : [away, home];
   // practice: your team is the home pick; it bats in the batting and baserunning drills
   G.drill = cfg.mode === 'practice' || cfg.mode === 'tutorial' ? (DRILLS[cfg.drill] ? cfg.drill : 'bat') : null;
@@ -4540,7 +4618,7 @@ function startGame(cfg) {
     const me = PBYID[G.lock];
     Caster.line(`Player Lock: you are ${me.name}. The rest of the game sims until you are involved.`);
   } else if (G.drill) { if (G.mode !== 'tutorial') Caster.line(DRILLS[G.drill].intro, false); }
-  else Caster.line(`Good evening and welcome to the ballpark. The ${G.teams[0].name} visit the ${G.teams[1].name} tonight.`);
+  else Caster.line(`Good evening and welcome to ${PARK.name}. The ${G.teams[0].name} visit the ${G.teams[1].name} tonight.`);
   hudLock();
   startHalf();
 }
@@ -4553,7 +4631,7 @@ function startHalf() {
   setupFielders();
   hudScore(); hudCount();
   const title = G.mode === 'tutorial' ? 'TUTORIAL' : G.drill ? DRILLS[G.drill].name.toUpperCase() : `${G.half ? 'BOTTOM' : 'TOP'} OF THE ${ordinal(G.inning).toUpperCase()}`;
-  hudBanner(title, G.drill ? 'Practice · quit from the pause menu' : `${battingTeam().city} ${battingTeam().name} batting`, '');
+  hudBanner(title, G.drill ? 'Practice · quit from the pause menu' : `${battingTeam().city} ${battingTeam().name} batting` + (G.inning === 1 && G.half === 0 ? ` · ${PARK.name}` : ''), '');
   if (G.inning > G.innings) Caster.line(`Extra innings. ${shortName(G.bases[2].name)} starts at second base.`, true, { queue: true });
   setPhase('halfIntro', G.mode === 'spectate' ? 1.8 : 2.6);
   G.batter = G.lu[G.half][G.order[G.half] % 9];
@@ -6113,7 +6191,7 @@ function netSendFast(m) {
 // Custom rosters travel as data, so your friend doesn't need them saved.
 function netSendLobby() {
   if (NET.role !== 'host' || !NET.open) return;
-  const m = { t: 'lobby', side: menu.side, innings: menu.innings, diff: menu.diff, ump: menu.ump, hostSpec: teamSpec(menuTeam(menu.side ? 'home' : 'away')) };
+  const m = { t: 'lobby', side: menu.side, innings: menu.innings, diff: menu.diff, ump: menu.ump, park: menu.park || '', hostSpec: teamSpec(menuTeam(menu.side ? 'home' : 'away')) };
   const s = JSON.stringify(m);
   if (s !== NET.lobbySent) { NET.lobbySent = s; netSend(m); }
 }
@@ -6126,7 +6204,7 @@ function specOK(s) {
 function hostStartOnline() {
   if (!(NET.role === 'host' && NET.open) || onlineBlock()) return;
   const P = onlinePicks();
-  const cfg = { mode: 'online', teams: distinctSpecs(teamSpec(P.teams[0]), teamSpec(P.teams[1])), side: menu.side, innings: menu.innings, diff: menu.diff, manual: 1, ump: menu.ump };
+  const cfg = { mode: 'online', teams: distinctSpecs(teamSpec(P.teams[0]), teamSpec(P.teams[1])), side: menu.side, innings: menu.innings, diff: menu.diff, manual: 1, ump: menu.ump, park: menu.park || '' };
   netSend({ t: 'start', cfg });
   startGame(cfg);
 }
@@ -8490,7 +8568,7 @@ function togglePause(force, remote) {
 }
 
 // ------------------------------------------------------------------ menus ----
-const menu = { mode: 'exhibition', away: 'NYY', home: 'LAD', side: 1, innings: 3, diff: 1, manual: 1, batter: 3, lockPick: 'h3', ump: 1, view: 2, lockField: 1, lockSkip: 1, batCam: settings.batCam || 0, netTeam: 'LAD', drill: 0, tutLesson: -1 };
+const menu = { mode: 'exhibition', away: 'NYY', home: 'LAD', park: '', side: 1, innings: 3, diff: 1, manual: 1, batter: 3, lockPick: 'h3', ump: 1, view: 2, lockField: 1, lockSkip: 1, batCam: settings.batCam || 0, netTeam: 'LAD', drill: 0, tutLesson: -1 };
 try { Object.assign(menu, JSON.parse(localStorage.getItem('fullcount.menu') || '{}')); } catch (e) { /* ignore */ }
 menu.batCam = settings.batCam || 0;   // the pause screen can change it too; settings wins
 // teams used to be saved as an index into the built-in list
@@ -8559,7 +8637,15 @@ function renderMenu() {
   $('optLockField').classList.toggle('hidden', !lock);
   $('optLockSkip').classList.toggle('hidden', !lock);
   $('optUmp').classList.toggle('hidden', derby || tut || !showTeams);
-  for (const el of ['optSide', 'optInn', 'optDiff', 'optUmp']) $(el).style.pointerEvents = guest ? 'none' : '';
+  $('optPark').classList.toggle('hidden', tut || !showTeams);
+  for (const el of ['optSide', 'optInn', 'optDiff', 'optUmp', 'optPark']) $(el).style.pointerEvents = guest ? 'none' : '';
+  if (showTeams) {
+    // the ballpark: the home team's, or any of the others
+    const hk = online ? onlinePicks().teams[1] : menuTeam('home'), hp = (hk && PARKS[hk.key]) || PARKS.FC;
+    const pp = $('parkPick'), parks = Object.entries(PARKS).sort((x, y) => x[1].name.localeCompare(y[1].name));
+    pp.innerHTML = `<option value="">Home team's park (${esc(hp.name)})</option>` + parks.map(([k, p]) => `<option value="${k}">${esc(p.name)}${k === 'FC' ? '' : ' (' + k + ')'}</option>`).join('');
+    pp.value = (guest ? L.park : menu.park) || '';
+  }
   for (const b of $('modes').querySelectorAll('button')) b.classList.toggle('on', b.dataset.mode === m);
   for (const seg of document.querySelectorAll('.seg[data-key]')) {
     let v = L[seg.dataset.key] ?? menu[seg.dataset.key];
@@ -8631,6 +8717,7 @@ function buildMenu() {
   });
   $('derbyBatter').addEventListener('change', (e) => { menu.batter = +e.target.value; renderMenu(); });
   $('lockPick').addEventListener('change', (e) => { menu.lockPick = e.target.value; renderMenu(); });
+  $('parkPick').addEventListener('change', (e) => { menu.park = PARKS[e.target.value] ? e.target.value : ''; renderMenu(); });
   $('btnHost').addEventListener('click', () => { SND.init(); netHost(); });
   $('btnJoin').addEventListener('click', () => { SND.init(); netJoin($('joinCode').value); });
   $('joinCode').addEventListener('keydown', (e) => { if (e.key === 'Enter') { SND.init(); netJoin($('joinCode').value); } });
@@ -8644,7 +8731,7 @@ function buildMenu() {
     if (menu.mode === 'online') { hostStartOnline(); return; }
     if (menu.mode === 'tutorial') { tutStart(menu.tutLesson >= 0 ? menu.tutLesson : null); return; }
     const teams = [teamSpec(menuTeam('away')), teamSpec(menuTeam('home'))];
-    startGame({ mode: menu.mode, teams, drill: ['bat', 'pitch', 'run', 'field'][menu.drill] || 'bat', side: menu.side, innings: menu.innings, diff: menu.diff, manual: menu.manual, batter: menu.batter, lockPick: menu.lockPick, ump: menu.ump, view: menu.view, lockField: menu.lockField, lockSkip: menu.lockSkip });
+    startGame({ mode: menu.mode, teams, drill: ['bat', 'pitch', 'run', 'field'][menu.drill] || 'bat', side: menu.side, innings: menu.innings, diff: menu.diff, manual: menu.manual, batter: menu.batter, lockPick: menu.lockPick, ump: menu.ump, view: menu.view, lockField: menu.lockField, lockSkip: menu.lockSkip, park: menu.park || '' });
   });
   const openHelp = () => { $('help').classList.remove('hidden'); };
   $('btnHow').addEventListener('click', openHelp);
@@ -8833,7 +8920,7 @@ function boot() {
 }
 // Debug handle: lets a test harness advance the simulation without waiting on animation frames.
 window.__fullcount = {
-  G, TEAMS, settings, NET, keys, BAT_CAMS, Play, Runner, BASES, simBatted, V3, getModel, ballMesh, startPickoff, stealCmd, TUT, tutStart, rosterCost, teamToDef, cleanRoster, buildCustomTeam, Cloud, cloudRender, inviteToast, get ROSTERS() { return ROSTERS; },
+  G, TEAMS, settings, NET, keys, BAT_CAMS, Play, Runner, BASES, simBatted, V3, getModel, ballMesh, startPickoff, stealCmd, camTo, setPark, PARKS, fenceDist, fenceH, TUT, tutStart, rosterCost, teamToDef, cleanRoster, buildCustomTeam, Cloud, cloudRender, inviteToast, get ROSTERS() { return ROSTERS; },
   step(sec, dt = 1 / 60) {
     const n = Math.round(sec / dt);
     for (let i = 0; i < n && !G.paused; i++) { if (isGuest()) guestUpdate(dt); else update(dt); netTick(); }
