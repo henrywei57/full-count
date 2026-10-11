@@ -61,12 +61,14 @@ function subRules(ti) {
     pr: ok && bat && pre && G.bench[ti].length > 0,
     def: ok && G.bench[ti].length > 0,
     pen: ok && !bat && pre && G.bullpen[ti].length > 0,
+    ibb: ok && !bat && pre && !!G.batter,
   };
 }
 // kind: 'ph' (bat for the batter), 'pr' (run for the runner on base `target`), 'def' (replace
 // the player at position `target`), 'pen' (bring in reliever `inId`)
 function doSub(ti, kind, target, inId) {
   const R = subRules(ti);
+  if (kind === 'ibb') return R.ibb && intentionalWalk(ti);
   if (kind === 'pen') {
     const p = G.bullpen[ti].find((x) => x.id === inId);
     if (!R.pen || !p || !bringReliever(ti, p)) return false;
@@ -185,6 +187,7 @@ function renderTeam() {
     <h3>BENCH</h3>
     <div class="rs-scroll"><table class="rs-table tm-table"><thead><tr><th>PLAYER</th><th>PLAYS</th><th>CON</th><th>POW</th><th>EYE</th><th>SPD</th><th>ARM</th><th>FLD</th><th></th></tr></thead><tbody>${bench}</tbody></table></div>
     <h3>PITCHING <small>${esc(cur.name)} &middot; ${cps.pc} pitches &middot; ${st > 0.45 ? 'fresh' : st > 0.2 ? 'tiring' : 'gassed'}</small></h3>
+    ${R.ibb ? `<p class="tm-acts"><button class="ghost fr-mini" data-tm="ibb">Intentional walk: put ${esc(lastName(G.batter.name))} on first (I)</button></p>` : ''}
     <div class="tm-stam"><i style="width:${st * 100}%;background:${st > 0.45 ? 'var(--ball)' : st > 0.2 ? 'var(--gold)' : 'var(--strike)'}"></i></div>
     <div class="rs-scroll"><table class="rs-table tm-table"><thead><tr><th>BULLPEN</th><th>T</th><th>VELO</th><th>CTL</th><th>STA</th><th>PITCHES</th><th></th></tr></thead><tbody>${pen}</tbody></table></div>`;
 }
@@ -195,6 +198,8 @@ function teamMove(kind, target, inId) {
   if (doSub(ti, kind, target, inId)) { TM.pending = null; SND.init(); if (SND.ctx) SND.tick(); }
   renderTeam();
 }
+// I: put the batter on intentionally (your team in the field, before a pitch)
+function requestIBB() { const ti = mySide(); if (ti >= 0 && subRules(ti).ibb) teamMove('ibb', null, ''); }
 function buildTeamUI() {
   $('tmClose').addEventListener('click', closeTeam);
   $('btnTeam').addEventListener('click', () => { togglePause(false); openTeam(); });
@@ -205,6 +210,7 @@ function buildTeamUI() {
     if (b.dataset.tmpen) { teamMove('pen', null, b.dataset.tmpen); return; }
     if (b.dataset.tmin) { const P = TM.pending; if (P) teamMove(P.kind, P.target, b.dataset.tmin); return; }
     const k = b.dataset.tm;
+    if (k === 'ibb') { teamMove('ibb', null, ''); closeTeam(); return; }
     TM.pending = k === 'cancel' ? null : { kind: k, target: b.dataset.t || null };
     renderTeam();
   });

@@ -40,8 +40,9 @@ All 30 MLB clubs with their real current rosters. Every player's ratings come fr
 | Throw to 1B, 2B, 3B, home | 1 2 3 4 (or → ↑ ← ↓) | B, Y, X, A |
 | Advance / send back all runners | E / Q | RB / LB |
 | Run one runner | Click him (on the field, his tag, his dot on the mini diamond, or his row in the runner panel), then E / Q. Click him again for everyone. Holding his base key (1–4) + E / Q works too | Hold the D-pad toward his base + RB / LB |
-| ABS challenge | C | Y (right after the call) |
-| Team panel: pinch hit, pinch run, defensive subs, bullpen | U, the team button by pause, or the pause menu | |
+| Challenge: ABS (a ball/strike call) or replay review (a close play on the bases) | C | Y (right after the call) |
+| Team panel: pinch hit, pinch run, defensive subs, bullpen, intentional walk | U, the team button by pause, or the pause menu | |
+| Intentional walk (your team in the field, before a pitch) | I | |
 | Swing the camera (Player Lock) | Mouse (click to grab it), right-click or T to re-center | Right stick, R3 |
 | Cycle third person / first person / broadcast (Player Lock) | V | |
 | Skip this at-bat (Player Lock) | Tab or the Skip button | Back |
@@ -52,6 +53,8 @@ The AI moves your fielder until you touch the controls. Any ball that comes insi
 When you're batting, a runner panel lists every runner with where he's headed, and a tag floats over each runner. Click a runner to pick him (a blue ring marks him); E and Q then run just him. With nobody picked they run everyone. Each E sends a runner one base further; each Q takes a base back (stop at the next bag, then turn around). Runners you don't touch are run by the AI. Only force plays are outs on the bag; everyone else has to be tagged when he gets there.
 
 After a fielder gloves the ball he gathers into his throw, and your throw comes out as soon as the ball is out of the glove. Throws go to whichever fielder can get to that base first: on the bag if he gets there in time, otherwise out in front of him on his way, and he still has to step on the bag.
+
+On a ball to the outfield the free middle infielder goes out to be the relay man, lined up between the ball and the base it's likely going to. A throw of more than about 225 feet from an outfielder goes to him, and he turns and fires it on to the base you picked. On defense the AI can cut it off and go somewhere else instead.
 
 ## Bench and bullpen
 
@@ -71,6 +74,13 @@ Call a steal any time before the pitch: the runner breaks on the pitcher's first
 Who wins the race comes down to the runner's speed (fast runners also get better jumps), the pitch, and the catcher's arm. Against a typical catcher an average runner makes it a bit more than half the time, a burner almost always, and a slow runner almost never. A runner can't steal a base another runner is standing on unless that runner goes too. CPU teams steal when they have an edge, and with two outs and a full count their forced runners go on the pitch.
 
 When you're pitching with runners on, Shift + 1 / 2 / 3 throws over. The runner dives back and is usually safe, but a runner who was going on that pitch gets caught leaning: he's either picked off or hung up between bases. CPU pitchers throw over too, mostly to fast runners.
+
+## More rules
+
+- **Wild pitches and passed balls.** A pitch in the dirt or far off the plate can get past the catcher, more often with a weak glove behind the plate, and now and then he just misses one. The ball rolls toward the backstop, the catcher chases it, the pitcher covers home, and the runners can go (they have a secondary lead). On defense you can steer the catcher and throw like any other play.
+- **Dropped third strike.** If strike three gets away and first base is open, or there are two outs, the batter can run for first. It still counts as a strikeout.
+- **Intentional walks.** No pitches: press **I** (or use the Team panel) and the batter takes first. CPU managers put a dangerous hitter on late in close games when first base is open, a runner is in scoring position and a much weaker hitter is up next.
+- **Replay review.** The base umpires call the bang-bang plays at the bags, and they miss a few of the closest. After a close play, the team the call went against can challenge it: press **C** while the prompt is up (Enter plays on). The play is shown again from a camera on that bag, then the call stands or is overturned, and the outs, runners and runs are fixed to match. Each team gets one challenge a game and keeps it when the call is overturned. CPU managers challenge most missed calls. In Player Lock, your manager decides.
 
 ## Roster Builder
 

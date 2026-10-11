@@ -198,9 +198,12 @@ function hostOnMsg(m) {
     case 'skip': skip(true); break;
     case 'trot': if (pl && (pl.hr || pl.awarded) && pl.t > 2) pl.skipTrot(); break;
     case 'pause': togglePause(!!m.v, true); break;
-    case 'sub': { const s = G.ctrl.indexOf('remote'); if (s >= 0 && ['ph', 'pr', 'def', 'pen'].includes(m.kind)) doSub(s, m.kind, m.target == null ? null : String(m.target), String(m.inId || '')); break; }
+    case 'sub': { const s = G.ctrl.indexOf('remote'); if (s >= 0 && ['ph', 'pr', 'def', 'pen', 'ibb'].includes(m.kind)) doSub(s, m.kind, m.target == null ? null : String(m.target), String(m.inId || '')); break; }
     case 'again': if (G.phase === 'final') hostRestart(); break;
-    case 'challenge': if (G.challengeable && G.challengeable.who === 'remote') startChallenge(G.challengeable.side); break;
+    case 'challenge':
+      if (G.phase === 'reviewWait' && G.review && G.review.who === 'remote') startReview();
+      else if (G.challengeable && G.challengeable.who === 'remote') startChallenge(G.challengeable.side);
+      break;
   }
 }
 function hostRestart() { netSend({ t: 'start', cfg: G.cfg }); showScreen(null); startGame(G.cfg); }
@@ -257,7 +260,9 @@ function netGS() {
     abPitches: G.abPitches, lastP: G.lastP || null,
     // each side's game roster, so the guest's Team panel shows the real thing
     ros: [0, 1].map((ti) => ({ lu: G.lu[ti].map((p) => [p.id, p.pos]), bench: G.bench[ti].map((p) => p.id), pen: G.bullpen[ti].map((p) => p.id) })),
-    chal: G.challenges, ump: G.ump, chk: G.challengeable && G.challengeable.who === 'remote' ? G.challengeable.side : -1,
+    chal: G.challenges, ump: G.ump,
+    chk: G.challengeable && G.challengeable.who === 'remote' ? G.challengeable.side : G.phase === 'reviewWait' && G.review && G.review.who === 'remote' ? G.review.side : -1,
+    rv: G.phase === 'reviewWait' && G.review && G.review.who === 'remote' ? G.review.c.base : 0,
   };
 }
 function netSnapshot() {
@@ -277,7 +282,7 @@ function netSnapshot() {
       pid: NET.pid, pt: r3(pl.t), prompt: pl.prompt && pl.userDef && remoteField ? 1 : 0, uf: remoteField && pl.uf ? pl.uf.m.key : null,
       land: remoteField ? pl.landingSpot() : null, hr: pl.hr || pl.awarded ? 1 : 0,
       // where the ball is, as something the guest can compute for itself every frame
-      bm: B.mode === 'flight' ? 'f' : B.mode === 'held' && B.holder ? ['h', B.holder.m.key]
+      bm: B.mode === 'flight' ? (pl.kind === 'hit' ? 'f' : null) : B.mode === 'held' && B.holder ? ['h', B.holder.m.key]
         : B.mode === 'throw' && th ? ['t', th.from.toArray().map(r2), th.to.toArray().map(r2), r3(th.t0), r3(th.T), r2(th.arc)] : null,
     };
   }
@@ -366,7 +371,7 @@ function netApplyGS(s) {
   renderTeam();
   G.challenges = s.chal || [0, 0]; G.ump = s.ump ?? G.ump;
   const canChallenge = s.chk >= 0 && s.chk === localSide();
-  if (canChallenge && G.chkSide !== s.chk) setHint(`<kbd>C</kbd> challenge the call &middot; ${G.challenges[s.chk]} left`);
+  if (canChallenge && G.chkSide !== s.chk) setHint(s.rv >= 1 && s.rv <= 4 ? `Close play at ${BASE_WORD[s.rv]} &middot; <kbd>C</kbd> challenge it` : `<kbd>C</kbd> challenge the call &middot; ${G.challenges[s.chk]} left`);
   else if (!canChallenge && G.chkSide >= 0 && G.chkSide === localSide()) setHint('');
   G.chkSide = s.chk;
   hudScore(); hudCount(); if (G.batter) hudBatter(); hudPitcher(); drawTracker(); drawBoards();

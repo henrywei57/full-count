@@ -52,7 +52,7 @@ function playCam() {
 const _eye = new V3(), _look = new V3(), _fwd = new V3();
 let fpvHidden = null, fpvOn = false;
 const VIEW_NAMES = { 0: 'Broadcast view', 1: 'First-person view', 2: 'Third-person view' };
-const LOCK_PHASES = ['prePitch', 'windup', 'pitch', 'postPitch', 'postFoul', 'live', 'postPlay', 'absReview'];
+const LOCK_PHASES = ['prePitch', 'windup', 'pitch', 'postPitch', 'postFoul', 'live', 'postPlay', 'absReview', 'reviewWait'];
 // free look: 'track' follows the play automatically; 'free' is wherever you point the mouse / right stick
 const FL = { mode: 'track', yaw: 0, pitch: 0 };
 function lookDelta(dx, dy) {
@@ -459,6 +459,7 @@ function absReveal(overturned, truth) {
 }
 function requestChallenge() {
   if (isGuest()) { if (G.chkSide === localSide()) netSend({ t: 'act', a: 'challenge' }); return; }
+  if (G.phase === 'reviewWait' && G.review && G.review.who === 'local') { startReview(); return; }
   const c = G.challengeable;
   if (c && c.who === 'local') startChallenge(c.side);
 }
@@ -744,7 +745,7 @@ function updateLive(dt) {
   if (!fpvOn) playCam();
   if (pl.done) {
     setHint(''); ctrlRing.visible = false; landMark.visible = false; baseMark.visible = false; G.aimShown = 0; runnerHUD(false);
-    if (pl.kind === 'steal') finishStealPlay(); else if (pl.kind === 'pick') finishPickPlay(); else finishPlay();
+    finishLive(pl);
   }
 }
 function onPlayEvent(e) {
@@ -790,6 +791,12 @@ function updateReplay(dt) {
   while (R.i < rec.length - 1 && rec[R.i + 1].t <= R.t) R.i++;
   applyFrame(rec[R.i]);
   const b = ballMesh.position;
+  if (R.review) {
+    const B = BASES[R.base], c = REVIEW_CAMS[R.base];
+    camTo(_c1.set(c[0], c[1], c[2]), _c2.set(B.x, 2.5, B.z), 26, 4, R.snap); R.snap = false;
+    if (R.t >= R.until || R.i >= rec.length - 1) endReplay();
+    return;
+  }
   if (R.t < G.contactT) { cfCam(R.snap); R.snap = false; }
   else {
     const first = R.pre; R.pre = false;
@@ -797,6 +804,17 @@ function updateReplay(dt) {
     else camTo(_c1.set(118, 16, 34), b, 30, 3.5, first);
   }
   if (R.i >= rec.length - 1) endReplay();
+}
+// replay review: the play at the bag again, slowed down, from a camera on that bag.
+// Returns how long it runs (0 if there's no tape).
+const REVIEW_CAMS = { 1: [96, 6, -76], 2: [26, 6, -150], 3: [-96, 6, -76], 4: [-28, 5, -18] };
+function startReviewReplay(c) {
+  const rec = G.rec, i0 = rec.findIndex((f) => f.t >= c.now - 1.3);
+  if (G.replay || i0 < 0 || rec.length - i0 < 10) return 0;
+  G.replay = { i: i0, t: rec[i0].t, review: true, base: c.base, until: c.now + 0.6, snap: true };
+  document.body.classList.add('letterbox'); $('replayTag').classList.remove('hidden'); $('hud').classList.add('replaying');
+  hideFeedback(); trailReset(); ballShadow.visible = false;
+  return (Math.min(rec[rec.length - 1].t, c.now + 0.6) - rec[i0].t) / 0.55;
 }
 function endReplay() {
   if (!G.replay) return;
@@ -917,6 +935,7 @@ window.addEventListener('keydown', (e) => {
   else if (k === 'tab') startSim();
   else if (k === 'v' && G.mode === 'lock') toggleView();
   else if (k === 'u') openTeam();
+  else if (k === 'i') requestIBB();
 });
 // V cycles third person -> first person -> broadcast
 function toggleView() {
@@ -1025,6 +1044,8 @@ function primaryAction(kind) {
 }
 function skip(force) {
   if (isGuest()) { netSend({ t: 'act', a: 'skip' }); return; }
+  // waiting on a challenge: only the side that can challenge can wave it off
+  if (G.phase === 'reviewWait') { if (G.review && G.review.who === (force ? 'remote' : 'local')) G.pt = G.dur; return; }
   if (['postPitch', 'postPlay', 'postFoul', 'halfIntro', 'break', 'derbyResult'].includes(G.phase) && (force || G.pt > 0.3)) G.pt = G.dur;
 }
 function toggleZone() { settings.zone = !settings.zone; saveSettings(); zoneGroup.visible = settings.zone && (userBats() || userPitches()) && ['prePitch', 'windup', 'pitch'].includes(G.phase); $('btnZone').textContent = `Strike zone: ${settings.zone ? 'On' : 'Off'}`; }
@@ -1266,6 +1287,7 @@ function update(dt) {
     case 'prePitch': {
       const pc = pitchCtrl();
       if (G.drill === 'field') { if (G.pt >= G.fungoAt) fungo(); break; }
+      if (G.cpuIBB && G.pt >= 0.7) { intentionalWalk(1 - G.half); break; }
       if (G.cpuPick && G.pt >= G.cpuPick.at) { startPickoff(G.cpuPick.base); break; }
       if (pc === 'local') updatePitchUI(); else if (pc === 'cpu' && G.pt >= G.cpuPitchAt) startWindup(G.spec);
       break;
@@ -1277,6 +1299,12 @@ function update(dt) {
       if (G.pt >= G.dur) endPostPitch();
       break;
     case 'absReview': if (G.pt >= G.dur) revealChallenge(); break;
+    case 'reviewWait':
+      if (G.review && G.review.who === 'cpu' && G.cpuChallengeAt && G.now >= G.cpuChallengeAt) { startReview(); break; }
+      if (G.pt >= G.dur) { const pl = G.play; G.review = null; setHint(''); hudScore(); finishLive(pl, true); }
+      break;
+    case 'replayReview': if (G.pt >= G.dur) revealReview(); break;
+    case 'reviewShow': if (G.pt >= G.dur) finishLive(G.play, true); break;
     case 'postFoul': if (G.pt >= G.dur) enterPrePitch(); break;
     case 'live': updateLive(dt); break;
     case 'postPlay': if (G.pt >= G.dur) { const next = G.postNext; G.postNext = null; if (next) next(); else afterAB(); } break;

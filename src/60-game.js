@@ -15,7 +15,7 @@ const G = {
   pci: { x: 0, y: 2.5 }, glove: new V3(0, 2.4, 1.7), rec: [], recOn: false, replay: null, derby: null,
   abEnd: null, contactT: 0, menuAng: 0,
   ctrl: ['cpu', 'cpu'], lock: null, remoteIn: { x: 0, z: 0 }, remoteTake: false, camFocus: null, localPitch: false,
-  ump: 1, challenges: [2, 2], challengeable: null, challenge: null, cpuChallengeAt: 0, view: 0, lockSide: 1, lockSkip: false, skipping: false, lockInv: false, beat: 0,
+  ump: 1, challenges: [2, 2], challengeable: null, challenge: null, cpuChallengeAt: 0, reviews: [1, 1], review: null, view: 0, lockSide: 1, lockSkip: false, skipping: false, lockInv: false, beat: 0,
 };
 const battingTeam = () => G.teams[G.half];
 const fieldingTeam = () => G.teams[1 - G.half];
@@ -51,7 +51,7 @@ const userRuns = () => runCtrl() === 'local';
 const localSide = () => (G.ctrl ? G.ctrl.indexOf('local') : -1);
 function setPhase(name, dur = 0) { G.phase = name; G.pt = 0; G.dur = dur; }
 function bstat(pl) { if (!G.stats.has(pl.id)) G.stats.set(pl.id, { pa: 0, ab: 0, h: 0, d: 0, t: 0, hr: 0, rbi: 0, bb: 0, k: 0, r: 0, sb: 0, cs: 0 }); return G.stats.get(pl.id); }
-function pstat(pl) { if (!G.pstats.has(pl.id)) G.pstats.set(pl.id, { outs: 0, h: 0, r: 0, bb: 0, k: 0, pc: 0, hr: 0 }); return G.pstats.get(pl.id); }
+function pstat(pl) { if (!G.pstats.has(pl.id)) G.pstats.set(pl.id, { outs: 0, h: 0, r: 0, bb: 0, k: 0, pc: 0, hr: 0, wp: 0 }); return G.pstats.get(pl.id); }
 function pitchLimit(p) { return p.pos === 'SP' ? p.stam + 12 : p.stam * 0.75; }
 function fatigue(p) { if (G.drill) return 0; const L = pitchLimit(p), pc = pstat(p).pc; return clamp((pc - 0.7 * L) / (0.5 * L), 0, 1); }
 
@@ -172,6 +172,7 @@ function startGame(cfg) {
   }
   settings.manual = cfg.manual == null ? true : !!cfg.manual;
   G.ump = cfg.ump ?? 1; G.challenges = [2, 2]; G.challengeable = null; G.challenge = null; G.cpuChallengeAt = 0;
+  G.reviews = [1, 1]; G.review = null;   // replay review of calls on the bases: one a game, kept if you win it
   G.view = cfg.mode === 'lock' ? cfg.view ?? 2 : 0; G.lockSide = cfg.side ?? 1; G.simAB = false; G.lockFieldSim = cfg.mode === 'lock' && cfg.lockField === 0;
   G.lockSkip = cfg.mode === 'lock' && cfg.lockSkip !== 0; G.skipping = false; G.lockInv = false; G.beat = 0;
   Object.assign(G, { remotePos: null, potg: null, inning: 1, half: 0, outs: 0, balls: 0, strikes: 0, score: [0, 0], line: [[], []], hits: [0, 0], errs: [0, 0], bases: [null, null, null, null], order: [0, 0], pen: [0, 0], ff: 1, paused: false, replay: null, play: null, abEnd: null, postNext: null, cpuPick: null, abPicks: 0 });
@@ -267,6 +268,7 @@ function newBatter() {
   if (G.mode !== 'derby') cpuManager();   // pinch hitters, pinch runners, pitching changes
   const pl = G.mode === 'derby' ? G.derby.batter : G.lu[G.half][G.order[G.half] % 9];
   maybePitchingChange();
+  G.ibbFor = null;
   G.batter = pl; G.balls = 0; G.strikes = 0; G.abPitches = []; G.abEnd = null; G.simAB = false; G.lockInv = false; G.abPicks = 0;
   G.batSide = sideFor(pl);
   G.batterModel = getModel(pl);
@@ -292,6 +294,9 @@ function enterPrePitch() {
     if (G.drill !== 'field') cpuPickoff();
   }
   cpuSteals();
+  // the CPU manager may put this batter on (decided once, before the first pitch to him)
+  G.cpuIBB = false;
+  if (!G.abPitches.length && G.ibbFor !== G.batter) { G.ibbFor = G.batter; G.cpuIBB = cpuWantsIBB(); }
   if (G.drill === 'field') G.fungoAt = rand(1.0, 1.6);
   prePitchUI();
   G.rec = []; G.recOn = true;
@@ -613,6 +618,7 @@ function catchPitch() {
   recordPitch(call === 'ball' ? 'Ball' : call === 'hbp' ? 'HBP' : call === 'called' ? 'Called K' : 'Swinging K');
   G.recOn = false;
   applyCall(call);
+  if (wildPitch()) return;
   if (G.baseRunners.some((r) => r.steal && r.steal.went) && stealAfterPitch()) return;
   setupChallenge(call);
 }
@@ -690,6 +696,7 @@ function stealAfterPitch() {
   if (k === 'kLook' || k === 'kSwing') { settleAB(k); G.abEnd = 'settled'; }   // strike 'em out...
   if (G.outs >= 3) { cancelSteals(); return false; }
   const fc = fieldCtrl(), rc = runCtrl();
+  G.recOn = true;   // for a replay review of the tag
   const pl = (G.play = new Play({ kind: 'steal', fielders: G.fielders, runners: G.baseRunners, outs: G.outs, field: fc === 'cpu' ? null : { lock: G.lock, manual: settings.manual }, run: rc === 'cpu' ? null : { lock: G.lock } }));
   lockPlayFor(pl);
   netPlayOut();
@@ -749,7 +756,7 @@ function canPickoff(base) {
 }
 function startPickoff(base) {
   if (!canPickoff(base)) return;
-  G.abPicks++; G.cpuPick = null;
+  G.abPicks++; G.cpuPick = null; G.recOn = true;
   pci.visible = false; reticle.visible = false; zoneGroup.visible = false; $('meter').classList.add('hidden');
   const fc = fieldCtrl(), rc = runCtrl();
   const pl = (G.play = new Play({ kind: 'pick', pickBase: base, fielders: G.fielders, runners: G.baseRunners, outs: G.outs, field: fc === 'cpu' ? null : { lock: G.lock, manual: settings.manual }, run: rc === 'cpu' ? null : { lock: G.lock } }));
@@ -807,6 +814,168 @@ function cpuPickoff() {
     if (G.drill === 'run') p *= 1.8;
     if (Math.random() < p) { G.cpuPick = { base: r.base, at: G.cpuPitchAt * rand(0.35, 0.8) }; return; }
   }
+}
+
+// ------------------------------------------------ wild pitches & passed balls ----
+// A pitch in the dirt (or way off the plate) can get by the catcher, and now and then he
+// just misses one. The runners can move up; on strike three the batter can run for first
+// if it's open or there are two outs (a dropped third strike).
+function wildPitch() {
+  if (G.mode === 'derby' || G.mode === 'tutorial' || G.drill === 'bat' || G.drill === 'field' || !G.fByRole.C) return false;
+  const k = G.abEnd, K = k === 'kLook' || k === 'kSwing';
+  if (k === 'walk' || k === 'hbp') return false;   // ball four moves them up anyway
+  const d3 = K && (!G.bases[1] || G.outs === 2);
+  if (!d3 && !G.bases.some(Boolean)) return false;
+  const c = G.cross, C = G.fByRole.C;
+  const hard = Math.max(clamp((1.2 - c.y) / 0.7, 0, 1), clamp((Math.abs(c.x) - 1.25) / 0.9, 0, 1), clamp((c.y - 4.1) / 0.9, 0, 1));
+  const glove = clamp(1.3 - (C.pl.fld ?? 60) / 100, 0.3, 1);
+  const pWP = hard * hard * 0.9 * glove, pPB = 0.004 * glove, x = Math.random();
+  if (x >= pWP + pPB) return false;
+  const kind = x < pWP ? 'WP' : 'PB';
+  if (K && !d3) { settleAB(k); G.abEnd = 'settled'; }   // strike three, and he's out: the runners can still go
+  else if (d3) { const bs = bstat(G.batter), ps = pstat(curPitcher()); bs.pa++; bs.ab++; bs.k++; ps.k++; G.prac.k++; hudPrac(); G.abEnd = 'settled'; }
+  const runners = [...G.baseRunners];
+  if (d3) { const br = new Runner(G.batter, G.batterModel, 0); br.from0 = G.batterModel.root.position.clone(); runners.unshift(br); }
+  const side = Math.abs(c.x) > 0.4 ? Math.sign(c.x) : Math.random() < 0.5 ? -1 : 1;
+  const fc = fieldCtrl(), rc = runCtrl();
+  const pl = (G.play = new Play({ kind: 'wild', bb: looseBall(G.glove, side), fielders: G.fielders, runners, outs: G.outs, field: fc === 'cpu' ? null : { lock: G.lock, manual: settings.manual }, run: rc === 'cpu' ? null : { lock: G.lock } }));
+  pl.wildKind = kind; pl.d3 = d3;
+  lockPlayFor(pl);
+  netPlayOut();
+  ballMesh.visible = true; G.recOn = true;
+  Caster.line(d3 ? 'Strike three... and it gets away! The batter takes off for first!' : kind === 'WP' ? pick(['That one bounces in the dirt and gets away!', 'In the dirt, and it skips past the catcher!']) : 'It glances off the mitt and rolls away!', false);
+  setPhase('live');
+  setHint(liveHint());
+  return true;
+}
+// the ball off the catcher: it kicks one way and rolls toward the backstop
+function looseBall(from, side) {
+  const S = [], a = side * rand(8, 75) * DEG, hop = rand(0.6, 1.4);
+  let x = from.x, z = Math.max(from.z, 1.5), v = rand(20, 44), vx = Math.sin(a) * v, vz = Math.cos(a) * v, t = 0;
+  for (let n = 0; n < 120 * 7; n++) {
+    const sp = Math.hypot(vx, vz);
+    if (sp < 0.4) break;
+    const ns = Math.max(0, sp - 11 * BB_DT); vx *= ns / sp; vz *= ns / sp;
+    let nx = x + vx * BB_DT, nz = z + vz * BB_DT;
+    if (!inPoly(nx, nz)) { vx *= -0.35; vz *= -0.35; nx = x; nz = z; }   // off the backstop
+    x = nx; z = nz; t += BB_DT;
+    const y = BALL_R + hop * Math.abs(Math.sin(t * 7)) * Math.exp(-t * 2.5);
+    S.push({ t, x, y, z, b: true, g: y <= BALL_R + 0.03, hr: false, dead: false });
+  }
+  if (!S.length) S.push({ t: 0, x, y: BALL_R, z, b: true, g: true, hr: false, dead: false });
+  return { S, ev: 0, la: 0, spray: 180, hr: false, gr: false, dead: false, wall: false, landT: 0, landPos: null, foul: false, ffT: 0, dist: 0 };
+}
+function finishWildPlay() {
+  const pl = G.play, res = pl.summary(), ps = pstat(curPitcher());
+  const outsMade = res.outs - G.outs;
+  G.outs = res.outs; ps.outs += outsMade;
+  scoreRuns(res.runs, res.scorers);
+  const bat = pl.R.find((r) => r.isBatter), wp = pl.wildKind === 'WP';
+  const moved = pl.R.filter((r) => !r.isBatter && (r.state === 'scored' || (r.state === 'base' && r.base > r.start)));
+  for (const r of pl.R) if (r.steal && r.steal.went) { if (r.state === 'out') bstat(r.pl).cs++; else if (moved.includes(r)) bstat(r.pl).sb++; }
+  G.bases = res.outs >= 3 ? [null, null, null, null] : res.bases;
+  const nm = (r) => lastName(r.pl.name), lead = moved.slice().sort((a, b) => b.start - a.start)[0];
+  if (moved.length || (bat && bat.state !== 'out')) {
+    if (wp) ps.wp++;
+    hudCall(wp ? 'WILD PITCH' : 'PASSED BALL', 'play');
+    if (lead && lead.state === 'scored') Caster.line(`${wp ? 'A wild pitch' : 'A passed ball'}, and ${nm(lead)} comes in to score!`);
+    else if (bat && bat.state !== 'out' && !moved.length) Caster.line(`Strike three, but it gets away! ${nm(bat)} is safe at first.`);
+    else Caster.line(wp ? pick(['A wild pitch, and the runners move up.', `It gets away, and ${nm(lead)} takes ${BASE_WORD[lead.base]}.`]) : `A passed ball. ${nm(lead)} moves up to ${BASE_WORD[lead.base]}.`);
+    if (G.half === 1) excite(0.35, 1.5);
+  } else if (pl.outEvents.length) {
+    const o = pl.outEvents[0];
+    hudCall('OUT', 'out');
+    Caster.line(o.r.isBatter ? `It gets away, but they throw ${nm(o.r)} out at first.` : `It gets away, and ${nm(o.r)} is thrown out trying to move up!`);
+  } else Caster.line(pick(['It skips away from the catcher, but nobody moves.', 'Blocked in the dirt. The runners stay put.']), false);
+  hudScore(); hudCount(); drawBoards();
+  G.postNext = () => (G.abEnd === 'settled' ? afterAB() : afterBasesPlay());
+  setPhase('postPlay', moved.length || res.runs || pl.outEvents.length ? 1.8 : 1.0);
+}
+
+// --------------------------------------------------------- intentional walks ----
+// No pitches: the manager signals, and the batter takes first.
+function intentionalWalk(ti) {
+  if (G.phase !== 'prePitch' || ti !== 1 - G.half || G.play || G.mode === 'derby' || G.drill || !G.batter) return false;
+  if (pitchCtrl() === 'local' && G.pitchUI.state !== 'aim') return false;
+  G.spec = null; G.cpuPick = null; G.cpuIBB = false;
+  for (const r of G.baseRunners) r.steal = null;
+  pci.visible = false; reticle.visible = false; zoneGroup.visible = false; $('meter').classList.add('hidden');
+  G.abEnd = 'ibb';
+  hudCall('INTENTIONAL WALK', 'ballc');
+  Caster.line(pick([`They'll put ${lastName(G.batter.name)} on intentionally.`, `The manager signals four fingers. ${lastName(G.batter.name)} is walked intentionally.`]));
+  setHint('');
+  setPhase('postPitch', G.mode === 'spectate' ? 1.1 : 1.6);
+  return true;
+}
+// late and close, first base open, a runner in scoring position and a much weaker hitter on deck
+function cpuWantsIBB() {
+  const ti = 1 - G.half;
+  if (G.drill || G.mode === 'derby' || G.mode === 'tutorial' || !G.teams || sideCtrl(ti) !== 'cpu') return false;
+  if (G.bases[1] || !(G.bases[2] || G.bases[3]) || G.inning < Math.ceil(G.innings * 0.7)) return false;
+  const lead = G.score[ti] - G.score[G.half];
+  if (lead < -1 || lead > 2) return false;
+  const next = G.lu[G.half][(G.order[G.half] + 1) % 9];
+  if (!next || batScore(G.batter) - batScore(next) < 25) return false;
+  return Math.random() < 0.6;
+}
+
+// ------------------------------------------------------------- replay review ----
+// After a play with a close call at a bag, the side the call went against can challenge it
+// (one challenge a game, kept when the call is overturned). The CPU's video room flags most
+// missed calls. The play is shown again at the bag, then the call stands or is overturned.
+function setupReview(pl) {
+  G.review = null;
+  if (!pl.calls || !pl.calls.length || G.drill || G.mode === 'derby' || G.mode === 'tutorial') return false;
+  // a "safe" call on a runner who was put out later anyway changes nothing
+  const cand = pl.calls.filter((c) => !(c.call === 'safe' && c.r.state === 'out'));
+  if (!cand.length) return false;
+  // the call worth a look: one the umpire missed if there is one, otherwise the closest
+  const c = cand.find((x) => x.call !== x.truth) || cand.reduce((a, b) => (b.margin < a.margin ? b : a));
+  const side = c.call === 'out' ? G.half : 1 - G.half;
+  if (G.reviews[side] <= 0) return false;
+  const who = G.lock ? 'cpu' : sideCtrl(side), wrong = c.call !== c.truth;
+  if (who === 'cpu') { if (Math.random() >= (wrong ? 0.85 : 0.05)) return false; G.cpuChallengeAt = G.now + 1.0; }
+  else if (c.margin >= 0.12) return false;   // not close enough to ask
+  G.review = { c, side, who, pl };
+  if (who === 'local') setHint(`Close play at ${BASE_WORD[c.base]}: called <b>${c.call}</b> &middot; <kbd>C</kbd> challenge it &middot; <kbd>Enter</kbd> play on`);
+  setPhase('reviewWait', who === 'cpu' ? 1.4 : 3.4);
+  hudScore();
+  return true;
+}
+function startReview() {
+  const R = G.review;
+  if (!R || G.phase !== 'reviewWait') return;
+  G.cpuChallengeAt = 0;
+  hudBanner('UNDER REVIEW', `${R.c.call.toUpperCase()} ${R.c.base === 4 ? 'AT THE PLATE' : 'AT ' + BASE_WORD[R.c.base].toUpperCase()}`, '');
+  Caster.line(`The ${G.teams[R.side].name} challenge the call at ${R.c.base === 4 ? 'the plate' : BASE_WORD[R.c.base]}. Let's take a look.`);
+  setHint('');
+  const len = startReviewReplay(R.c);
+  setPhase('replayReview', 1.4 + len);
+}
+function revealReview() {
+  const R = G.review; G.review = null;
+  if (!R) return;
+  const c = R.c, nm = lastName(c.r.pl.name);
+  if (c.call !== c.truth) {
+    R.pl.overturn(c);
+    hudBanner('OVERTURNED', `${nm} is ${c.truth.toUpperCase()}`, '');
+    Caster.line(`After review, the call is overturned. ${nm} is ${c.truth}!`);
+  } else {
+    G.reviews[R.side]--;
+    hudBanner('CALL STANDS', `${nm} is ${c.call.toUpperCase()}`, '');
+    Caster.line(`The call on the field stands. The ${G.teams[R.side].name} lose their challenge.`);
+  }
+  // the umpire makes the call that stands, then the play is booked
+  const u = c.base === 1 || c.base === 2 ? G.umps[1] : c.base === 3 ? G.umps[2] : G.umps[0];
+  setAnim(u, 'ump', { callT: 0, call: c.truth });
+  hudScore();
+  setPhase('reviewShow', G.mode === 'spectate' ? 1.2 : 1.8);
+}
+// a live play is over: a look at a close call first, if anyone wants one, then book it
+function finishLive(pl, reviewed) {
+  G.recOn = false;
+  if (!reviewed && setupReview(pl)) return;
+  if (pl.kind === 'steal') finishStealPlay(); else if (pl.kind === 'pick') finishPickPlay(); else if (pl.kind === 'wild') finishWildPlay(); else finishPlay();
 }
 
 // --------------------------------------------------------------- practice ----
@@ -998,7 +1167,7 @@ function endPostPitch() {
 function settleAB(k) {
   const p = curPitcher(), ps = pstat(p), bs = bstat(G.batter);
   bs.pa++;
-  if (k === 'walk' || k === 'hbp') {
+  if (k === 'walk' || k === 'hbp' || k === 'ibb') {
     bs.bb++; ps.bb++; G.prac.bb++;
     const b = G.bases;
     let scored = null;
