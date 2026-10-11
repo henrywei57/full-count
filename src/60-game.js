@@ -170,7 +170,7 @@ function startGame(cfg) {
   G.season = cfg.season || null;   // which season game this is (63-season.js)
   if (cfg.mode === 'exhibition' || cfg.mode === 'lock' || cfg.mode === 'season') { G.ctrl = ['cpu', 'cpu']; G.ctrl[cfg.side] = 'local'; }
   else if (cfg.mode === 'derby') G.ctrl = ['local', 'cpu'];
-  else if (cfg.mode === 'online') { G.ctrl = ['remote', 'remote']; G.ctrl[cfg.guest ? 1 - cfg.side : cfg.side] = 'local'; }
+  else if (cfg.mode === 'online') { G.ctrl = ['remote', 'remote']; if (!cfg.spec) G.ctrl[cfg.guest ? 1 - cfg.side : cfg.side] = 'local'; }   // a spectator controls nothing
   else if (G.drill) G.ctrl = youBat ? ['local', 'cpu'] : ['cpu', 'local'];
   else G.ctrl = ['cpu', 'cpu'];
   if (cfg.mode === 'lock') {
@@ -1378,6 +1378,7 @@ function endGame(walkoff) {
   setPhase('final');
   const rec = recordGame();
   if (G.mode === 'season' && rec) seasonGameDone(rec);
+  if (G.mode === 'online') h2hResult();
   if (canSave()) clearSave();
   setTimeout(() => { if (G.phase === 'final') showScreen('final'); }, walkoff ? 3200 : 1500);
 }

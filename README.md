@@ -142,7 +142,11 @@ The host runs the game and streams it to the guest over a peer-to-peer WebRTC co
 - The fielder the guest controls moves on the guest's screen immediately; the host uses the guest's position for him.
 - Each player's swing and pitch timing is measured on their own device, so lag doesn't cost a hitter.
 
-The badge next to the pause button shows the round-trip time to your opponent. Some strict corporate or school networks block peer-to-peer connections; a home or mobile connection usually works.
+The badge next to the pause button shows the round-trip time to your opponent (and how many people are watching). Some strict corporate or school networks block peer-to-peer connections; a home or mobile connection usually works.
+
+- **Reconnecting**: if the connection drops mid-game, the host's game pauses and waits up to 90 seconds while the guest reconnects on its own (for up to a minute), then picks up exactly where it was. Only the same player can take the spot back. Quitting on purpose ends the game for both of you right away.
+- **Spectators**: anyone with the room code can press **Watch** instead of Join and see the game live, from the broadcast camera (up to six at a time). Spectators can come and go at any point, even mid-game.
+- **Head to head**: when you're both signed in with Google, your record against each other is kept. It shows in the lobby when you connect, on the final screen, and next to each friend on your friends list.
 
 ## Turning on Google sign-in
 

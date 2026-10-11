@@ -287,6 +287,9 @@ button:focus-visible,select:focus-visible{outline:2px solid var(--gold);outline-
 .tm-stam i{display:block;height:100%}
 .fr-note a{color:var(--play)}
 .tm-acts{margin:4px 0 2px}
+.fr-h2h{display:flex;flex-direction:column;align-items:center;line-height:1.1;margin-right:4px}
+.fr-h2h b{font-family:var(--f-display);font-size:16px;color:var(--gold)}
+.fr-h2h small{font-size:10px;color:var(--dust)}
 
 /* ---------- stats, box scores, resume ---------- */
 #statsScreen,#boxScreen{align-items:flex-start}
@@ -651,7 +654,7 @@ span.chip{cursor:default}
         <h3>ONLINE 1V1</h3>
         <div class="net-row" id="netHostRow"><button class="cta" id="btnHost">HOST A GAME</button></div>
         <div class="net-or" id="netOr">or join your friend's game with their room code</div>
-        <div class="net-row" id="netJoinRow"><input id="joinCode" maxlength="5" placeholder="CODE" autocomplete="off" spellcheck="false" aria-label="Room code"><button class="ghost" id="btnJoin">Join</button></div>
+        <div class="net-row" id="netJoinRow"><input id="joinCode" maxlength="5" placeholder="CODE" autocomplete="off" spellcheck="false" aria-label="Room code"><button class="ghost" id="btnJoin">Join</button><button class="ghost" id="btnWatch" title="Watch the game as a spectator">Watch</button></div>
         <div id="netShare" class="hidden"><div class="net-or">Send your friend this code</div><div class="net-code" id="netCode"></div><div class="net-row"><button class="ghost" id="btnCopyLink">Copy invite link</button><span class="net-link" id="netLink"></span></div><div id="netFriends"></div></div>
         <div class="net-status" id="netStatus" role="status"></div>
       </div>

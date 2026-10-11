@@ -169,6 +169,11 @@ const Cloud = {
     const { F, db } = this;
     return F.setDoc(F.doc(db, 'users', this.user.uid, 'friends', uid), { name: String(d.name || 'Player').slice(0, 40), photo: String(d.photo || '').slice(0, 500), code: String(d.code || '').slice(0, 8), since: F.serverTimestamp() });
   },
+  saveH2H(uid, rec) {
+    const { F, db } = this;
+    if (!this.user) return;
+    F.setDoc(F.doc(db, 'users', this.user.uid, 'friends', uid), { w: rec.w | 0, l: rec.l | 0 }, { merge: true }).catch((e) => console.warn('[cloud] h2h', e));
+  },
   removeFriend(uid) { const { F, db } = this; return F.deleteDoc(F.doc(db, 'users', this.user.uid, 'friends', uid)); },
   // one inbox slot per sender: a newer request or invite replaces the last one
   send(uid, extra) {
@@ -231,8 +236,9 @@ function renderFriends() {
     + `<button class="ghost fr-mini" data-act="dismiss" data-id="${esc(m.id)}">Dismiss</button></div>`).join('');
   const sorted = [...C.friends].sort((a, b) => friendOnline(b.uid) - friendOnline(a.uid) || String(a.name).localeCompare(String(b.name)));
   const friends = sorted.map((f) => {
-    const p = C.fprof.get(f.uid) || f, live = friendOnline(f.uid);
+    const p = C.fprof.get(f.uid) || f, live = friendOnline(f.uid), hh = h2hGet(f.uid);
     return `<div class="fr-row"><i class="fr-on ${live ? 'live' : ''}"></i>${avatar(p.photo)}<span class="nm">${esc(p.name || 'Player')}<small>${live ? 'Online now' : ago(tsMs(p.lastSeen))}</small></span>`
+      + (hh ? `<span class="fr-h2h" title="Your record against ${esc(p.name || 'them')} online"><b>${hh.w}-${hh.l}</b><small>vs you</small></span>` : '')
       + `<button class="cta fr-mini" data-act="invite" data-uid="${esc(f.uid)}">INVITE TO 1V1</button><button class="ghost fr-mini" data-act="remove" data-uid="${esc(f.uid)}" title="Remove friend">&times;</button></div>`;
   }).join('');
   const add = $('frAddCode') ? $('frAddCode').value : '';

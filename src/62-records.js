@@ -212,6 +212,28 @@ function renderResume() {
   if (sv) $('resumeLabel').textContent = sv.label || 'A game in progress';
 }
 
+// ----------------------------------------------------------- head to head ----
+// Your record against each opponent you've played online (both signed in). Kept on this
+// device and, for a friend, on your friends list in your account.
+const H2H_KEY = 'fullcount.h2h';
+function h2hLocal() { try { return JSON.parse(localStorage.getItem(H2H_KEY) || '{}') || {}; } catch (e) { return {}; } }
+function h2hGet(uid) {
+  const f = typeof Cloud !== 'undefined' && Cloud.friends.find((x) => x.uid === uid), loc = h2hLocal()[uid];
+  const w = Math.max((f && f.w) | 0, (loc && loc.w) | 0), l = Math.max((f && f.l) | 0, (loc && loc.l) | 0);
+  return w + l ? { w, l } : null;
+}
+function h2hResult() {
+  const opp = NET.opp, me = mySide();
+  if (!opp || me < 0 || G.h2hDone === G.gameId || typeof Cloud === 'undefined' || !Cloud.profile) return;
+  G.h2hDone = G.gameId;
+  const won = G.score[me] > G.score[1 - me], cur = h2hGet(opp.uid) || { w: 0, l: 0 }, rec = { w: cur.w + (won ? 1 : 0), l: cur.l + (won ? 0 : 1) };
+  const all = h2hLocal(); all[opp.uid] = { name: opp.name, ...rec, at: Date.now() };
+  try { localStorage.setItem(H2H_KEY, JSON.stringify(all)); } catch (e) { /* blocked */ }
+  if (Cloud.friends.some((f) => f.uid === opp.uid)) Cloud.saveH2H(opp.uid, rec);
+  const sub = $('finalSub');
+  if (sub) sub.textContent = `${sub.textContent} You're ${rec.w}-${rec.l} against ${opp.name}.`.trim();
+}
+
 // ------------------------------------------------------------- your stats ----
 function careerTotals(filter) {
   const H = new Map(), P = new Map();

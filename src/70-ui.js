@@ -423,6 +423,7 @@ function showScreen(id) {
   if (id === 'final') {
     const online = G.mode === 'online';
     $('btnAgain').textContent = online ? 'REMATCH' : G.mode === 'season' ? 'BACK TO THE SEASON' : 'PLAY AGAIN';
+    $('btnAgain').classList.toggle('hidden', NET.role === 'spec');
   }
 }
 
@@ -1058,6 +1059,8 @@ function togglePause(force, remote) {
   if (['menu', 'boot', 'final', 'wait'].includes(G.phase)) return;
   if (!$('help').classList.contains('hidden')) { $('help').classList.add('hidden'); return; }
   const v = force ?? !G.paused;
+  // a spectator, or a host waiting on a dropped opponent: just the menu, the game stays as it is
+  if (G.mode === 'online' && !remote && (NET.role === 'spec' || NET.waiting)) { $('pause').classList.toggle('hidden', !(force ?? $('pause').classList.contains('hidden'))); return; }
   if (isGuest() && !remote) { netSend({ t: 'act', a: 'pause', v }); return; }
   G.paused = v;
   $('pause').classList.toggle('hidden', !G.paused);
@@ -1227,6 +1230,7 @@ function buildMenu() {
   $('parkPick').addEventListener('change', (e) => { menu.park = PARKS[e.target.value] ? e.target.value : ''; renderMenu(); });
   $('btnHost').addEventListener('click', () => { SND.init(); netHost(); });
   $('btnJoin').addEventListener('click', () => { SND.init(); netJoin($('joinCode').value); });
+  $('btnWatch').addEventListener('click', () => { SND.init(); netJoin($('joinCode').value, true); });
   $('joinCode').addEventListener('keydown', (e) => { if (e.key === 'Enter') { SND.init(); netJoin($('joinCode').value); } });
   $('btnCopyLink').addEventListener('click', () => {
     const link = inviteLink(NET.code || '');

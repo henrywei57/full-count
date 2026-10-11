@@ -10,6 +10,9 @@
 //  - the fielder the guest steers moves on the guest's screen right away; the
 //    host takes the guest's position for him
 //  - swings and pitches are timed on the guest's own clock, so lag never costs a hitter
+// A dropped connection isn't the end: the host pauses and keeps the room open, and the
+// guest reconnects on its own (proving it's the same player with the game's token).
+// Up to six spectators can join a room with its code and watch everything live.
 // ============================================================================
 
 const NET = {
@@ -18,14 +21,16 @@ const NET = {
   mcache: new Map(), lastAbLen: 0, remoteInAt: 0, off: 0, rtt: 0, pings: [], pingT: 0, guestSpec: null,
   pid: 0, bb: null, ball: null, pclock: { pid: -1, t: 0 }, pred: { m: null, key: null, on: false, v: 0, lastIn: -9, hold: 0 },
   invited: null, pendingInvite: null,
+  specs: [], specSnapT: 0, tok: null, waiting: 0, waitHint: 0, pausedForDrop: false, rejoin: null, bye: false, opp: null,
 };
+const SPEC_MSGS = new Set(['start', 'gs', 'ev', 'screen', 'pitch', 'bb', 'pause', 'bye']);
 const PEER_PREFIX = 'fullcount26-';
 const CODE_CHARS = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 const FAST_CHANNEL_ID = 77;
 const r2 = (x) => Math.round(x * 100) / 100;
 const r3 = (x) => Math.round(x * 1000) / 1000;
 const isHost = () => NET.role === 'host' && NET.open && G.mode === 'online';
-const isGuest = () => NET.role === 'guest' && G.mode === 'online';
+const isGuest = () => (NET.role === 'guest' || NET.role === 'spec') && G.mode === 'online';   // a spectator renders like a guest
 // the host's performance.now(), as best the guest can tell
 const hostNow = () => performance.now() + NET.off;
 
@@ -56,21 +61,19 @@ function netHost() {
     netStatus('Room open. Waiting for your friend to join…');
     renderMenu(); cloudRender(); netRoomOpened();
   });
-  peer.on('connection', (conn) => {
-    if (NET.conn && NET.open) { conn.on('open', () => { conn.send({ t: 'full' }); setTimeout(() => conn.close(), 400); }); return; }
-    netBind(conn);
-  });
+  peer.on('connection', hostIncoming);
   peer.on('error', (e) => { if (e.type === 'unavailable-id' && NET.peer === peer) { netHost(); return; } netStatus(netErrText(e), 'bad'); });
   peer.on('disconnected', () => { if (NET.peer === peer) try { peer.reconnect(); } catch (err) { /* already gone */ } });
   renderMenu();
 }
-function netJoin(raw) {
+// watch: join a room as a spectator
+function netJoin(raw, watch = false) {
   const code = String(raw || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
   if (code.length !== 5) { netStatus('Room codes are 5 characters long.', 'bad'); return; }
   if (!netReady()) { netStatus('Online play did not load. Check your internet connection and refresh the page.', 'bad'); return; }
   netClose();
-  NET.role = 'guest'; NET.code = code;
-  netStatus(`Joining room ${code}…`);
+  NET.role = watch ? 'spec' : 'guest'; NET.code = code;
+  netStatus(watch ? `Joining room ${code} to watch…` : `Joining room ${code}…`);
   const peer = (NET.peer = new Peer());
   peer.on('open', () => {
     netBind(peer.connect(PEER_PREFIX + code, { reliable: true, serialization: 'json' }));
@@ -79,19 +82,97 @@ function netJoin(raw) {
   peer.on('error', (e) => { if (NET.peer === peer) netStatus(netErrText(e), 'bad'); });
   renderMenu();
 }
+// who you are, for the head-to-head record (only when you're signed in)
+function meId() { return typeof Cloud !== 'undefined' && Cloud.profile ? { uid: Cloud.profile.uid, name: Cloud.profile.name } : null; }
+function cleanOpp(x) { return x && typeof x.uid === 'string' && x.uid && x.uid.length <= 128 ? { uid: x.uid, name: String(x.name || 'Player').slice(0, 40) } : null; }
+// the guest (or a spectator) connecting to the host
 function netBind(conn) {
   NET.conn = conn;
   conn.on('open', () => {
     if (NET.conn !== conn) return;
-    NET.open = true; NET.lastInSeq = -1; NET.lastSeq = -1; NET.pings = []; NET.rtt = 0; NET.lobbySent = '';
-    netFastOpen(conn);
-    if (NET.role === 'host') { netStatus('Your friend is here! Pick your team and press Start.', 'good'); netSendLobby(); }
-    else { conn.send({ t: 'hello' }); netStatus('Connected! Pick your team. The host starts the game.', 'good'); }
+    netAttach(conn);
+    conn.send({ t: 'hello', me: meId(), tok: NET.tok || undefined, spec: NET.role === 'spec' ? 1 : undefined });
+    if (NET.rejoin) { NET.rejoin = null; setHint(''); hudBanner('RECONNECTED', 'Back to the game', ''); }
+    else netStatus(NET.role === 'spec' ? 'Connected. You\'ll see the game as soon as it starts.' : 'Connected! Pick your team. The host starts the game.', 'good');
     renderMenu(); cloudRender();
   });
   conn.on('data', netOnMsg);
-  conn.on('close', netLost);
-  conn.on('error', netLost);
+  conn.on('close', () => { if (NET.conn === conn) netLost(); });
+  conn.on('error', () => { if (NET.conn === conn) netLost(); });
+}
+function netAttach(conn) {
+  NET.conn = conn; NET.open = true; NET.bye = false;
+  NET.lastInSeq = -1; NET.lastSeq = -1; NET.pings = []; NET.rtt = 0; NET.lobbySent = '';
+  if (NET.role !== 'spec') netFastOpen(conn);
+}
+// Someone connected to our room. Their first message says who: the friend we're waiting for,
+// the same friend coming back after a dropped connection (with the game's token), or a spectator.
+function hostIncoming(conn) {
+  let role = null;
+  const drop = () => setTimeout(() => { try { conn.close(); } catch (e) { /* gone */ } }, 400);
+  conn.on('open', () => setTimeout(() => { if (!role) try { conn.close(); } catch (e) { /* gone */ } }, 10000));
+  conn.on('data', (m) => {
+    if (!m || typeof m !== 'object') return;
+    if (role === 'guest') { if (NET.conn === conn) netOnMsg(m); return; }
+    if (role === 'spec') { if (m.t === 'ping') try { conn.send({ t: 'pong', c: m.c, h: performance.now() }); } catch (e) { /* closing */ } return; }
+    if (m.t !== 'hello' || NET.role !== 'host') return;
+    if (m.spec) {
+      if (NET.specs.length >= 6) { conn.send({ t: 'full', spec: 1 }); drop(); return; }
+      role = 'spec'; NET.specs.push(conn); NET.dirty = true;
+      conn.on('close', () => { NET.specs = NET.specs.filter((c) => c !== conn); NET.dirty = true; });
+      if (G.mode === 'online') { conn.send({ t: 'start', cfg: { ...G.cfg, tok: undefined } }); conn.send(netGS()); }
+      return;
+    }
+    const rejoin = G.mode === 'online' && !NET.open && NET.waiting && typeof m.tok === 'string' && m.tok === G.cfg.tok;
+    const lobby = G.mode !== 'online' && !NET.open;
+    if (!rejoin && !lobby) { conn.send({ t: 'full' }); drop(); return; }
+    role = 'guest';
+    netAttach(conn);
+    NET.opp = cleanOpp(m.me);
+    if (rejoin) { netRejoined(); return; }
+    const rec = NET.opp ? h2hGet(NET.opp.uid) : null;
+    netStatus(`${NET.opp ? NET.opp.name : 'Your friend'} is here!${rec ? ` You're ${rec.w}-${rec.l} against each other.` : ''} Pick your team and press Start.`, 'good');
+    netSendLobby(); renderMenu(); cloudRender();
+  });
+  conn.on('close', () => { if (role === 'guest' && NET.conn === conn) netLost(); });
+  conn.on('error', () => { if (role === 'guest' && NET.conn === conn) netLost(); });
+}
+// our guest is back: the game as it stands, and play on
+function netRejoined() {
+  NET.waiting = 0;
+  netSend({ t: 'start', cfg: G.cfg, rejoin: 1 });
+  netSend(netGS());
+  hudBanner('RECONNECTED', 'Back to the game', '');
+  setHint('');
+  if (NET.pausedForDrop) { NET.pausedForDrop = false; G.paused = false; $('pause').classList.add('hidden'); netSend({ t: 'pause', v: false }); }
+}
+// the guest lost the host: keep trying for a minute
+function netRejoinTick() {
+  const R = NET.rejoin, now = Date.now();
+  if (!R || NET.open) return;
+  if (G.mode !== 'online') { NET.rejoin = null; return; }
+  if (now > R.until) {
+    NET.rejoin = null;
+    hudBanner('DISCONNECTED', 'Could not get back to the game', ''); setHint('');
+    setTimeout(() => { if (G.mode === 'online' && !NET.open) toMenu(); }, 3000);
+    return;
+  }
+  if (now < R.next) return;
+  R.next = now + 4000;
+  try { if (NET.peer) NET.peer.destroy(); } catch (e) { /* gone */ }
+  const peer = (NET.peer = new Peer());
+  peer.on('open', () => { if (NET.peer === peer && !NET.open) netBind(peer.connect(PEER_PREFIX + NET.code, { reliable: true, serialization: 'json' })); });
+  peer.on('error', () => { /* try again on the next tick */ });
+}
+// the host, waiting for a dropped guest: a minute and a half, then it's over
+function netWaitTick() {
+  if (!NET.waiting || NET.role !== 'host') return;
+  const left = Math.ceil(90 - (Date.now() - NET.waiting) / 1000);
+  if (left <= 0) {
+    NET.waiting = 0; G.paused = false; NET.pausedForDrop = false;
+    hudBanner('DISCONNECTED', 'Your opponent did not come back', ''); setHint('');
+    setTimeout(() => { if (G.mode === 'online' && !NET.open) toMenu(); }, 3000);
+  } else if (left !== NET.waitHint) { NET.waitHint = left; setHint(`Your opponent lost their connection. Waiting for them to come back&hellip; ${left}s`); }
 }
 // A second channel for snapshots and inputs: unordered with no retransmits, so it
 // behaves like UDP. Both sides create it with the same id (no renegotiation needed).
@@ -112,6 +193,20 @@ function netFastOpen(conn) {
 function netLost() {
   if (!NET.open) return;
   NET.open = false; NET.conn = null; NET.fast = null; NET.fastOK = false;
+  // mid-game and nobody quit on purpose: wait for (or go back to) the other side
+  const mid = G.mode === 'online' && G.phase !== 'final' && !NET.bye;
+  if (mid && (NET.role === 'spec' || (G.cfg && G.cfg.tok))) {
+    if (NET.role === 'host') {
+      NET.waiting = Date.now(); NET.waitHint = 0; NET.pausedForDrop = !G.paused; G.paused = true;
+      hudBanner('CONNECTION LOST', 'Waiting for your opponent to reconnect', '');
+      netWaitTick();
+      return;
+    }
+    NET.rejoin = { until: Date.now() + 60000, next: Date.now() + 1500 };
+    hudBanner('CONNECTION LOST', 'Reconnecting…', '');
+    setHint('Connection lost. Reconnecting to the host&hellip;');
+    return;
+  }
   if (G.mode === 'online') {
     G.paused = false; $('pause').classList.add('hidden');
     hudBanner('DISCONNECTED', 'Your opponent left the game', '');
@@ -121,15 +216,34 @@ function netLost() {
   renderMenu(); cloudRender();
 }
 function netClose() {
-  const { conn, peer, fast } = NET;
-  Object.assign(NET, { role: null, peer: null, conn: null, fast: null, fastOK: false, open: false, peerOpen: false, code: null, lobby: null, lobbySent: '', blockShown: '', snap: null, guestSpec: null, bb: null, ball: null, invited: null, pendingInvite: null });
-  try { if (fast) fast.close(); } catch (e) { /* ignore */ }
-  try { if (conn) conn.close(); } catch (e) { /* ignore */ }
-  try { if (peer) peer.destroy(); } catch (e) { /* ignore */ }
+  const { conn, peer, fast, specs, open } = NET;
+  // say goodbye first, so the other side knows it wasn't a dropped connection
+  if (open && conn) try { conn.send({ t: 'bye' }); } catch (e) { /* closing */ }
+  for (const c of specs) try { c.send({ t: 'bye' }); } catch (e) { /* closing */ }
+  Object.assign(NET, { role: null, peer: null, conn: null, fast: null, fastOK: false, open: false, peerOpen: false, code: null, lobby: null, lobbySent: '', blockShown: '', snap: null, guestSpec: null, bb: null, ball: null, invited: null, pendingInvite: null, specs: [], tok: null, waiting: 0, rejoin: null, bye: false, opp: null, pausedForDrop: false });
+  setTimeout(() => {
+    try { if (fast) fast.close(); } catch (e) { /* ignore */ }
+    try { if (conn) conn.close(); } catch (e) { /* ignore */ }
+    for (const c of specs) try { c.close(); } catch (e) { /* ignore */ }
+    try { if (peer) peer.destroy(); } catch (e) { /* ignore */ }
+  }, open || specs.length ? 300 : 0);
 }
-function netSend(m) { if (NET.open && NET.conn) try { NET.conn.send(m); } catch (e) { /* channel closing */ } }
+function netSend(m) {
+  if (NET.role === 'spec' && m.t !== 'hello' && m.t !== 'ping') return;   // spectators only watch
+  if (NET.open && NET.conn) try { NET.conn.send(m); } catch (e) { /* channel closing */ }
+  if (NET.role === 'host' && NET.specs.length && SPEC_MSGS.has(m.t)) {
+    const out = m.t === 'start' ? { ...m, cfg: { ...m.cfg, tok: undefined } } : m;   // the token stays between the players
+    for (const c of NET.specs) try { c.send(out); } catch (e) { /* closing */ }
+  }
+}
 // latest-wins traffic (snapshots, stick input, pings): the fast channel when it works
 function netSendFast(m) {
+  // spectators get snapshots over the reliable channel, 20 a second
+  if (NET.role === 'host' && m.t === 's' && NET.specs.length && performance.now() - NET.specSnapT >= 48) {
+    NET.specSnapT = performance.now();
+    for (const c of NET.specs) try { c.send(m); } catch (e) { /* closing */ }
+  }
+  if (NET.role === 'spec' && m.t !== 'ping') return;
   const dc = NET.fast;
   if (NET.fastOK && dc && dc.readyState === 'open' && dc.bufferedAmount < 65536) { try { dc.send(JSON.stringify(m)); return; } catch (e) { /* fall back */ } }
   netSend(m);
@@ -139,7 +253,7 @@ function netSendFast(m) {
 // Custom rosters travel as data, so your friend doesn't need them saved.
 function netSendLobby() {
   if (NET.role !== 'host' || !NET.open) return;
-  const m = { t: 'lobby', side: menu.side, innings: menu.innings, diff: menu.diff, ump: menu.ump, park: menu.park || '', hostSpec: teamSpec(menuTeam(menu.side ? 'home' : 'away')) };
+  const m = { t: 'lobby', me: meId(), side: menu.side, innings: menu.innings, diff: menu.diff, ump: menu.ump, park: menu.park || '', hostSpec: teamSpec(menuTeam(menu.side ? 'home' : 'away')) };
   const s = JSON.stringify(m);
   if (s !== NET.lobbySent) { NET.lobbySent = s; netSend(m); }
 }
@@ -152,7 +266,7 @@ function specOK(s) {
 function hostStartOnline() {
   if (!(NET.role === 'host' && NET.open) || onlineBlock()) return;
   const P = onlinePicks();
-  const cfg = { mode: 'online', teams: distinctSpecs(teamSpec(P.teams[0]), teamSpec(P.teams[1])), side: menu.side, innings: menu.innings, diff: menu.diff, manual: 1, ump: menu.ump, park: menu.park || '' };
+  const cfg = { mode: 'online', teams: distinctSpecs(teamSpec(P.teams[0]), teamSpec(P.teams[1])), side: menu.side, innings: menu.innings, diff: menu.diff, manual: 1, ump: menu.ump, park: menu.park || '', tok: Math.random().toString(36).slice(2, 12) };
   netSend({ t: 'start', cfg });
   startGame(cfg);
 }
@@ -161,6 +275,7 @@ function hostStartOnline() {
 function netOnMsg(m) {
   if (!m || typeof m !== 'object') return;
   if (m.t === 'hi') return;
+  if (m.t === 'bye') { NET.bye = true; return; }
   if (m.t === 'ping') { netSendFast({ t: 'pong', c: m.c, h: performance.now() }); return; }
   if (m.t === 'pong') { netPong(m); return; }
   if (NET.role === 'host') hostOnMsg(m); else guestOnMsg(m);
@@ -210,9 +325,23 @@ function hostRestart() { netSend({ t: 'start', cfg: G.cfg }); showScreen(null); 
 const NET_SOUNDS = new Set(['crack', 'pop', 'thud', 'roar', 'charge', 'stretch', 'fanfare', 'say']);
 function guestOnMsg(m) {
   switch (m.t) {
-    case 'lobby': { const first = !NET.lobby; NET.lobby = { ...m, hostSpec: specOK(m.hostSpec) }; if (first) netSendPick(); renderMenu(); break; }
-    case 'full': netStatus('That game already has two players.', 'bad'); netClose(); renderMenu(); break;
-    case 'start': if (m.cfg && typeof m.cfg === 'object') { showScreen(null); startGame({ ...m.cfg, teams: (m.cfg.teams || []).map((s) => specOK(s) || { b: TEAMS[0].key }), guest: true }); } break;
+    case 'lobby': {
+      const first = !NET.lobby; NET.lobby = { ...m, hostSpec: specOK(m.hostSpec) }; NET.opp = cleanOpp(m.me);
+      if (first) {
+        netSendPick();
+        const rec = NET.opp ? h2hGet(NET.opp.uid) : null;
+        if (NET.opp) netStatus(`Connected to ${NET.opp.name}'s game.${rec ? ` You're ${rec.w}-${rec.l} against each other.` : ''} Pick your team. The host starts the game.`, 'good');
+      }
+      renderMenu(); break;
+    }
+    case 'full': netStatus(m.spec ? 'That game already has the most spectators it can take.' : 'That game already has two players. Press Watch to spectate it instead.', 'bad'); netClose(); renderMenu(); break;
+    case 'start':
+      if (m.cfg && typeof m.cfg === 'object') {
+        if (NET.role === 'guest' && typeof m.cfg.tok === 'string') NET.tok = m.cfg.tok.slice(0, 20);
+        showScreen(null); closeBox();
+        startGame({ ...m.cfg, teams: (m.cfg.teams || []).map((s) => specOK(s) || { b: TEAMS[0].key }), guest: true, spec: NET.role === 'spec' });
+      }
+      break;
     case 'gs': if (G.mode === 'online') netApplyGS(m); break;
     case 's': if (G.mode === 'online') netApplySnap(m); break;
     case 'pitch': if (G.mode === 'online') guestPitch(m); break;
@@ -263,7 +392,7 @@ function netGS() {
       // for the box score
       pl: G.played[ti].map((x) => [x.pl.id, x.pos, x.for ? 1 : 0]), pi: G.pitched[ti].map((p) => p.id) })),
     dec: G.phase === 'final' ? decisions() : null,
-    chal: G.challenges, ump: G.ump,
+    chal: G.challenges, ump: G.ump, specs: NET.specs.length,
     chk: G.challengeable && G.challengeable.who === 'remote' ? G.challengeable.side : G.phase === 'reviewWait' && G.review && G.review.who === 'remote' ? G.review.side : -1,
     rv: G.phase === 'reviewWait' && G.review && G.review.who === 'remote' ? G.review.c.base : 0,
   };
@@ -308,6 +437,7 @@ function netBBOut(origin, ev, la, spray) {
   netSend({ t: 'bb', pid: NET.pid, o: [origin.x, origin.y, origin.z], ev, la, spray });
 }
 function netTick() {
+  netRejoinTick(); netWaitTick();
   if (!NET.open) return;
   const now = performance.now();
   // say hi on the fast channel until the other side hears us
@@ -325,8 +455,8 @@ function pingHUD() {
   el.classList.toggle('hidden', !show);
   if (!show || performance.now() - (pingHUD.t || 0) < 1000) return;
   pingHUD.t = performance.now();
-  const ms = Math.round(NET.rtt);
-  el.textContent = `${ms} ms`;
+  const ms = Math.round(NET.rtt), n = NET.role === 'host' ? NET.specs.length : NET.specCount | 0;
+  el.textContent = `${ms} ms` + (NET.role === 'spec' ? ' · watching' : n ? ` · ${n} watching` : '');
   el.className = ms < 80 ? 'good' : ms < 160 ? 'ok' : 'bad';
   el.title = `Round trip to your opponent${NET.fastOK ? '' : ' (fast channel not available, using the reliable one)'}`;
 }
@@ -375,7 +505,7 @@ function netApplyGS(s) {
   });
   if (s.dec && typeof s.dec === 'object') G.decIds = Object.fromEntries(Object.entries(s.dec).filter(([, v]) => ['W', 'L', 'S'].includes(v)));
   renderTeam();
-  G.challenges = s.chal || [0, 0]; G.ump = s.ump ?? G.ump;
+  G.challenges = s.chal || [0, 0]; G.ump = s.ump ?? G.ump; NET.specCount = s.specs | 0;
   const canChallenge = s.chk >= 0 && s.chk === localSide();
   if (canChallenge && G.chkSide !== s.chk) setHint(s.rv >= 1 && s.rv <= 4 ? `Close play at ${BASE_WORD[s.rv]} &middot; <kbd>C</kbd> challenge it` : `<kbd>C</kbd> challenge the call &middot; ${G.challenges[s.chk]} left`);
   else if (!canChallenge && G.chkSide >= 0 && G.chkSide === localSide()) setHint('');
@@ -513,7 +643,7 @@ function guestScreen(m) {
   if (m.id === 'breakCard') { $('breakTitle').textContent = String(d.title || ''); $('breakSub').textContent = String(d.sub || ''); $('breakLS').innerHTML = linescoreHTML(); }
   if (m.id === 'final') {
     setPhase('final');
-    recordGame();
+    if (NET.role === 'guest') { recordGame(); h2hResult(); }
     $('finalTitle').textContent = String(d.title || 'FINAL'); $('finalSub').textContent = String(d.sub || '');
     $('finalLS').innerHTML = linescoreHTML(); $('potg').innerHTML = d.potg ? potgHTML(d.potg) : '';
   }
@@ -594,7 +724,7 @@ function guestUpdate(dt) {
     if ((pm && now - NET.lastIn > 14) || (key !== NET.sentIn && now - NET.lastIn > 30) || now - NET.lastIn > 250) { NET.sentIn = key; NET.lastIn = now; netSendFast(msg); }
     else NET.inSeq--;
   }
-  const pl = G.phase === 'live' && NET.snap ? NET.snap.pl : null;
+  const pl = G.phase === 'live' && NET.snap && NET.role !== 'spec' ? NET.snap.pl : null;   // a spectator doesn't steer anyone
   const ufm = pl && pl.uf ? modelByKey(pl.uf) : null;
   ctrlRing.visible = !!ufm;
   if (ufm) ctrlRing.position.set(ufm.root.position.x, groundY(ufm.root.position.x, ufm.root.position.z) + 0.12, ufm.root.position.z);
