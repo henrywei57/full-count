@@ -25,6 +25,13 @@ const NET = {
 };
 const SPEC_MSGS = new Set(['start', 'gs', 'ev', 'screen', 'pitch', 'bb', 'pause', 'bye']);
 const PEER_PREFIX = 'fullcount26-';
+// how two devices find a way to each other: several public STUN servers, and PeerJS's TURN
+// relays for networks that won't allow a direct connection
+const PEER_OPTS = { config: { iceServers: [
+  { urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302', 'stun:stun.cloudflare.com:3478'] },
+  { urls: ['turn:eu-0.turn.peerjs.com:3478', 'turn:us-0.turn.peerjs.com:3478'], username: 'peerjs', credential: 'peerjsp' },
+], sdpSemantics: 'unified-plan' } };
+const VERSION_MSG = 'You and your friend have different versions of the game. Both of you refresh the page (Ctrl+F5 on a computer; close and reopen it on a phone), then try again.';
 const CODE_CHARS = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 const FAST_CHANNEL_ID = 77;
 const r2 = (x) => Math.round(x * 100) / 100;
@@ -53,7 +60,7 @@ function netHost() {
   const code = Array.from({ length: 5 }, () => CODE_CHARS[(Math.random() * CODE_CHARS.length) | 0]).join('');
   NET.code = code;
   netStatus('Opening a room…');
-  const peer = (NET.peer = new Peer(PEER_PREFIX + code));
+  const peer = (NET.peer = new Peer(PEER_PREFIX + code, PEER_OPTS));
   peer.on('open', () => {
     if (NET.peer !== peer) return;
     NET.peerOpen = true;
@@ -74,10 +81,18 @@ function netJoin(raw, watch = false) {
   netClose();
   NET.role = watch ? 'spec' : 'guest'; NET.code = code;
   netStatus(watch ? `Joining room ${code} to watch…` : `Joining room ${code}…`);
-  const peer = (NET.peer = new Peer());
+  const peer = (NET.peer = new Peer(PEER_OPTS));
   peer.on('open', () => {
-    netBind(peer.connect(PEER_PREFIX + code, { reliable: true, serialization: 'json' }));
-    setTimeout(() => { if (NET.peer === peer && !NET.open) netStatus('Could not reach that room. Check the code, and make sure your friend is still on the host screen.', 'bad'); }, 12000);
+    const conn = peer.connect(PEER_PREFIX + code, { reliable: true, serialization: 'json' });
+    netBind(conn);
+    setTimeout(() => {
+      if (NET.peer !== peer || NET.open) return;
+      // found the room but couldn't open a line to it: the network is in the way
+      const ice = conn.peerConnection && conn.peerConnection.iceConnectionState;
+      netStatus(ice === 'failed' || ice === 'disconnected' || ice === 'checking'
+        ? 'Found the room, but your two devices could not connect. Some school, work and mobile networks block it: try both on the same Wi-Fi, or another network.'
+        : 'Could not reach that room. Check the code, and make sure your friend is still on the host screen.', 'bad');
+    }, 15000);
   });
   peer.on('error', (e) => { if (NET.peer === peer) netStatus(netErrText(e), 'bad'); });
   renderMenu();
@@ -91,7 +106,7 @@ function netBind(conn) {
   conn.on('open', () => {
     if (NET.conn !== conn) return;
     netAttach(conn);
-    conn.send({ t: 'hello', me: meId(), tok: NET.tok || undefined, spec: NET.role === 'spec' ? 1 : undefined });
+    conn.send({ t: 'hello', ver: BUILD_ID, me: meId(), tok: NET.tok || undefined, spec: NET.role === 'spec' ? 1 : undefined });
     if (NET.rejoin) { NET.rejoin = null; setHint(''); hudBanner('RECONNECTED', 'Back to the game', ''); }
     else netStatus(NET.role === 'spec' ? 'Connected. You\'ll see the game as soon as it starts.' : 'Connected! Pick your team. The host starts the game.', 'good');
     renderMenu(); cloudRender();
@@ -110,12 +125,13 @@ function netAttach(conn) {
 function hostIncoming(conn) {
   let role = null;
   const drop = () => setTimeout(() => { try { conn.close(); } catch (e) { /* gone */ } }, 400);
-  conn.on('open', () => setTimeout(() => { if (!role) try { conn.close(); } catch (e) { /* gone */ } }, 10000));
+  conn.on('open', () => setTimeout(() => { if (!role) try { conn.close(); } catch (e) { /* gone */ } }, 20000));
   conn.on('data', (m) => {
     if (!m || typeof m !== 'object') return;
     if (role === 'guest') { if (NET.conn === conn) netOnMsg(m); return; }
     if (role === 'spec') { if (m.t === 'ping') try { conn.send({ t: 'pong', c: m.c, h: performance.now() }); } catch (e) { /* closing */ } return; }
     if (m.t !== 'hello' || NET.role !== 'host') return;
+    if (m.ver !== BUILD_ID) { role = 'old'; conn.send({ t: 'ver' }); drop(); netStatus(VERSION_MSG, 'bad'); return; }
     if (m.spec) {
       if (NET.specs.length >= 6) { conn.send({ t: 'full', spec: 1 }); drop(); return; }
       role = 'spec'; NET.specs.push(conn); NET.dirty = true;
@@ -160,7 +176,7 @@ function netRejoinTick() {
   if (now < R.next) return;
   R.next = now + 4000;
   try { if (NET.peer) NET.peer.destroy(); } catch (e) { /* gone */ }
-  const peer = (NET.peer = new Peer());
+  const peer = (NET.peer = new Peer(PEER_OPTS));
   peer.on('open', () => { if (NET.peer === peer && !NET.open) netBind(peer.connect(PEER_PREFIX + NET.code, { reliable: true, serialization: 'json' })); });
   peer.on('error', () => { /* try again on the next tick */ });
 }
@@ -253,7 +269,7 @@ function netSendFast(m) {
 // Custom rosters travel as data, so your friend doesn't need them saved.
 function netSendLobby() {
   if (NET.role !== 'host' || !NET.open) return;
-  const m = { t: 'lobby', me: meId(), side: menu.side, innings: menu.innings, diff: menu.diff, pdiff: menu.pdiff, ump: menu.ump, park: menu.park || '', hostSpec: teamSpec(menuTeam(menu.side ? 'home' : 'away')) };
+  const m = { t: 'lobby', ver: BUILD_ID, me: meId(), side: menu.side, innings: menu.innings, diff: menu.diff, pdiff: menu.pdiff, ump: menu.ump, park: menu.park || '', hostSpec: teamSpec(menuTeam(menu.side ? 'home' : 'away')) };
   const s = JSON.stringify(m);
   if (s !== NET.lobbySent) { NET.lobbySent = s; netSend(m); }
 }
@@ -325,7 +341,9 @@ function hostRestart() { netSend({ t: 'start', cfg: G.cfg }); showScreen(null); 
 const NET_SOUNDS = new Set(['crack', 'pop', 'thud', 'roar', 'charge', 'stretch', 'fanfare', 'say']);
 function guestOnMsg(m) {
   switch (m.t) {
+    case 'ver': netStatus(VERSION_MSG, 'bad'); netClose(); renderMenu(); break;
     case 'lobby': {
+      if (m.ver !== BUILD_ID) { netStatus(VERSION_MSG, 'bad'); netClose(); renderMenu(); break; }
       const first = !NET.lobby; NET.lobby = { ...m, hostSpec: specOK(m.hostSpec) }; NET.opp = cleanOpp(m.me);
       if (first) {
         netSendPick();

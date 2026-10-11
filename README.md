@@ -94,7 +94,7 @@ Pick **Season** on the main menu, choose your club and a length (12, 30, 60 or t
 
 - **Box score**: from the pause menu during a game, or the final screen. Every batter (subs indented) with AB, R, H, RBI, BB and K, then doubles, triples, homers and steals, and every pitcher with IP, H, R, BB, K, HR and pitch count, plus the win, loss and save.
 - **Saved games**: Play Ball and Player Lock games save themselves before every batter. Quit whenever you like (or close the tab) and press **Resume** on the main menu to pick up with the same batter, score, lineups, bullpen and pitch counts. Starting another game replaces the save.
-- **Stats**: every finished game (Play Ball, Player Lock, Online, Co-op, Season) is kept with its box score. **Stats** on the main menu is about you, game by game:
+- **Stats**: every finished game (Play Ball, Player Lock, Online, Season) is kept with its box score. **Stats** on the main menu is about you, game by game:
   - **You**: your record, your hitting (AVG, HR, RBI, OBP, SLG, OPS) and your pitching (ERA, strikeouts, WHIP, W-L-SV) across your games, filtered by mode, and your game history with how you hit and pitched in each one. In Player Lock it's just your player.
   - **Head to head**: every opponent you've played online, with your record against them, your AVG, HR and ERA against them and theirs against you. Click one for every game you've played each other.
   - **All games**, plus **Hitters** and **Pitchers**: every MLB player's totals across your games, sortable.
@@ -168,6 +168,8 @@ The host runs the game and streams it to the guest over a peer-to-peer WebRTC co
 
 The badge next to the pause button shows the round-trip time to your opponent (and how many people are watching). Some strict corporate or school networks block peer-to-peer connections; a home or mobile connection usually works.
 
+- **Same version**: both players need the same version of the game. If one of you has an older copy cached, joining stops with a message to refresh the page on both devices.
+- **Can't connect?** If the room is found but the two devices can't open a connection, the game says so: some school, work and mobile networks block peer-to-peer play. Both on the same Wi-Fi usually works.
 - **Reconnecting**: if the connection drops mid-game, the host's game pauses and waits up to 90 seconds while the guest reconnects on its own (for up to a minute), then picks up exactly where it was. Only the same player can take the spot back. Quitting on purpose ends the game for both of you right away.
 - **Spectators**: anyone with the room code can press **Watch** instead of Join and see the game live, from the broadcast camera (up to six at a time). Spectators can come and go at any point, even mid-game.
 - **Head to head**: when you're both signed in with Google, your record against each other is kept. It shows in the lobby when you connect, on the final screen, and next to each friend on your friends list.
