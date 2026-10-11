@@ -148,7 +148,7 @@ function saveRostersLocal() { try { localStorage.setItem('fullcount.rosters', JS
 function allTeams() { return [...TEAMS, ...ROSTERS.map(buildCustomTeam)]; }
 const _remoteTeams = new Map();
 function teamByKey(key) {
-  const t = TEAMS.find((x) => x.key === key);
+  const t = TEAMS.find((x) => x.key === key) || (isClassic(key) ? classicTeam(key) : null);
   if (t) return t;
   const r = ROSTERS.find((x) => 'X:' + x.id === key);
   if (r) return buildCustomTeam(r);
@@ -158,12 +158,13 @@ function teamByKey(key) {
 function teamSpec(t) { return t.custom ? { c: t.roster } : { b: t.key }; }
 function teamFromSpec(s) {
   if (s && s.c) { const t = buildCustomTeam(s.c); _remoteTeams.set(t.key, t); return t; }
-  return TEAMS.find((x) => x.key === (s && s.b)) || TEAMS[0];
+  return TEAMS.find((x) => x.key === (s && s.b)) || (s && isClassic(s.b) ? classicTeam(s.b) : null) || TEAMS[0];
 }
 // two copies of the same team (a mirror match online): rename the second one's players
 function distinctSpecs(a, b) {
   const ta = teamFromSpec(a), tb = teamFromSpec(b);
   if (ta.key !== tb.key) return [a, b];
+  if (ta.era) return [a, { b: ta.key.replace(/#2$/, '') + '#2' }];
   const d = ta.custom ? { ...ta.roster } : teamToDef(ta, 'X' + ta.key.replace(/[^a-z0-9]/gi, '') + 'zz');
   d.id = (d.id + 'b').slice(0, 17);
   return [a, { c: d }];

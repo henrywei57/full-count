@@ -20,6 +20,10 @@ function initGameRoster(ti, starter) {
 // the same player at another position: his arm and glove there (a step worse where he doesn't play)
 function gamePlayer(pl, pos) {
   if (!pl || pl.pos === pos) return pl;
+  if (pl.def) {
+    const main = Object.values(pl.def)[0] || { arm: pl.arm, fld: pl.fld }, d = pl.def[pos] || (pos === 'DH' ? { arm: main.arm, fld: 45 } : { arm: Math.max(38, main.arm - 8), fld: Math.max(38, main.fld - 12) });
+    return { ...pl, pos, arm: d.arm, fld: d.fld };
+  }
   const P = pl.mlbId && POOL_H.get(pl.mlbId);
   const r = P ? hitterAt(P, pos) : pos === 'DH' ? { fld: 45 } : { arm: Math.max(38, pl.arm - 8), fld: Math.max(38, pl.fld - 12) };
   return { ...pl, pos, ...(r.arm != null ? { arm: r.arm } : {}), fld: r.fld };
@@ -120,7 +124,8 @@ function cpuManager() {
   const next = G.lu[ti][G.order[ti] % 9];
   const best = G.bench[ti].slice().sort((a, b) => batScore(b) - batScore(a))[0];
   // keep the only catcher in the game
-  const lastC = next.pos === 'C' && !G.bench[ti].some((p) => p.mlbId && POOL_H.get(p.mlbId) && POOL_H.get(p.mlbId).def.C);
+  const playsC = (p) => (p.def ? !!p.def.C : !!(p.mlbId && POOL_H.get(p.mlbId) && POOL_H.get(p.mlbId).def.C));
+  const lastC = next.pos === 'C' && !G.bench[ti].some(playsC);
   if (best && !lastC && batScore(best) - batScore(next) >= 18 && Math.random() < 0.7) {
     const np = subIn(ti, next, best);
     if (np) { hudBanner('PINCH HITTER', `${np.name} bats for ${lastName(next.name)}`, ''); Caster.line(`${np.name} will pinch-hit for ${lastName(next.name)}.`, true, { queue: true }); }
@@ -171,7 +176,7 @@ function renderTeam() {
       + ['con', 'pow', 'eye', 'spd'].map((k) => hit(pl, k)).join('') + `<td class="tm-line">${stat(pl)}</td><td>${btns.join('')}</td></tr>`;
   }).join('');
   const bench = G.bench[ti].map((pl) => {
-    const P2 = pl.mlbId && POOL_H.get(pl.mlbId), plays = P2 ? (P2.elig.join(' ') || 'DH') : pl.pos;
+    const P2 = !pl.def && pl.mlbId && POOL_H.get(pl.mlbId), plays = pl.def ? Object.keys(pl.def).join(' ') || 'DH' : P2 ? (P2.elig.join(' ') || 'DH') : pl.pos;
     return `<tr><td class="who"><b>${esc(pl.name)}</b></td><td class="plays">${plays}</td>` + ['con', 'pow', 'eye', 'spd', 'arm', 'fld'].map((k) => hit(pl, k)).join('')
       + `<td>${P ? `<button class="cta fr-mini" data-tmin="${esc(pl.id)}">PUT IN</button>` : ''}</td></tr>`;
   }).join('') || '<tr><td colspan="9" class="tm-empty">Nobody left on the bench.</td></tr>';

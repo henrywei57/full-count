@@ -100,6 +100,12 @@ Pick **Season** on the main menu, choose your club and a length (12, 30, 60 or t
   - **All games**, plus **Hitters** and **Pitchers**: every MLB player's totals across your games, sortable.
   ERA counts earned runs only: runs that score on an error or a passed ball, or by a runner who got on by an error, are unearned (box scores show both R and ER). Signed in with Google, your games are saved to your account and come with you to any device. (If you set up Firebase before this version, publish the updated `firestore.rules` so the account can store games.)
 
+## Classic teams
+
+Every club also has a team for each decade from the 1960s to the 2010s: the 1970s Dodgers (Garvey, Cey, Lopes, Russell, Sutton), the Big Red Machine, the 1990s Braves rotation, the Montreal Expos, the Washington Senators. Pick one with the era menu under any team in the matchup; the arrows then go club to club in that decade. 158 decade teams in all (a club that barely existed in a decade, like the 1977 Blue Jays, doesn't get one).
+
+A decade team is the franchise's best players of those ten years, with their numbers for that club: the regular at each position, a DH, a bench, five starters and a bullpen. Ratings are against the league of that decade, on the same scale as today's players, so a .290 hitter in the low-scoring 1960s rates higher than one in the 1990s. There are no radar guns or Statcast that far back, so fastball speed is estimated from strikeouts and the era (the 1960s ran a couple of mph slower than today), and speed comes from steals and triples. They play in their ballpark of the time: Crosley Field, Forbes Field, Connie Mack Stadium, the Astrodome, Shea, Three Rivers, the Vet, Candlestick, Riverfront, Tiger Stadium, old Comiskey, the Kingdome, the Metrodome, Memorial Stadium, Fulton County, County Stadium, Olympic Stadium, Jarry Park and more (all pickable from the Ballpark menu, approximate dimensions). Built by `tools/classic-import.mjs` from the MLB Stats API.
+
 ## Ballparks
 
 Games are played in the home team's real ballpark: all 30 MLB parks, with their wall distances down each line, in the alleys and to center, and their wall heights. Pick any park from the **Ballpark** menu instead. (The dimensions are close approximations.)

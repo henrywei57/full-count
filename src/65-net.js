@@ -261,7 +261,7 @@ function netSendPick() { if (NET.role === 'guest' && NET.open) netSend({ t: 'pic
 function specOK(s) {
   if (!s || typeof s !== 'object') return null;
   if (s.c) { const c = cleanRoster(s.c); return c ? { c } : null; }
-  return TEAMS.some((t) => t.key === s.b) ? { b: s.b } : null;
+  return TEAMS.some((t) => t.key === s.b) || isClassic(s.b) ? { b: s.b } : null;
 }
 function hostStartOnline() {
   if (!(NET.role === 'host' && NET.open) || onlineBlock()) return;

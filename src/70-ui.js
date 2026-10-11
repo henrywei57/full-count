@@ -1082,11 +1082,23 @@ menu.batCam = settings.batCam || 0;   // the pause screen can change it too; set
 for (const k of ['away', 'home', 'netTeam']) if (typeof menu[k] === 'number') menu[k] = (TEAMS[menu[k]] || TEAMS[0]).key;
 // a team the menu remembers may have been deleted since
 function menuTeam(k) { const t = teamByKey(menu[k]); if (t) return t; menu[k] = (teamByKey(k === 'away' ? 'NYY' : 'LAD') || TEAMS[k === 'away' ? 0 : 1]).key; return teamByKey(menu[k]); }
+// the arrows go club to club; a decade team stays in its decade when the next club has one
 function cycleTeam(k, d, avoid) {
   const list = allTeams().filter((t) => menu.mode !== 'season' || !t.custom);   // a season is played with a real club
-  let i = list.findIndex((t) => t.key === menu[k]);
-  for (let n = 0; n < list.length; n++) { i = (i + d + list.length) % list.length; if (list[i].key !== avoid) break; }
-  menu[k] = list[i].key;
+  const cur = CLASSIC.get(menu[k]), dec = cur ? cur[2] : 0;
+  let i = list.findIndex((t) => t.key === (cur ? cur[1] : menu[k]));
+  for (let n = 0; n < list.length; n++) {
+    i = (i + d + list.length) % list.length;
+    const ck = `${list[i].key}@${dec}`, key = dec && CLASSIC.has(ck) ? ck : list[i].key;
+    if (key !== avoid) { menu[k] = key; return; }
+  }
+}
+// a club's eras: today's roster and each decade
+function eraSelect(t, key, mine) {
+  const club = clubOf(t), list = club ? CLASSIC_BY_CLUB.get(club) || [] : [];
+  if (!club || !list.length || menu.mode === 'season') return '';
+  const opts = [[club, `${MLB_SEASON} roster`], ...list.slice().reverse().map((k) => [k, `${CLASSIC.get(k)[2]}s ${CLASSIC.get(k)[5]}`])];
+  return `<select class="tp-era" data-k="${key}" aria-label="Era" ${mine ? '' : 'disabled'}>${opts.map(([v, l]) => `<option value="${esc(v)}" ${v === t.key ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select>`;
 }
 function teamPickHTML(label, t, key, mine = true) {
   if (!t) return `<div class="tp-label">${label}</div><div class="tp-row"><div class="badge wait">?</div></div><div class="team-name"><small>WAITING</small>Your friend picks</div>`;
@@ -1095,7 +1107,7 @@ function teamPickHTML(label, t, key, mine = true) {
   <div class="tp-row"><button class="arrow" data-k="${key}" data-d="-1" aria-label="Previous team" ${mine ? '' : 'style="visibility:hidden"'}>&lsaquo;</button>
   <div class="badge" style="background:${t.c1};color:${t.c2};border-color:${t.c2}">${esc(t.id)}</div>
   <button class="arrow" data-k="${key}" data-d="1" aria-label="Next team" ${mine ? '' : 'style="visibility:hidden"'}>&rsaquo;</button></div>
-  <div class="team-name"><small>${esc(t.city.toUpperCase())}</small>${esc(t.name)}</div>
+  <div class="team-name"><small>${t.era ? `${t.era}s &middot; ` : ''}${esc(t.city.toUpperCase())}</small>${esc(t.name)}</div>${eraSelect(t, key, mine)}
   <div class="team-ovr"><span>BAT <b>${t.ovr.bat}</b></span><span>PIT <b>${t.ovr.pit}</b></span><span>DEF <b>${t.ovr.def}</b></span></div>${tag}`;
 }
 function lockOptions(team) {
@@ -1115,7 +1127,7 @@ function renderMenu() {
   const guest = online && NET.role === 'guest', host = online && NET.role === 'host';
   const L = guest && NET.lobby ? NET.lobby : menu;
   const season = m === 'season', activeSeason = season && !!seasonLoad();
-  if (season && menuTeam('home').custom) menu.home = 'LAD';
+  if (season && (menuTeam('home').custom || menuTeam('home').era)) menu.home = clubOf(menuTeam('home')) || 'LAD';
   const showTeams = (!online || host || (guest && NET.open && NET.lobby)) && !activeSeason;
   $('netPanel').classList.toggle('hidden', !online);
   $('netShare').classList.toggle('hidden', !(host && NET.code));
@@ -1152,9 +1164,11 @@ function renderMenu() {
   for (const el of ['optSide', 'optInn', 'optDiff', 'optPDiff', 'optUmp', 'optPark']) $(el).style.pointerEvents = guest ? 'none' : '';
   if (showTeams) {
     // the ballpark: the home team's, or any of the others
-    const hk = online ? onlinePicks().teams[1] : menuTeam('home'), hp = (hk && PARKS[hk.key]) || PARKS.FC;
+    const hk = online ? onlinePicks().teams[1] : menuTeam('home'), hp = (hk && PARKS[hk.park || hk.key]) || PARKS.FC;
     const pp = $('parkPick'), parks = Object.entries(PARKS).sort((x, y) => x[1].name.localeCompare(y[1].name));
-    pp.innerHTML = `<option value="">Home team's park (${esc(hp.name)})</option>` + parks.map(([k, p]) => `<option value="${k}">${esc(p.name)}${k === 'FC' ? '' : ' (' + k + ')'}</option>`).join('');
+    const opt = ([k, p]) => `<option value="${k}">${esc(p.name)}${k === 'FC' || p.classic ? '' : ' (' + k + ')'}</option>`;
+    pp.innerHTML = `<option value="">Home team's park (${esc(hp.name)})</option><optgroup label="Today's ballparks">${parks.filter(([, p]) => !p.classic).map(opt).join('')}</optgroup>`
+      + `<optgroup label="Classic ballparks">${parks.filter(([, p]) => p.classic).map(opt).join('')}</optgroup>`;
     pp.value = (guest ? L.park : menu.park) || '';
   }
   for (const b of $('modes').querySelectorAll('button')) b.classList.toggle('on', b.dataset.mode === m);
@@ -1212,6 +1226,23 @@ function buildMenu() {
     }
     cycleTeam(k, d, menu.mode === 'derby' ? null : menu[k === 'away' ? 'home' : 'away']);
     if (k === 'home') derbyBatterDefault();
+    renderMenu();
+  });
+  // pick a decade
+  $('matchup').addEventListener('change', (e) => {
+    const s = e.target.closest('.tp-era'); if (!s) return;
+    const k = s.dataset.k, v = CLASSIC.has(s.value) || TEAMS.some((t) => t.key === s.value) ? s.value : null;
+    if (!v) return;
+    if (menu.mode === 'online') {
+      const P = onlinePicks();
+      if ((k === 'home' ? 1 : 0) !== P.mySide) return;
+      if (NET.role === 'guest') { menu.netTeam = v; netSendPick(); } else menu[k] = v;
+    } else {
+      const other = menu[k === 'away' ? 'home' : 'away'];
+      if (v === other && menu.mode !== 'derby') return;
+      menu[k] = v;
+      if (k === 'home') derbyBatterDefault();
+    }
     renderMenu();
   });
   $('modes').addEventListener('click', (e) => {

@@ -157,7 +157,7 @@ function startGame(cfg) {
   const specs = distinctSpecs(...(cfg.teams || [{ b: TEAMS[cfg.away || 0].key }, { b: TEAMS[cfg.home ?? 3].key }]));
   const away = teamFromSpec(specs[0]), home = teamFromSpec(specs[1]);
   // the home team's ballpark, unless another one was picked
-  const park = cfg.park && PARKS[cfg.park] ? cfg.park : PARKS[home.key] ? home.key : 'FC';
+  const hp = home.park || home.key, park = cfg.park && PARKS[cfg.park] ? cfg.park : PARKS[hp] ? hp : 'FC';
   if (G.parkKey !== park) { G.parkKey = park; setPark(park); }
   G.teams = cfg.mode === 'derby' ? [home, away] : [away, home];
   // practice: your team is the home pick; it bats in the batting and baserunning drills
