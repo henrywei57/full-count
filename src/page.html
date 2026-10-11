@@ -315,6 +315,42 @@ button:focus-visible,select:focus-visible{outline:2px solid var(--gold);outline-
 .resume-txt{flex:1;display:flex;flex-direction:column;gap:2px;font-size:13px;color:var(--dust)}
 .resume-txt b{font-family:var(--f-display);letter-spacing:.1em;color:var(--gold);font-size:13px}
 
+/* ---------- roster compare ---------- */
+.rsp-cmp{flex:none;max-height:46vh;overflow:auto;border:1px solid var(--line);border-radius:4px;padding:8px 10px;margin:0 0 10px;background:rgba(255,255,255,.03)}
+.cmp-table{border-collapse:collapse;width:100%;font-size:13px}
+.cmp-table th{font-family:var(--f-display);letter-spacing:.08em;font-size:12px;color:var(--dust);text-align:left;padding:3px 6px;white-space:nowrap}
+.cmp-table thead th{vertical-align:top}
+.cmp-table thead th b{display:block;color:var(--chalk);font-size:14px;letter-spacing:.02em}
+.cmp-table thead th small{display:block;font-size:10px;color:var(--dust)}
+.cmp-table thead th button{margin-top:3px}
+.cmp-table td{padding:3px 6px;min-width:140px}
+.cmp-bar{position:relative;height:18px;background:rgba(255,255,255,.06);border-radius:3px;overflow:hidden}
+.cmp-bar i{position:absolute;inset:0 auto 0 0;background:rgba(90,168,255,.35)}
+.cmp-bar b{position:relative;padding-left:6px;font-weight:700;line-height:18px}
+.cmp-bar b.hi{color:var(--gold)}
+.cmp-foot td{padding-top:8px;vertical-align:top}
+.cmp-ovr{font-family:var(--f-display);font-weight:800;font-size:22px}
+.cmp-ovr small{font-size:10px;color:var(--dust);margin-left:4px}
+.cmp-pts{font-size:12px;color:var(--dust);margin:2px 0 6px}
+.cmp-pts .up{color:var(--strike)}.cmp-pts .down{color:var(--ball)}
+.rsp-table tr.cmp{background:rgba(90,168,255,.12)}
+.rsp-cmpbox input{accent-color:var(--gold)}
+
+/* ---------- options ---------- */
+#optionsScreen{align-items:flex-start}
+#optionsScreen .card{background:#09111f}
+.op-card{width:min(720px,100%)}
+.op-row{display:flex;align-items:center;gap:12px;margin:4px 0;font-size:14px}
+.op-row>label:first-child{min-width:160px}
+.op-row input[type=range]{flex:1;max-width:300px;accent-color:var(--gold)}
+.op-row span{color:var(--dust);font-size:13px;min-width:70px}
+.op-chips{display:flex;flex-wrap:wrap;gap:4px}
+.op-table td{padding:2px 4px}
+.op-key{min-width:96px;padding:4px 10px;font-family:var(--f-display);font-weight:800;letter-spacing:.06em}
+.op-key.moved{border-color:var(--gold);color:var(--gold)}
+.op-def{color:var(--dust);font-size:12px;text-align:left!important}
+body.cb{--ball:#56B4E9;--strike:#E69F00}
+
 /* ---------- season ---------- */
 #seasonScreen{align-items:flex-start}
 .sea-panel{margin-bottom:10px}
@@ -669,7 +705,8 @@ span.chip{cursor:default}
         <div class="opt" id="optSide"><span>YOU PLAY AS</span><div class="seg" data-key="side"><button data-v="0">Away</button><button data-v="1" class="on">Home</button></div></div>
         <div class="opt hidden" id="optSeasonLen"><span>SEASON</span><div class="seg" data-key="seasonLen"><button data-v="12">12 games</button><button data-v="30" class="on">30</button><button data-v="60">60</button><button data-v="162">162</button></div></div>
         <div class="opt" id="optInn"><span>INNINGS</span><div class="seg" data-key="innings"><button data-v="3" class="on">3</button><button data-v="6">6</button><button data-v="9">9</button></div></div>
-        <div class="opt" id="optDiff"><span>DIFFICULTY</span><div class="seg" data-key="diff"><button data-v="0">Rookie</button><button data-v="1" class="on">Veteran</button><button data-v="2">All-Star</button><button data-v="3">Hall of Fame</button></div></div>
+        <div class="opt" id="optDiff"><span>HITTING</span><div class="seg" data-key="diff"><button data-v="0">Rookie</button><button data-v="1" class="on">Veteran</button><button data-v="2">All-Star</button><button data-v="3">Hall of Fame</button></div></div>
+        <div class="opt" id="optPDiff"><span>PITCHING</span><div class="seg" data-key="pdiff"><button data-v="0">Rookie</button><button data-v="1" class="on">Veteran</button><button data-v="2">All-Star</button><button data-v="3">Hall of Fame</button></div></div>
         <div class="opt hidden" id="optLock"><span>YOUR PLAYER</span><select id="lockPick" aria-label="Player to control"></select></div>
         <div class="opt hidden" id="optBatter"><span>BATTER</span><select id="derbyBatter" aria-label="Derby batter"></select></div>
         <div class="opt" id="optUmp"><span>UMPIRE</span><div class="seg" data-key="ump"><button data-v="0">Human ump (92%)</button><button data-v="1" class="on">ABS challenge</button><button data-v="2">Robot ABS</button></div></div>
@@ -680,7 +717,7 @@ span.chip{cursor:default}
         <div class="opt" id="optBatCam"><span>BATTING CAM</span><div class="seg" data-key="batCam"><button data-v="0" class="on">Strike Zone</button><button data-v="1">Strike Zone 2</button><button data-v="2">Strike Zone High</button></div></div>
         <div class="opt" id="optThrow"><span>THROWS</span><div class="seg" data-key="manual"><button data-v="1" class="on">Manual</button><button data-v="0">Auto</button></div></div>
       </div>
-      <div class="row-actions"><button class="cta" id="btnPlay">PLAY BALL</button><button class="ghost" id="btnHow">Controls</button></div>
+      <div class="row-actions"><button class="cta" id="btnPlay">PLAY BALL</button><button class="ghost" id="btnHow">Controls</button><button class="ghost" id="btnOptions2">Options</button></div>
     </div>
   </div>
 </div>
@@ -722,6 +759,7 @@ span.chip{cursor:default}
     <div class="stack">
       <button class="cta" id="btnResume">RESUME</button>
       <button class="ghost" id="btnHow2">Controls</button>
+      <button class="ghost" id="btnOptions">Options: sound, colors, keys</button>
       <button class="ghost" id="btnVoice">Commentary voice: On</button>
       <button class="ghost" id="btnZone">Strike zone: On</button>
       <button class="ghost" id="btnBatCam">Batting cam: Strike Zone</button>
@@ -772,6 +810,7 @@ span.chip{cursor:default}
         <dt>Mouse / right stick</dt><dd>Player Lock: swing the camera around your player (click to grab the mouse)</dd>
         <dt>T / right-click</dt><dd>Player Lock: snap the camera back to following the play</dd>
         <dt>V</dt><dd>Player Lock: cycle third-person, first-person and broadcast cameras</dd>
+        <dt>Options</dt><dd>Sound and commentary volume, colorblind-friendly colors and your own keys: from the pause menu or the main menu</dd>
         <dt>Batting cam</dt><dd>Strike Zone, Strike Zone 2 or Strike Zone High: pick it in the menu or the pause screen</dd>
         <dt>Tab / Back</dt><dd>Player Lock: skip this at-bat (CPU plays your part)</dd>
         <dt>R</dt><dd>Instant replay after a play</dd>
@@ -799,6 +838,13 @@ span.chip{cursor:default}
     <div class="potg" id="potg"></div>
     <div class="final-sub" id="finalSub"></div>
     <div class="row-actions"><button class="cta" id="btnAgain">PLAY AGAIN</button><button class="ghost" id="btnFinalBox">Box score</button><button class="ghost" id="btnMenu">Main menu</button></div>
+  </div>
+</div>
+
+<div id="optionsScreen" class="screen modal hidden">
+  <div class="card tm-card op-card">
+    <div class="fr-head"><h2>OPTIONS</h2><span class="tm-sub">Saved on this device</span><button class="ghost" id="opClose">Done</button></div>
+    <div id="opBody"></div>
   </div>
 </div>
 

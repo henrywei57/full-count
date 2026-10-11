@@ -110,11 +110,21 @@ Balls hit the wall or clear it according to its height where they get there, out
 - **Intentional walks.** No pitches: press **I** (or use the Team panel) and the batter takes first. CPU managers put a dangerous hitter on late in close games when first base is open, a runner is in scoring position and a much weaker hitter is up next.
 - **Replay review.** The base umpires call the bang-bang plays at the bags, and they miss a few of the closest. After a close play, the team the call went against can challenge it: press **C** while the prompt is up (Enter plays on). The play is shown again from a camera on that bag, then the call stands or is overturned, and the outs, runners and runs are fixed to match. Each team gets one challenge a game and keeps it when the call is overturned. CPU managers challenge most missed calls. In Player Lock, your manager decides.
 
+## Options
+
+**Options** (main menu, or the pause menu) is saved on this device:
+
+- **Sound**: game sound and commentary volume sliders, and the play-by-play voice on or off.
+- **Colorblind-friendly colors**: pitch types, and balls and strikes on the pitch tracker, switch to colors that stay distinct with red-green colorblindness.
+- **Keys**: give any keyboard control a different key. Your key does everything the default one did (Space is the swing, the pitch meter and the dive), and the hints on screen show your keys. Reset puts them all back.
+
+**Difficulty** is set separately for hitting (pitch speed, PCI size, timing windows, swing assist, the CPU pitcher's control) and pitching (meter speed, how well CPU hitters make contact and lay off bad pitches).
+
 ## Roster Builder
 
 Build your own team out of real MLB players from the **Roster Builder** button on the main menu. Start from any club's roster, then sign whoever you want for each spot: nine hitters (one per position plus a DH) in your batting order, up to four bench players, a rotation of up to five starters and a bullpen of up to seven. Name the team and pick its colors. Release a bench player or pitcher (&times;) to free up points.
 
-**Change** next to a player opens the signing list for that spot: every MLB player who plays there, with his real ratings, overall and cost. You can search by name or team, filter by club, and sort by overall, cost or any rating. The player pool is everyone on a 40-man roster who played this season or last: about 530 hitters and 660 pitchers. Hitters are rated at each position they actually play; anyone can DH, and a player moved somewhere he doesn't play loses some arm and glove there.
+**Change** next to a player opens the signing list for that spot: every MLB player who plays there, with his real ratings, overall and cost. You can search by name or team, filter by club, and sort by overall, cost or any rating. Tick the box next to up to three players to compare them side by side with whoever has the spot now: every rating as a bar with the best lit up, overall and what each would cost. The player pool is everyone on a 40-man roster who played this season or last: about 530 hitters and 660 pitchers. Hitters are rated at each position they actually play; anyone can DH, and a player moved somewhere he doesn't play loses some arm and glove there.
 
 Every player costs points from his ratings: a point a step above 40, two above 70 and three above 85, so stars are expensive. The whole roster has to fit under the cap, which is what the priciest real club costs. Any real team fits, and beating it means choosing where to spend. Online, a roster over the cap can't be used. Rosters save automatically on your device, and to your Google account when you're signed in. They pick up the latest real ratings whenever the player data is refreshed. Custom teams show up in every team picker.
 

@@ -218,7 +218,7 @@ function startSeason(o) {
   const team = tIdx(o.team);
   if (team < 0) return;
   SEASON = {
-    v: 1, id: 's' + Date.now().toString(36), team, len: o.len, innings: o.innings, diff: o.diff, ump: o.ump, manual: o.manual, day: 0,
+    v: 1, id: 's' + Date.now().toString(36), team, len: o.len, innings: o.innings, diff: o.diff, pdiff: o.pdiff, ump: o.ump, manual: o.manual, day: 0,
     sched: makeSchedule(o.len), rot: TEAMS.map(() => (Math.random() * 5) | 0), st: {}, sp: {}, po: null, created: Date.now(),
   };
   SEASON.rot[team] = 0;   // your ace gets opening day
@@ -364,7 +364,7 @@ function seasonPlayNext() {
   if (sv && sv.cfg.season && sv.cfg.season.id === S.id && sv.cfg.season.day === info.day && sv.cfg.season.s === info.s && sv.cfg.season.n === info.n) { resumeSaved(); return; }
   const [a, h] = nx.g, side = h === S.team ? 1 : 0;
   SND.init();
-  startGame({ mode: 'season', teams: [{ b: TEAMS[a].key }, { b: TEAMS[h].key }], side, innings: S.innings, diff: S.diff, manual: S.manual, ump: S.ump, starters: [seasonStarter(a).id, seasonStarter(h).id], park: '', season: info });
+  startGame({ mode: 'season', teams: [{ b: TEAMS[a].key }, { b: TEAMS[h].key }], side, innings: S.innings, diff: S.diff, pdiff: S.pdiff ?? S.diff, manual: S.manual, ump: S.ump, starters: [seasonStarter(a).id, seasonStarter(h).id], park: '', season: info });
 }
 // your game is over: write it in, then play out the rest of the day
 function seasonGameDone(rec) {

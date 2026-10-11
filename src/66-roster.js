@@ -270,9 +270,10 @@ function rsRenderEdit() {
 }
 
 // --------------------------------------------------------- player picker ----
-// RS.pick = { kind: 'h' (lineup spot) | 'b' (bench) | 's' (rotation) | 'r' (bullpen), slot, q, only, club, sort }
+// RS.pick = { kind: 'h' (lineup spot) | 'b' (bench) | 's' (rotation) | 'r' (bullpen), slot, q, only, club, sort,
+//   cmp: up to three players to compare side by side with whoever has the spot now }
 function rsOpenPick(kind, slot) {
-  RS.pick = { kind, slot, q: '', only: kind !== 'b', club: '', sort: 'ovr' };
+  RS.pick = { kind, slot, q: '', only: kind !== 'b', club: '', sort: 'ovr', cmp: [] };
   const isH = kind === 'h' || kind === 'b', el = $('rsPick');
   const word = kind === 'h' ? posWord[slot] : kind === 'b' ? 'bench player' : kind === 's' ? 'starting pitcher' : +slot === 0 ? 'closer' : 'reliever';
   const onlyLabel = kind === 'h' ? (slot === 'DH' ? '' : `Only players who play ${slot}`) : kind === 'b' ? '' : kind === 's' ? 'Only starters' : 'Only relievers';
@@ -284,6 +285,7 @@ function rsOpenPick(kind, slot) {
       ${onlyLabel ? `<label class="rsp-only"><input type="checkbox" id="rspOnly" checked> ${onlyLabel}</label>` : ''}
       <select id="rspClub" aria-label="Team"><option value="">All teams</option>${MLB_CLUBS.map((c) => `<option>${esc(c[0])}</option>`).join('')}</select>
       <select id="rspSort" aria-label="Sort">${sorts.map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}</select></div>
+    <div class="rsp-cmp hidden" id="rspCmp"></div>
     <div class="rsp-list" id="rspList"></div></div>`;
   el.classList.remove('hidden');
   rsPickList();
@@ -323,19 +325,45 @@ function rsPickList() {
   const total = list.length;
   list = list.slice(0, 150);
   const cols = isH ? HIT_KEYS.map(([k]) => k) : PIT_KEYS.map(([k]) => k);
-  const head = `<tr><th>PLAYER</th><th>TEAM</th><th>${isH ? 'PLAYS' : 'ROLE'}</th>${(isH ? HIT_KEYS : PIT_KEYS).map(([, l, tip]) => `<th title="${tip}">${l}</th>`).join('')}${isH ? '' : '<th>PITCHES</th>'}<th>OVR</th><th>PTS</th><th>+/&minus;</th><th></th></tr>`;
+  const head = `<tr><th></th><th>PLAYER</th><th>TEAM</th><th>${isH ? 'PLAYS' : 'ROLE'}</th>${(isH ? HIT_KEYS : PIT_KEYS).map(([, l, tip]) => `<th title="${tip}">${l}</th>`).join('')}${isH ? '' : '<th>PITCHES</th>'}<th>OVR</th><th>PTS</th><th>+/&minus;</th><th></th></tr>`;
   const rows = list.map(({ p, r: rr, ovr, cost }) => {
     const diff = cost - curCost, isCur = !!cur && cur.mlbId === p.id, onTeam = taken.has(p.id), over = cost > room;
     const why = isCur ? 'Signed' : onTeam ? 'On your team' : over ? 'Over the cap' : '';
     const plays = isH ? (p.elig.length ? p.elig.join(' ') : 'DH') : p.role;
-    return `<tr class="${why ? 'no' : ''}"><td class="who"><b>${esc(p.name)}</b></td><td>${esc(p.club)}</td><td class="plays">${plays}</td>`
+    const on = P.cmp.includes(p.id);
+    return `<tr class="${why ? 'no' : ''}${on ? ' cmp' : ''}"><td><label class="rsp-cmpbox" title="Compare"><input type="checkbox" data-cmp="${p.id}" ${on ? 'checked' : ''} ${!on && P.cmp.length >= 3 ? 'disabled' : ''}></label></td><td class="who"><b>${esc(p.name)}</b></td><td>${esc(p.club)}</td><td class="plays">${plays}</td>`
       + cols.map((k) => `<td class="rv ${rr[k] >= 85 && k !== 'velo' ? 'hi' : rr[k] < 60 && k !== 'velo' ? 'lo' : ''}">${rr[k]}</td>`).join('')
       + (isH ? '' : `<td class="chips">${p.pitches.map((x) => `<span class="chip on" style="--pc:${PITCH_TYPES[x.type].col}" title="${PITCH_TYPES[x.type].name}">${PITCH_TYPES[x.type].short}</span>`).join('')}</td>`)
       + `<td class="ovr">${ovr}</td><td class="cost">${cost}</td><td class="diff ${diff > 0 ? 'up' : diff < 0 ? 'down' : ''}">${diff > 0 ? '+' + diff : diff}</td>`
       + `<td>${why ? `<span class="rsp-why">${why}</span>` : `<button class="cta rsp-sign" data-sign="${p.id}">SIGN</button>`}</td></tr>`;
   }).join('');
+  rsCompare(isH, cur, curCost, room, taken);
   $('rspList').innerHTML = `<table class="rs-table rsp-table"><thead>${head}</thead><tbody>${rows || ''}</tbody></table>`
     + (total ? (total > list.length ? `<p class="rs-help">Showing the top ${list.length} of ${total}. Search or pick a team to narrow it down.</p>` : '') : '<p class="rs-help">Nobody matches. Try another search, or untick the position filter.</p>');
+}
+// side by side: whoever has the spot now and the players you ticked, the best of each rating lit up
+function rsCompare(isH, cur, curCost, room, taken) {
+  const P = RS.pick, el = $('rspCmp');
+  if (!P.cmp.length) { el.classList.add('hidden'); el.innerHTML = ''; return; }
+  const at = (h) => (P.kind === 'h' ? P.slot : h.main);
+  const cols = [];
+  if (cur) cols.push({ name: cur.name, r: isH ? cur : cur, ovr: isH ? hitterOvr(cur, cur.pos) : pitcherOvr(cur), cost: curCost, now: true, p: cur });
+  for (const id of P.cmp) {
+    const p = isH ? POOL_H.get(id) : POOL_P.get(id); if (!p) continue;
+    const r = isH ? hitterAt(p, at(p)) : p;
+    cols.push({ name: p.name, club: p.club, r, ovr: isH ? hitterOvr(r, at(p)) : pitcherOvr(p), cost: isH ? hitterCost(r) : pitcherCost(p), id, p, plays: isH ? (p.elig.join(' ') || 'DH') : p.role });
+  }
+  const keys = isH ? HIT_KEYS : PIT_KEYS;
+  const best = (k) => Math.max(...cols.map((c) => c.r[k] ?? 0));
+  const bar = (v, hi) => `<div class="cmp-bar"><i style="width:${clamp(((v ?? 0) - 30) / 70, 0, 1) * 100}%"></i><b class="${hi ? 'hi' : ''}">${v ?? '&ndash;'}</b></div>`;
+  const rows = keys.map(([k, l]) => `<tr><th>${l}</th>${cols.map((c) => `<td>${bar(c.r[k], cols.length > 1 && c.r[k] === best(k))}</td>`).join('')}</tr>`).join('');
+  const head = cols.map((c) => `<th><b>${esc(c.name)}</b><small>${c.now ? 'HAS THE SPOT' : `${esc(c.club)} &middot; ${esc(c.plays)}`}</small>${c.now ? '' : `<button class="ghost fr-mini" data-uncmp="${c.id}" title="Remove">&times;</button>`}</th>`).join('');
+  const foot = cols.map((c) => {
+    const why = c.now ? '' : taken.has(c.id) ? 'On your team' : c.cost > room ? 'Over the cap' : '';
+    return `<td><div class="cmp-ovr">${c.ovr}<small>OVR</small></div><div class="cmp-pts">${c.cost} pts${c.now ? '' : ` <span class="${c.cost - curCost > 0 ? 'up' : 'down'}">(${c.cost - curCost > 0 ? '+' : ''}${c.cost - curCost})</span>`}</div>${c.now ? '' : why ? `<span class="rsp-why">${why}</span>` : `<button class="cta rsp-sign" data-sign="${c.id}">SIGN</button>`}</td>`;
+  }).join('');
+  el.innerHTML = `<table class="cmp-table"><thead><tr><th></th>${head}</tr></thead><tbody>${rows}<tr class="cmp-foot"><th></th>${foot}</tr></tbody></table>`;
+  el.classList.remove('hidden');
 }
 function rsSign(id) {
   const P = RS.pick, d = rsCur(); if (!P || !d) return;
@@ -410,12 +438,16 @@ function buildRosterUI() {
     const b = e.target.closest('button'); if (!b) return;
     if (b.dataset.pk === 'close') rsClosePick();
     else if (b.dataset.sign) rsSign(+b.dataset.sign);
+    else if (b.dataset.uncmp && RS.pick) { RS.pick.cmp = RS.pick.cmp.filter((x) => x !== +b.dataset.uncmp); rsPickList(); }
   });
   pk.addEventListener('input', (e) => { if (!RS.pick) return; if (e.target.id === 'rspQ') { RS.pick.q = e.target.value; rsPickList(); } });
   pk.addEventListener('change', (e) => {
     if (!RS.pick) return;
     const t = e.target;
-    if (t.id === 'rspOnly') RS.pick.only = t.checked;
+    if (t.dataset && t.dataset.cmp) {
+      const id = +t.dataset.cmp, c = RS.pick.cmp;
+      RS.pick.cmp = t.checked ? (c.includes(id) || c.length >= 3 ? c : [...c, id]) : c.filter((x) => x !== id);
+    } else if (t.id === 'rspOnly') RS.pick.only = t.checked;
     else if (t.id === 'rspClub') RS.pick.club = t.value;
     else if (t.id === 'rspSort') RS.pick.sort = t.value;
     else return;

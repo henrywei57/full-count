@@ -322,6 +322,42 @@ button:focus-visible,select:focus-visible{outline:2px solid var(--gold);outline-
 .resume-txt{flex:1;display:flex;flex-direction:column;gap:2px;font-size:13px;color:var(--dust)}
 .resume-txt b{font-family:var(--f-display);letter-spacing:.1em;color:var(--gold);font-size:13px}
 
+/* ---------- roster compare ---------- */
+.rsp-cmp{flex:none;max-height:46vh;overflow:auto;border:1px solid var(--line);border-radius:4px;padding:8px 10px;margin:0 0 10px;background:rgba(255,255,255,.03)}
+.cmp-table{border-collapse:collapse;width:100%;font-size:13px}
+.cmp-table th{font-family:var(--f-display);letter-spacing:.08em;font-size:12px;color:var(--dust);text-align:left;padding:3px 6px;white-space:nowrap}
+.cmp-table thead th{vertical-align:top}
+.cmp-table thead th b{display:block;color:var(--chalk);font-size:14px;letter-spacing:.02em}
+.cmp-table thead th small{display:block;font-size:10px;color:var(--dust)}
+.cmp-table thead th button{margin-top:3px}
+.cmp-table td{padding:3px 6px;min-width:140px}
+.cmp-bar{position:relative;height:18px;background:rgba(255,255,255,.06);border-radius:3px;overflow:hidden}
+.cmp-bar i{position:absolute;inset:0 auto 0 0;background:rgba(90,168,255,.35)}
+.cmp-bar b{position:relative;padding-left:6px;font-weight:700;line-height:18px}
+.cmp-bar b.hi{color:var(--gold)}
+.cmp-foot td{padding-top:8px;vertical-align:top}
+.cmp-ovr{font-family:var(--f-display);font-weight:800;font-size:22px}
+.cmp-ovr small{font-size:10px;color:var(--dust);margin-left:4px}
+.cmp-pts{font-size:12px;color:var(--dust);margin:2px 0 6px}
+.cmp-pts .up{color:var(--strike)}.cmp-pts .down{color:var(--ball)}
+.rsp-table tr.cmp{background:rgba(90,168,255,.12)}
+.rsp-cmpbox input{accent-color:var(--gold)}
+
+/* ---------- options ---------- */
+#optionsScreen{align-items:flex-start}
+#optionsScreen .card{background:#09111f}
+.op-card{width:min(720px,100%)}
+.op-row{display:flex;align-items:center;gap:12px;margin:4px 0;font-size:14px}
+.op-row>label:first-child{min-width:160px}
+.op-row input[type=range]{flex:1;max-width:300px;accent-color:var(--gold)}
+.op-row span{color:var(--dust);font-size:13px;min-width:70px}
+.op-chips{display:flex;flex-wrap:wrap;gap:4px}
+.op-table td{padding:2px 4px}
+.op-key{min-width:96px;padding:4px 10px;font-family:var(--f-display);font-weight:800;letter-spacing:.06em}
+.op-key.moved{border-color:var(--gold);color:var(--gold)}
+.op-def{color:var(--dust);font-size:12px;text-align:left!important}
+body.cb{--ball:#56B4E9;--strike:#E69F00}
+
 /* ---------- season ---------- */
 #seasonScreen{align-items:flex-start}
 .sea-panel{margin-bottom:10px}
@@ -676,7 +712,8 @@ span.chip{cursor:default}
         <div class="opt" id="optSide"><span>YOU PLAY AS</span><div class="seg" data-key="side"><button data-v="0">Away</button><button data-v="1" class="on">Home</button></div></div>
         <div class="opt hidden" id="optSeasonLen"><span>SEASON</span><div class="seg" data-key="seasonLen"><button data-v="12">12 games</button><button data-v="30" class="on">30</button><button data-v="60">60</button><button data-v="162">162</button></div></div>
         <div class="opt" id="optInn"><span>INNINGS</span><div class="seg" data-key="innings"><button data-v="3" class="on">3</button><button data-v="6">6</button><button data-v="9">9</button></div></div>
-        <div class="opt" id="optDiff"><span>DIFFICULTY</span><div class="seg" data-key="diff"><button data-v="0">Rookie</button><button data-v="1" class="on">Veteran</button><button data-v="2">All-Star</button><button data-v="3">Hall of Fame</button></div></div>
+        <div class="opt" id="optDiff"><span>HITTING</span><div class="seg" data-key="diff"><button data-v="0">Rookie</button><button data-v="1" class="on">Veteran</button><button data-v="2">All-Star</button><button data-v="3">Hall of Fame</button></div></div>
+        <div class="opt" id="optPDiff"><span>PITCHING</span><div class="seg" data-key="pdiff"><button data-v="0">Rookie</button><button data-v="1" class="on">Veteran</button><button data-v="2">All-Star</button><button data-v="3">Hall of Fame</button></div></div>
         <div class="opt hidden" id="optLock"><span>YOUR PLAYER</span><select id="lockPick" aria-label="Player to control"></select></div>
         <div class="opt hidden" id="optBatter"><span>BATTER</span><select id="derbyBatter" aria-label="Derby batter"></select></div>
         <div class="opt" id="optUmp"><span>UMPIRE</span><div class="seg" data-key="ump"><button data-v="0">Human ump (92%)</button><button data-v="1" class="on">ABS challenge</button><button data-v="2">Robot ABS</button></div></div>
@@ -687,7 +724,7 @@ span.chip{cursor:default}
         <div class="opt" id="optBatCam"><span>BATTING CAM</span><div class="seg" data-key="batCam"><button data-v="0" class="on">Strike Zone</button><button data-v="1">Strike Zone 2</button><button data-v="2">Strike Zone High</button></div></div>
         <div class="opt" id="optThrow"><span>THROWS</span><div class="seg" data-key="manual"><button data-v="1" class="on">Manual</button><button data-v="0">Auto</button></div></div>
       </div>
-      <div class="row-actions"><button class="cta" id="btnPlay">PLAY BALL</button><button class="ghost" id="btnHow">Controls</button></div>
+      <div class="row-actions"><button class="cta" id="btnPlay">PLAY BALL</button><button class="ghost" id="btnHow">Controls</button><button class="ghost" id="btnOptions2">Options</button></div>
     </div>
   </div>
 </div>
@@ -729,6 +766,7 @@ span.chip{cursor:default}
     <div class="stack">
       <button class="cta" id="btnResume">RESUME</button>
       <button class="ghost" id="btnHow2">Controls</button>
+      <button class="ghost" id="btnOptions">Options: sound, colors, keys</button>
       <button class="ghost" id="btnVoice">Commentary voice: On</button>
       <button class="ghost" id="btnZone">Strike zone: On</button>
       <button class="ghost" id="btnBatCam">Batting cam: Strike Zone</button>
@@ -779,6 +817,7 @@ span.chip{cursor:default}
         <dt>Mouse / right stick</dt><dd>Player Lock: swing the camera around your player (click to grab the mouse)</dd>
         <dt>T / right-click</dt><dd>Player Lock: snap the camera back to following the play</dd>
         <dt>V</dt><dd>Player Lock: cycle third-person, first-person and broadcast cameras</dd>
+        <dt>Options</dt><dd>Sound and commentary volume, colorblind-friendly colors and your own keys: from the pause menu or the main menu</dd>
         <dt>Batting cam</dt><dd>Strike Zone, Strike Zone 2 or Strike Zone High: pick it in the menu or the pause screen</dd>
         <dt>Tab / Back</dt><dd>Player Lock: skip this at-bat (CPU plays your part)</dd>
         <dt>R</dt><dd>Instant replay after a play</dd>
@@ -806,6 +845,13 @@ span.chip{cursor:default}
     <div class="potg" id="potg"></div>
     <div class="final-sub" id="finalSub"></div>
     <div class="row-actions"><button class="cta" id="btnAgain">PLAY AGAIN</button><button class="ghost" id="btnFinalBox">Box score</button><button class="ghost" id="btnMenu">Main menu</button></div>
+  </div>
+</div>
+
+<div id="optionsScreen" class="screen modal hidden">
+  <div class="card tm-card op-card">
+    <div class="fr-head"><h2>OPTIONS</h2><span class="tm-sub">Saved on this device</span><button class="ghost" id="opClose">Done</button></div>
+    <div id="opBody"></div>
   </div>
 </div>
 
@@ -1021,7 +1067,7 @@ const SND = {
     const AC = window.AudioContext || window.webkitAudioContext;
     if (!AC) return;
     const c = (this.ctx = new AC());
-    this.master = c.createGain(); this.master.gain.value = settings.sound ? 0.8 : 0; this.master.connect(c.destination);
+    this.master = c.createGain(); this.master.gain.value = settings.sound ? settings.volume ?? 0.8 : 0; this.master.connect(c.destination);
     const len = c.sampleRate * 3, buf = c.createBuffer(1, len, c.sampleRate), d = buf.getChannelData(0);
     let b0 = 0, b1 = 0, b2 = 0;
     for (let i = 0; i < len; i++) { const w = Math.random() * 2 - 1; b0 = 0.99765 * b0 + w * 0.099; b1 = 0.963 * b1 + w * 0.2965; b2 = 0.57 * b2 + w * 1.0526; d[i] = (b0 + b1 + b2 + w * 0.1848) * 0.22; }
@@ -1037,7 +1083,7 @@ const SND = {
     const lfo = c.createOscillator(); lfo.frequency.value = 0.11; const lg = c.createGain(); lg.gain.value = 0.018; lfo.connect(lg).connect(this.crowd.gain); lfo.start();
     this.organBus = c.createBiquadFilter(); this.organBus.type = 'lowpass'; this.organBus.frequency.value = 2200; this.organBus.connect(this.master);
   },
-  setOn(v) { settings.sound = v; saveSettings(); if (this.master) this.master.gain.value = v ? 0.8 : 0; if (!v) try { speechSynthesis.cancel(); } catch (e) { /* none */ } },
+  setOn(v) { settings.sound = v; saveSettings(); if (this.master) this.master.gain.value = v ? settings.volume ?? 0.8 : 0; if (!v) try { speechSynthesis.cancel(); } catch (e) { /* none */ } },
   burst(t, { dur = 0.08, type = 'bandpass', f = 2000, q = 1, gain = 0.6, buf } = {}) {
     const c = this.ctx, s = c.createBufferSource(); s.buffer = buf || this.white;
     const fl = c.createBiquadFilter(); fl.type = type; fl.frequency.value = f; fl.Q.value = q;
@@ -1098,7 +1144,7 @@ const SND = {
     if (!settings.voice || !settings.sound || G.skipping || !('speechSynthesis' in window)) return;
     try {
       const u = new SpeechSynthesisUtterance(text);
-      u.rate = opt.rate || 1.12; u.pitch = opt.pitch ?? 0.95; u.volume = opt.vol ?? 1;
+      u.rate = opt.rate || 1.12; u.pitch = opt.pitch ?? 0.95; u.volume = (opt.vol ?? 1) * (settings.voiceVol ?? 1);
       const v = this.pickVoice(); if (v) u.voice = v;
       if (!opt.queue) speechSynthesis.cancel();
       speechSynthesis.speak(u);
@@ -4650,7 +4696,9 @@ function batGeom(x, y) {
 // ------------------------------------------------------------ game start ----
 function startGame(cfg) {
   G.cfg = { ...cfg }; delete G.cfg.resume;   // cfg.resume: a saved game to pick back up (62-records.js)
-  G.mode = cfg.mode; G.diff = DIFFS[cfg.diff ?? 1]; G.innings = cfg.innings || 3;
+  G.mode = cfg.mode; G.innings = cfg.innings || 3;
+  // hitting and pitching difficulty are set separately: the pitching one sets the meter and the CPU hitters
+  { const dh = DIFFS[cfg.diff ?? 1] || DIFFS[1], dp = DIFFS[cfg.pdiff ?? cfg.diff ?? 1] || dh; G.diff = { ...dh, meter: dp.meter, cpuBat: dp.cpuBat, cpuEye: dp.cpuEye }; }
   // cfg.teams = [away, home] as team specs (built-in key or a whole custom roster)
   const specs = distinctSpecs(...(cfg.teams || [{ b: TEAMS[cfg.away || 0].key }, { b: TEAMS[cfg.home ?? 3].key }]));
   const away = teamFromSpec(specs[0]), home = teamFromSpec(specs[1]);
@@ -5639,7 +5687,7 @@ function recordPitch(res) {
   if (res === 'Foul' || res === 'In play') pr.contact++;
   if (res !== 'Ball' && res !== 'HBP' && userPitches()) tutNote('strike');
   pitchMark.position.set(G.cross.x, G.cross.y, 0);
-  pitchMark.material.color.set(res === 'Ball' || res === 'HBP' ? '#3fd38a' : res === 'Foul' ? '#ffc94a' : res === 'In play' ? '#5aa8ff' : '#ff5a5f');
+  pitchMark.material.color.set(resultCol(res));
   pitchMark.visible = userBats() && settings.zone;
   drawTracker(); hudPitchInfo(); drawBoards();
   hudPitcher();
@@ -6693,7 +6741,7 @@ function startSeason(o) {
   const team = tIdx(o.team);
   if (team < 0) return;
   SEASON = {
-    v: 1, id: 's' + Date.now().toString(36), team, len: o.len, innings: o.innings, diff: o.diff, ump: o.ump, manual: o.manual, day: 0,
+    v: 1, id: 's' + Date.now().toString(36), team, len: o.len, innings: o.innings, diff: o.diff, pdiff: o.pdiff, ump: o.ump, manual: o.manual, day: 0,
     sched: makeSchedule(o.len), rot: TEAMS.map(() => (Math.random() * 5) | 0), st: {}, sp: {}, po: null, created: Date.now(),
   };
   SEASON.rot[team] = 0;   // your ace gets opening day
@@ -6839,7 +6887,7 @@ function seasonPlayNext() {
   if (sv && sv.cfg.season && sv.cfg.season.id === S.id && sv.cfg.season.day === info.day && sv.cfg.season.s === info.s && sv.cfg.season.n === info.n) { resumeSaved(); return; }
   const [a, h] = nx.g, side = h === S.team ? 1 : 0;
   SND.init();
-  startGame({ mode: 'season', teams: [{ b: TEAMS[a].key }, { b: TEAMS[h].key }], side, innings: S.innings, diff: S.diff, manual: S.manual, ump: S.ump, starters: [seasonStarter(a).id, seasonStarter(h).id], park: '', season: info });
+  startGame({ mode: 'season', teams: [{ b: TEAMS[a].key }, { b: TEAMS[h].key }], side, innings: S.innings, diff: S.diff, pdiff: S.pdiff ?? S.diff, manual: S.manual, ump: S.ump, starters: [seasonStarter(a).id, seasonStarter(h).id], park: '', season: info });
 }
 // your game is over: write it in, then play out the rest of the day
 function seasonGameDone(rec) {
@@ -7278,7 +7326,7 @@ function netSendFast(m) {
 // Custom rosters travel as data, so your friend doesn't need them saved.
 function netSendLobby() {
   if (NET.role !== 'host' || !NET.open) return;
-  const m = { t: 'lobby', me: meId(), side: menu.side, innings: menu.innings, diff: menu.diff, ump: menu.ump, park: menu.park || '', hostSpec: teamSpec(menuTeam(menu.side ? 'home' : 'away')) };
+  const m = { t: 'lobby', me: meId(), side: menu.side, innings: menu.innings, diff: menu.diff, pdiff: menu.pdiff, ump: menu.ump, park: menu.park || '', hostSpec: teamSpec(menuTeam(menu.side ? 'home' : 'away')) };
   const s = JSON.stringify(m);
   if (s !== NET.lobbySent) { NET.lobbySent = s; netSend(m); }
 }
@@ -7291,7 +7339,7 @@ function specOK(s) {
 function hostStartOnline() {
   if (!(NET.role === 'host' && NET.open) || onlineBlock()) return;
   const P = onlinePicks();
-  const cfg = { mode: 'online', teams: distinctSpecs(teamSpec(P.teams[0]), teamSpec(P.teams[1])), side: menu.side, innings: menu.innings, diff: menu.diff, manual: 1, ump: menu.ump, park: menu.park || '', tok: Math.random().toString(36).slice(2, 12) };
+  const cfg = { mode: 'online', teams: distinctSpecs(teamSpec(P.teams[0]), teamSpec(P.teams[1])), side: menu.side, innings: menu.innings, diff: menu.diff, pdiff: menu.pdiff, manual: 1, ump: menu.ump, park: menu.park || '', tok: Math.random().toString(36).slice(2, 12) };
   netSend({ t: 'start', cfg });
   startGame(cfg);
 }
@@ -7541,7 +7589,7 @@ function netApplyGS(s) {
     NET.lastAbLen = n;
     if (last) {
       pitchMark.position.set(last.x, last.y, 0);
-      pitchMark.material.color.set(last.res === 'Ball' || last.res === 'HBP' ? '#3fd38a' : last.res === 'Foul' ? '#ffc94a' : last.res === 'In play' ? '#5aa8ff' : '#ff5a5f');
+      pitchMark.material.color.set(resultCol(last.res));
       pitchMark.visible = userBats() && settings.zone && G.phase !== 'live';
     }
   }
@@ -8035,9 +8083,10 @@ function rsRenderEdit() {
 }
 
 // --------------------------------------------------------- player picker ----
-// RS.pick = { kind: 'h' (lineup spot) | 'b' (bench) | 's' (rotation) | 'r' (bullpen), slot, q, only, club, sort }
+// RS.pick = { kind: 'h' (lineup spot) | 'b' (bench) | 's' (rotation) | 'r' (bullpen), slot, q, only, club, sort,
+//   cmp: up to three players to compare side by side with whoever has the spot now }
 function rsOpenPick(kind, slot) {
-  RS.pick = { kind, slot, q: '', only: kind !== 'b', club: '', sort: 'ovr' };
+  RS.pick = { kind, slot, q: '', only: kind !== 'b', club: '', sort: 'ovr', cmp: [] };
   const isH = kind === 'h' || kind === 'b', el = $('rsPick');
   const word = kind === 'h' ? posWord[slot] : kind === 'b' ? 'bench player' : kind === 's' ? 'starting pitcher' : +slot === 0 ? 'closer' : 'reliever';
   const onlyLabel = kind === 'h' ? (slot === 'DH' ? '' : `Only players who play ${slot}`) : kind === 'b' ? '' : kind === 's' ? 'Only starters' : 'Only relievers';
@@ -8049,6 +8098,7 @@ function rsOpenPick(kind, slot) {
       ${onlyLabel ? `<label class="rsp-only"><input type="checkbox" id="rspOnly" checked> ${onlyLabel}</label>` : ''}
       <select id="rspClub" aria-label="Team"><option value="">All teams</option>${MLB_CLUBS.map((c) => `<option>${esc(c[0])}</option>`).join('')}</select>
       <select id="rspSort" aria-label="Sort">${sorts.map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}</select></div>
+    <div class="rsp-cmp hidden" id="rspCmp"></div>
     <div class="rsp-list" id="rspList"></div></div>`;
   el.classList.remove('hidden');
   rsPickList();
@@ -8088,19 +8138,45 @@ function rsPickList() {
   const total = list.length;
   list = list.slice(0, 150);
   const cols = isH ? HIT_KEYS.map(([k]) => k) : PIT_KEYS.map(([k]) => k);
-  const head = `<tr><th>PLAYER</th><th>TEAM</th><th>${isH ? 'PLAYS' : 'ROLE'}</th>${(isH ? HIT_KEYS : PIT_KEYS).map(([, l, tip]) => `<th title="${tip}">${l}</th>`).join('')}${isH ? '' : '<th>PITCHES</th>'}<th>OVR</th><th>PTS</th><th>+/&minus;</th><th></th></tr>`;
+  const head = `<tr><th></th><th>PLAYER</th><th>TEAM</th><th>${isH ? 'PLAYS' : 'ROLE'}</th>${(isH ? HIT_KEYS : PIT_KEYS).map(([, l, tip]) => `<th title="${tip}">${l}</th>`).join('')}${isH ? '' : '<th>PITCHES</th>'}<th>OVR</th><th>PTS</th><th>+/&minus;</th><th></th></tr>`;
   const rows = list.map(({ p, r: rr, ovr, cost }) => {
     const diff = cost - curCost, isCur = !!cur && cur.mlbId === p.id, onTeam = taken.has(p.id), over = cost > room;
     const why = isCur ? 'Signed' : onTeam ? 'On your team' : over ? 'Over the cap' : '';
     const plays = isH ? (p.elig.length ? p.elig.join(' ') : 'DH') : p.role;
-    return `<tr class="${why ? 'no' : ''}"><td class="who"><b>${esc(p.name)}</b></td><td>${esc(p.club)}</td><td class="plays">${plays}</td>`
+    const on = P.cmp.includes(p.id);
+    return `<tr class="${why ? 'no' : ''}${on ? ' cmp' : ''}"><td><label class="rsp-cmpbox" title="Compare"><input type="checkbox" data-cmp="${p.id}" ${on ? 'checked' : ''} ${!on && P.cmp.length >= 3 ? 'disabled' : ''}></label></td><td class="who"><b>${esc(p.name)}</b></td><td>${esc(p.club)}</td><td class="plays">${plays}</td>`
       + cols.map((k) => `<td class="rv ${rr[k] >= 85 && k !== 'velo' ? 'hi' : rr[k] < 60 && k !== 'velo' ? 'lo' : ''}">${rr[k]}</td>`).join('')
       + (isH ? '' : `<td class="chips">${p.pitches.map((x) => `<span class="chip on" style="--pc:${PITCH_TYPES[x.type].col}" title="${PITCH_TYPES[x.type].name}">${PITCH_TYPES[x.type].short}</span>`).join('')}</td>`)
       + `<td class="ovr">${ovr}</td><td class="cost">${cost}</td><td class="diff ${diff > 0 ? 'up' : diff < 0 ? 'down' : ''}">${diff > 0 ? '+' + diff : diff}</td>`
       + `<td>${why ? `<span class="rsp-why">${why}</span>` : `<button class="cta rsp-sign" data-sign="${p.id}">SIGN</button>`}</td></tr>`;
   }).join('');
+  rsCompare(isH, cur, curCost, room, taken);
   $('rspList').innerHTML = `<table class="rs-table rsp-table"><thead>${head}</thead><tbody>${rows || ''}</tbody></table>`
     + (total ? (total > list.length ? `<p class="rs-help">Showing the top ${list.length} of ${total}. Search or pick a team to narrow it down.</p>` : '') : '<p class="rs-help">Nobody matches. Try another search, or untick the position filter.</p>');
+}
+// side by side: whoever has the spot now and the players you ticked, the best of each rating lit up
+function rsCompare(isH, cur, curCost, room, taken) {
+  const P = RS.pick, el = $('rspCmp');
+  if (!P.cmp.length) { el.classList.add('hidden'); el.innerHTML = ''; return; }
+  const at = (h) => (P.kind === 'h' ? P.slot : h.main);
+  const cols = [];
+  if (cur) cols.push({ name: cur.name, r: isH ? cur : cur, ovr: isH ? hitterOvr(cur, cur.pos) : pitcherOvr(cur), cost: curCost, now: true, p: cur });
+  for (const id of P.cmp) {
+    const p = isH ? POOL_H.get(id) : POOL_P.get(id); if (!p) continue;
+    const r = isH ? hitterAt(p, at(p)) : p;
+    cols.push({ name: p.name, club: p.club, r, ovr: isH ? hitterOvr(r, at(p)) : pitcherOvr(p), cost: isH ? hitterCost(r) : pitcherCost(p), id, p, plays: isH ? (p.elig.join(' ') || 'DH') : p.role });
+  }
+  const keys = isH ? HIT_KEYS : PIT_KEYS;
+  const best = (k) => Math.max(...cols.map((c) => c.r[k] ?? 0));
+  const bar = (v, hi) => `<div class="cmp-bar"><i style="width:${clamp(((v ?? 0) - 30) / 70, 0, 1) * 100}%"></i><b class="${hi ? 'hi' : ''}">${v ?? '&ndash;'}</b></div>`;
+  const rows = keys.map(([k, l]) => `<tr><th>${l}</th>${cols.map((c) => `<td>${bar(c.r[k], cols.length > 1 && c.r[k] === best(k))}</td>`).join('')}</tr>`).join('');
+  const head = cols.map((c) => `<th><b>${esc(c.name)}</b><small>${c.now ? 'HAS THE SPOT' : `${esc(c.club)} &middot; ${esc(c.plays)}`}</small>${c.now ? '' : `<button class="ghost fr-mini" data-uncmp="${c.id}" title="Remove">&times;</button>`}</th>`).join('');
+  const foot = cols.map((c) => {
+    const why = c.now ? '' : taken.has(c.id) ? 'On your team' : c.cost > room ? 'Over the cap' : '';
+    return `<td><div class="cmp-ovr">${c.ovr}<small>OVR</small></div><div class="cmp-pts">${c.cost} pts${c.now ? '' : ` <span class="${c.cost - curCost > 0 ? 'up' : 'down'}">(${c.cost - curCost > 0 ? '+' : ''}${c.cost - curCost})</span>`}</div>${c.now ? '' : why ? `<span class="rsp-why">${why}</span>` : `<button class="cta rsp-sign" data-sign="${c.id}">SIGN</button>`}</td>`;
+  }).join('');
+  el.innerHTML = `<table class="cmp-table"><thead><tr><th></th>${head}</tr></thead><tbody>${rows}<tr class="cmp-foot"><th></th>${foot}</tr></tbody></table>`;
+  el.classList.remove('hidden');
 }
 function rsSign(id) {
   const P = RS.pick, d = rsCur(); if (!P || !d) return;
@@ -8175,12 +8251,16 @@ function buildRosterUI() {
     const b = e.target.closest('button'); if (!b) return;
     if (b.dataset.pk === 'close') rsClosePick();
     else if (b.dataset.sign) rsSign(+b.dataset.sign);
+    else if (b.dataset.uncmp && RS.pick) { RS.pick.cmp = RS.pick.cmp.filter((x) => x !== +b.dataset.uncmp); rsPickList(); }
   });
   pk.addEventListener('input', (e) => { if (!RS.pick) return; if (e.target.id === 'rspQ') { RS.pick.q = e.target.value; rsPickList(); } });
   pk.addEventListener('change', (e) => {
     if (!RS.pick) return;
     const t = e.target;
-    if (t.id === 'rspOnly') RS.pick.only = t.checked;
+    if (t.dataset && t.dataset.cmp) {
+      const id = +t.dataset.cmp, c = RS.pick.cmp;
+      RS.pick.cmp = t.checked ? (c.includes(id) || c.length >= 3 ? c : [...c, id]) : c.filter((x) => x !== id);
+    } else if (t.id === 'rspOnly') RS.pick.only = t.checked;
     else if (t.id === 'rspClub') RS.pick.club = t.value;
     else if (t.id === 'rspSort') RS.pick.sort = t.value;
     else return;
@@ -8664,6 +8744,132 @@ function buildTutorialUI() {
   });
 }
 // ============================================================================
+// Options: remappable keys, game and commentary volume, colorblind-friendly
+// colors and the on-screen guides. Everything is saved on this device.
+// ============================================================================
+
+// ------------------------------------------------------------- key bindings ----
+// Each control has a default key and can move to any other. Your key does everything the
+// default key does (Space is the swing, the pitch meter and the dive), and the hints on
+// screen show your keys. [default key, label, what it does]
+const CONTROLS = [
+  [' ', 'Space', 'Swing, pitch meter, dive'], ['k', 'K', 'Swing'], ['j', 'J', 'Contact swing'], ['l', 'L', 'Power swing'], ['b', 'B', 'Bunt'],
+  ['e', 'E', 'Steal, send runners'], ['q', 'Q', 'Call it off, runners back, switch fielder'],
+  ['w', 'W', 'Fielder up'], ['a', 'A', 'Fielder left'], ['s', 'S', 'Fielder down'], ['d', 'D', 'Fielder right'],
+  ['1', '1', 'First base (throw, pick a runner, pitch 1)'], ['2', '2', 'Second base (pitch 2)'], ['3', '3', 'Third base (pitch 3)'], ['4', '4', 'Home plate (pitch 4)'],
+  ['c', 'C', 'Challenge a call'], ['u', 'U', 'Team panel'], ['i', 'I', 'Intentional walk'], ['r', 'R', 'Replay'], ['enter', 'Enter', 'Skip ahead'],
+  ['z', 'Z', 'Strike zone on/off'], ['m', 'M', 'Sound on/off'], ['p', 'P', 'Pause'],
+  ['t', 'T', 'Re-center the camera (Player Lock)'], ['v', 'V', 'Camera view (Player Lock)'], ['tab', 'Tab', 'Skip the at-bat (Player Lock)'], ['f', 'F', 'Fast-forward (CPU vs CPU)'],
+];
+const NO_BIND = new Set(['escape', 'shift', 'control', 'alt', 'meta', 'capslock', 'contextmenu', 'os']);
+let KEYMAP = new Map(), KEYTAKEN = new Set();
+function buildKeymap() {
+  KEYMAP = new Map(); KEYTAKEN = new Set();
+  const known = new Set(CONTROLS.map(([v]) => v));
+  for (const [v, p] of Object.entries(settings.keys || {})) if (known.has(v) && typeof p === 'string' && p && p !== v) { KEYMAP.set(p, v); KEYTAKEN.add(v); }
+}
+// the key you pressed, as the control it stands for ('' when that key's control moved elsewhere)
+function keyAlias(k) { if (KEYMAP.has(k)) return KEYMAP.get(k); if (KEYTAKEN.has(k)) return ''; return k; }
+function keyLabel(p) { return p === ' ' ? 'Space' : p.startsWith('arrow') ? { arrowup: '↑', arrowdown: '↓', arrowleft: '←', arrowright: '→' }[p] : p.length === 1 ? p.toUpperCase() : p.charAt(0).toUpperCase() + p.slice(1); }
+// the key that does this control now ('' if none)
+function boundKey(v) { const p = settings.keys && settings.keys[v]; if (p) return p; return KEYMAP.has(v) ? '' : v; }
+// hints are written with the default keys: show yours instead
+const LABEL_TO_V = new Map(CONTROLS.map(([v, l]) => [l, v]));
+function relabelKeys(html) {
+  if (!KEYTAKEN.size || !html) return html;
+  return html.replace(/<kbd>([^<]+)<\/kbd>/g, (m, l) => { const v = LABEL_TO_V.get(l); if (!v || !KEYTAKEN.has(v) && !KEYMAP.has(v)) return m; const p = boundKey(v); return `<kbd>${p ? esc(keyLabel(p)) : '&ndash;'}</kbd>`; });
+}
+
+// ------------------------------------------------------------------ colors ----
+// Okabe-Ito colors read clearly with red-green colorblindness; the defaults use red and green.
+const PITCH_COL0 = Object.fromEntries(Object.entries(PITCH_TYPES).map(([k, t]) => [k, t.col]));
+const PITCH_COL_CB = { FF: '#E69F00', SI: '#D55E00', FC: '#F0E442', SL: '#56B4E9', SW: '#3D7FD0', CU: '#009E73', KC: '#9ADBC5', CH: '#CC79A7', FS: '#FFFFFF' };
+const RESULT_COL0 = { ball: '#3fd38a', foul: '#ffc94a', play: '#5aa8ff', strike: '#ff5a5f' };
+const RESULT_COL_CB = { ball: '#56B4E9', foul: '#F0E442', play: '#FFFFFF', strike: '#E69F00' };
+let RESULT_COL = RESULT_COL0;
+function resultCol(r) { return r === 'Ball' || r === 'HBP' ? RESULT_COL.ball : r === 'Foul' ? RESULT_COL.foul : r === 'In play' ? RESULT_COL.play : RESULT_COL.strike; }
+function applyPalette() {
+  const cb = !!settings.cb;
+  for (const k in PITCH_TYPES) PITCH_TYPES[k].col = cb ? PITCH_COL_CB[k] || PITCH_COL0[k] : PITCH_COL0[k];
+  RESULT_COL = cb ? RESULT_COL_CB : RESULT_COL0;
+  document.body.classList.toggle('cb', cb);
+}
+
+// ------------------------------------------------------------------ volume ----
+function gameVolume() { return settings.volume ?? 0.8; }
+function applyVolume() { if (SND.master) SND.master.gain.value = settings.sound && !(typeof updateSkipUI !== 'undefined' && updateSkipUI.on) ? gameVolume() : 0; }
+
+// ---------------------------------------------------------------- the panel ----
+const OPT = { capture: null };
+function openOptions() { OPT.capture = null; $('optionsScreen').classList.remove('hidden'); renderOptions(); }
+function closeOptions() { OPT.capture = null; $('optionsScreen').classList.add('hidden'); }
+function renderOptions() {
+  if ($('optionsScreen').classList.contains('hidden')) return;
+  const pct = (x) => Math.round(x * 100);
+  const chips = Object.entries(PITCH_TYPES).map(([, t]) => `<span class="chip on" style="--pc:${t.col}">${t.short}</span>`).join('');
+  const rows = CONTROLS.map(([v, l, what]) => {
+    const p = boundKey(v), cap = OPT.capture === v, moved = settings.keys && settings.keys[v];
+    return `<tr class="${cap ? 'sel' : ''}"><td class="who">${esc(what)}</td><td><button class="ghost op-key ${moved ? 'moved' : ''}" data-bind="${esc(v)}">${cap ? 'Press a key&hellip;' : p ? esc(keyLabel(p)) : '<i>none</i>'}</button></td><td class="op-def">${moved ? `default ${esc(l)}` : ''}</td></tr>`;
+  }).join('');
+  $('opBody').innerHTML = `
+    <h3>SOUND</h3>
+    <div class="op-row"><label for="opVol">Game sound</label><input type="range" id="opVol" min="0" max="100" step="5" value="${pct(gameVolume())}"><span>${settings.sound ? pct(gameVolume()) + '%' : 'Muted (M)'}</span></div>
+    <div class="op-row"><label for="opVoice">Commentary voice</label><input type="range" id="opVoice" min="0" max="100" step="5" value="${pct(settings.voiceVol ?? 1)}"><span>${settings.voice ? pct(settings.voiceVol ?? 1) + '%' : 'Off'}</span></div>
+    <div class="op-row"><label><input type="checkbox" id="opVoiceOn" ${settings.voice ? 'checked' : ''}> Play-by-play voice</label></div>
+    <h3>DISPLAY</h3>
+    <div class="op-row"><label><input type="checkbox" id="opCb" ${settings.cb ? 'checked' : ''}> Colorblind-friendly colors</label><span class="op-chips">${chips}</span></div>
+    <p class="fr-note">Pitch types, and balls and strikes on the pitch tracker, use colors that stay distinct with red-green colorblindness.</p>
+    <div class="op-row"><label><input type="checkbox" id="opZone" ${settings.zone ? 'checked' : ''}> Strike zone overlay (Z)</label></div>
+    <div class="op-row"><label><input type="checkbox" id="opGuide" ${settings.guide ? 'checked' : ''}> Hitting guide and fly-ball landing spot (easier difficulties)</label></div>
+    <h3>KEYS <small>click one, then press the key you want</small></h3>
+    <div class="rs-scroll"><table class="rs-table op-table"><tbody>${rows}</tbody></table></div>
+    <div class="row-actions"><button class="ghost" data-op="reset">Reset all keys</button></div>
+    <p class="fr-note">Mouse buttons, arrow keys, Esc and the gamepad stay as they are. A key you give to one control is taken from whatever used it before.</p>`;
+}
+function buildOptionsUI() {
+  buildKeymap(); applyPalette();
+  for (const id of ['btnOptions', 'btnOptions2']) $(id).addEventListener('click', openOptions);
+  $('opClose').addEventListener('click', closeOptions);
+  const body = $('opBody');
+  body.addEventListener('input', (e) => {
+    const t = e.target;
+    if (t.id === 'opVol') { settings.volume = +t.value / 100; if (!settings.sound && settings.volume > 0) SND.setOn(true); applyVolume(); }
+    else if (t.id === 'opVoice') settings.voiceVol = +t.value / 100;
+    else return;
+    saveSettings();
+    const span = t.parentElement.querySelector('span');
+    if (span) span.textContent = `${t.value}%`;
+  });
+  body.addEventListener('change', (e) => {
+    const t = e.target;
+    if (t.id === 'opVoiceOn') { settings.voice = t.checked; if (!t.checked) try { speechSynthesis.cancel(); } catch (err) { /* none */ } $('btnVoice').textContent = `Commentary voice: ${settings.voice ? 'On' : 'Off'}`; }
+    else if (t.id === 'opCb') { settings.cb = t.checked; applyPalette(); if (G.teams) { hudPitcher(); drawTracker(); } }
+    else if (t.id === 'opZone') { if (!!settings.zone !== t.checked) toggleZone(); }
+    else if (t.id === 'opGuide') settings.guide = t.checked;
+    else return;
+    saveSettings(); renderOptions();
+  });
+  body.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-bind],[data-op]'); if (!b) return;
+    if (b.dataset.op === 'reset') { settings.keys = {}; saveSettings(); buildKeymap(); OPT.capture = null; renderOptions(); return; }
+    OPT.capture = OPT.capture === b.dataset.bind ? null : b.dataset.bind; renderOptions();
+  });
+  // waiting for a key: it goes to the control being set, before the game sees it
+  window.addEventListener('keydown', (e) => {
+    if (!OPT.capture || $('optionsScreen').classList.contains('hidden')) return;
+    e.preventDefault(); e.stopImmediatePropagation();
+    const k = e.key.toLowerCase(), v = OPT.capture;
+    OPT.capture = null;
+    if (k !== 'escape' && !NO_BIND.has(k)) {
+      const keys = { ...(settings.keys || {}) };
+      for (const [x, p] of Object.entries(keys)) if (p === k && x !== v) delete keys[x];   // a key does one control
+      if (k === v) delete keys[v]; else keys[v] = k;
+      settings.keys = keys; saveSettings(); buildKeymap();
+    }
+    renderOptions();
+  }, true);
+}
+// ============================================================================
 // Presentation: cameras, HUD, videoboards, input, replays, menus, main loop
 // ============================================================================
 
@@ -8870,7 +9076,7 @@ function tpCam(L, dt) {
 
 // -------------------------------------------------------------------- HUD ----
 let fbTimer = 0;
-function setHint(html) { const el = $('hint'); el.innerHTML = html; el.style.opacity = html ? 1 : 0; }
+function setHint(html) { const el = $('hint'); el.innerHTML = relabelKeys(html); el.style.opacity = html ? 1 : 0; }
 function liveHint() {
   const parts = [];
   if (userFields()) parts.push('<kbd>WASD</kbd> move', '<kbd>Space</kbd> dive', G.lock ? '' : '<kbd>Q</kbd> switch', '<kbd>1</kbd>&ndash;<kbd>4</kbd> throw');
@@ -9008,7 +9214,7 @@ function drawTracker() {
   g.strokeRect(X(-ZONE.halfW), Y(ZONE.top), ZONE.halfW * 2 * 68, (ZONE.top - ZONE.bot) * 68);
   g.fillStyle = 'rgba(255,255,255,0.75)';
   g.beginPath(); g.moveTo(X(-0.71), 318); g.lineTo(X(0.71), 318); g.lineTo(X(0.71), 326); g.lineTo(X(0), 334); g.lineTo(X(-0.71), 326); g.closePath(); g.fill();
-  const col = (r) => (r === 'Ball' || r === 'HBP' ? '#3fd38a' : r === 'Foul' ? '#ffc94a' : r === 'In play' ? '#5aa8ff' : '#ff5a5f');
+  const col = resultCol;
   G.abPitches.forEach((p, i) => {
     const x = clamp(X(p.x), 12, 288), y = clamp(Y(p.y), 12, 310);
     g.fillStyle = col(p.res); g.beginPath(); g.arc(x, y, 14, 0, Math.PI * 2); g.fill();
@@ -9162,7 +9368,7 @@ function updateSkipUI() {
     updateSkipUI.on = on;
     $('simVeil').classList.toggle('hidden', !on);
     document.body.classList.toggle('skipping', on);
-    if (SND.master) SND.master.gain.value = on || !settings.sound ? 0 : 0.8;
+    if (SND.master) SND.master.gain.value = on || !settings.sound ? 0 : gameVolume();
     if (on) { try { speechSynthesis.cancel(); } catch (e) { /* none */ } exitPointerLock(); }
     else $('banner').className = '';   // an inning banner the skip raced past
   }
@@ -9554,13 +9760,15 @@ function actRun(kind, which = null) {
 function actPick(base) { if (isGuest()) { netSend({ t: 'act', a: 'pick', base }); return; } if (canPickoff(base)) tutNote('pick'); startPickoff(base); }
 const trotOn = () => (isGuest() ? !!(NET.snap && NET.snap.pl && NET.snap.pl.hr) : !!(G.play && (G.play.hr || G.play.awarded)));
 window.addEventListener('keydown', (e) => {
-  const k = e.key.toLowerCase();
+  const raw = e.key.toLowerCase(), k = raw === 'escape' ? raw : keyAlias(raw);   // your key bindings (69-options.js)
   if (k === 'escape' && !$('rosterScreen').classList.contains('hidden')) { if (RS.pick) rsClosePick(); else closeRosters(); return; }
   if (k === 'escape' && !$('friendsScreen').classList.contains('hidden')) { closeFriends(); return; }
   if (k === 'escape' && !$('teamScreen').classList.contains('hidden')) { closeTeam(); return; }
   if (k === 'escape' && !$('boxScreen').classList.contains('hidden')) { closeBox(); return; }
   if (k === 'escape' && !$('statsScreen').classList.contains('hidden')) { closeStats(); return; }
   if (k === 'escape' && !$('seasonScreen').classList.contains('hidden')) { closeSeasonHub(); return; }
+  if (k === 'escape' && !$('optionsScreen').classList.contains('hidden')) { closeOptions(); return; }
+  if (!k) return;   // a key whose control moved to another key
   if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA')) return;
   if (k === 'escape' || (k === 'p' && G.phase !== 'menu')) { togglePause(); return; }
   if (G.phase === 'menu' || G.phase === 'boot' || G.paused) return;
@@ -9613,7 +9821,7 @@ function toggleView() {
   if (!G.view) restoreCam();
   setHint(VIEW_NAMES[G.view] + ' &middot; <kbd>V</kbd> to switch');
 }
-window.addEventListener('keyup', (e) => keys.delete(e.key.toLowerCase()));
+window.addEventListener('keyup', (e) => keys.delete(keyAlias(e.key.toLowerCase())));
 window.addEventListener('blur', () => keys.clear());
 $('pitchList').addEventListener('click', (e) => { const row = e.target.closest('.pitch-row'); if (row) selectPitch(+row.dataset.i); });
 for (const b of $('throwPrompt').querySelectorAll('button')) b.addEventListener('pointerdown', (e) => { e.stopPropagation(); actThrow(+b.dataset.base); });
@@ -9738,7 +9946,7 @@ function togglePause(force, remote) {
 }
 
 // ------------------------------------------------------------------ menus ----
-const menu = { mode: 'exhibition', away: 'NYY', home: 'LAD', park: '', seasonLen: 30, side: 1, innings: 3, diff: 1, manual: 1, batter: 3, lockPick: 'h3', ump: 1, view: 2, lockField: 1, lockSkip: 1, batCam: settings.batCam || 0, netTeam: 'LAD', drill: 0, tutLesson: -1 };
+const menu = { mode: 'exhibition', away: 'NYY', home: 'LAD', park: '', seasonLen: 30, side: 1, innings: 3, diff: 1, pdiff: 1, manual: 1, batter: 3, lockPick: 'h3', ump: 1, view: 2, lockField: 1, lockSkip: 1, batCam: settings.batCam || 0, netTeam: 'LAD', drill: 0, tutLesson: -1 };
 try { Object.assign(menu, JSON.parse(localStorage.getItem('fullcount.menu') || '{}')); } catch (e) { /* ignore */ }
 menu.batCam = settings.batCam || 0;   // the pause screen can change it too; settings wins
 // teams used to be saved as an index into the built-in list
@@ -9803,6 +10011,7 @@ function renderMenu() {
   $('optSide').querySelector('span').textContent = lock ? 'YOUR TEAM' : 'YOU PLAY AS';
   $('optInn').classList.toggle('hidden', derby || prac || !showTeams);
   $('optDiff').classList.toggle('hidden', spec || tut || !showTeams);
+  $('optPDiff').classList.toggle('hidden', spec || tut || derby || !showTeams);
   $('optThrow').classList.toggle('hidden', derby || spec || online || tut || activeSeason);
   $('optBatter').classList.toggle('hidden', !derby);
   $('optLock').classList.toggle('hidden', !lock);
@@ -9811,7 +10020,7 @@ function renderMenu() {
   $('optLockSkip').classList.toggle('hidden', !lock);
   $('optUmp').classList.toggle('hidden', derby || tut || !showTeams);
   $('optPark').classList.toggle('hidden', tut || season || !showTeams);
-  for (const el of ['optSide', 'optInn', 'optDiff', 'optUmp', 'optPark']) $(el).style.pointerEvents = guest ? 'none' : '';
+  for (const el of ['optSide', 'optInn', 'optDiff', 'optPDiff', 'optUmp', 'optPark']) $(el).style.pointerEvents = guest ? 'none' : '';
   if (showTeams) {
     // the ballpark: the home team's, or any of the others
     const hk = online ? onlinePicks().teams[1] : menuTeam('home'), hp = (hk && PARKS[hk.key]) || PARKS.FC;
@@ -9906,9 +10115,9 @@ function buildMenu() {
     SND.init();
     if (menu.mode === 'online') { hostStartOnline(); return; }
     if (menu.mode === 'tutorial') { tutStart(menu.tutLesson >= 0 ? menu.tutLesson : null); return; }
-    if (menu.mode === 'season') { startSeason({ team: menuTeam('home').key, len: SEASON_LENS.includes(menu.seasonLen) ? menu.seasonLen : 30, innings: menu.innings, diff: menu.diff, ump: menu.ump, manual: menu.manual }); renderMenu(); return; }
+    if (menu.mode === 'season') { startSeason({ team: menuTeam('home').key, len: SEASON_LENS.includes(menu.seasonLen) ? menu.seasonLen : 30, innings: menu.innings, diff: menu.diff, pdiff: menu.pdiff, ump: menu.ump, manual: menu.manual }); renderMenu(); return; }
     const teams = [teamSpec(menuTeam('away')), teamSpec(menuTeam('home'))];
-    startGame({ mode: menu.mode, teams, drill: ['bat', 'pitch', 'run', 'field'][menu.drill] || 'bat', side: menu.side, innings: menu.innings, diff: menu.diff, manual: menu.manual, batter: menu.batter, lockPick: menu.lockPick, ump: menu.ump, view: menu.view, lockField: menu.lockField, lockSkip: menu.lockSkip, park: menu.park || '' });
+    startGame({ mode: menu.mode, teams, drill: ['bat', 'pitch', 'run', 'field'][menu.drill] || 'bat', side: menu.side, innings: menu.innings, diff: menu.diff, pdiff: menu.pdiff, manual: menu.manual, batter: menu.batter, lockPick: menu.lockPick, ump: menu.ump, view: menu.view, lockField: menu.lockField, lockSkip: menu.lockSkip, park: menu.park || '' });
   });
   const openHelp = () => { $('help').classList.remove('hidden'); };
   $('btnHow').addEventListener('click', openHelp);
@@ -10081,6 +10290,7 @@ function boot() {
   buildTeamUI();
   buildRecordsUI();
   buildSeasonUI();
+  buildOptionsUI();
   $('btnRosters').addEventListener('click', openRosters);
   buildMenu();
   buildCloudUI();

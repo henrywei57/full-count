@@ -150,7 +150,9 @@ function batGeom(x, y) {
 // ------------------------------------------------------------ game start ----
 function startGame(cfg) {
   G.cfg = { ...cfg }; delete G.cfg.resume;   // cfg.resume: a saved game to pick back up (62-records.js)
-  G.mode = cfg.mode; G.diff = DIFFS[cfg.diff ?? 1]; G.innings = cfg.innings || 3;
+  G.mode = cfg.mode; G.innings = cfg.innings || 3;
+  // hitting and pitching difficulty are set separately: the pitching one sets the meter and the CPU hitters
+  { const dh = DIFFS[cfg.diff ?? 1] || DIFFS[1], dp = DIFFS[cfg.pdiff ?? cfg.diff ?? 1] || dh; G.diff = { ...dh, meter: dp.meter, cpuBat: dp.cpuBat, cpuEye: dp.cpuEye }; }
   // cfg.teams = [away, home] as team specs (built-in key or a whole custom roster)
   const specs = distinctSpecs(...(cfg.teams || [{ b: TEAMS[cfg.away || 0].key }, { b: TEAMS[cfg.home ?? 3].key }]));
   const away = teamFromSpec(specs[0]), home = teamFromSpec(specs[1]);
@@ -1139,7 +1141,7 @@ function recordPitch(res) {
   if (res === 'Foul' || res === 'In play') pr.contact++;
   if (res !== 'Ball' && res !== 'HBP' && userPitches()) tutNote('strike');
   pitchMark.position.set(G.cross.x, G.cross.y, 0);
-  pitchMark.material.color.set(res === 'Ball' || res === 'HBP' ? '#3fd38a' : res === 'Foul' ? '#ffc94a' : res === 'In play' ? '#5aa8ff' : '#ff5a5f');
+  pitchMark.material.color.set(resultCol(res));
   pitchMark.visible = userBats() && settings.zone;
   drawTracker(); hudPitchInfo(); drawBoards();
   hudPitcher();

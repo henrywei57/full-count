@@ -184,7 +184,7 @@ const SND = {
     const AC = window.AudioContext || window.webkitAudioContext;
     if (!AC) return;
     const c = (this.ctx = new AC());
-    this.master = c.createGain(); this.master.gain.value = settings.sound ? 0.8 : 0; this.master.connect(c.destination);
+    this.master = c.createGain(); this.master.gain.value = settings.sound ? settings.volume ?? 0.8 : 0; this.master.connect(c.destination);
     const len = c.sampleRate * 3, buf = c.createBuffer(1, len, c.sampleRate), d = buf.getChannelData(0);
     let b0 = 0, b1 = 0, b2 = 0;
     for (let i = 0; i < len; i++) { const w = Math.random() * 2 - 1; b0 = 0.99765 * b0 + w * 0.099; b1 = 0.963 * b1 + w * 0.2965; b2 = 0.57 * b2 + w * 1.0526; d[i] = (b0 + b1 + b2 + w * 0.1848) * 0.22; }
@@ -200,7 +200,7 @@ const SND = {
     const lfo = c.createOscillator(); lfo.frequency.value = 0.11; const lg = c.createGain(); lg.gain.value = 0.018; lfo.connect(lg).connect(this.crowd.gain); lfo.start();
     this.organBus = c.createBiquadFilter(); this.organBus.type = 'lowpass'; this.organBus.frequency.value = 2200; this.organBus.connect(this.master);
   },
-  setOn(v) { settings.sound = v; saveSettings(); if (this.master) this.master.gain.value = v ? 0.8 : 0; if (!v) try { speechSynthesis.cancel(); } catch (e) { /* none */ } },
+  setOn(v) { settings.sound = v; saveSettings(); if (this.master) this.master.gain.value = v ? settings.volume ?? 0.8 : 0; if (!v) try { speechSynthesis.cancel(); } catch (e) { /* none */ } },
   burst(t, { dur = 0.08, type = 'bandpass', f = 2000, q = 1, gain = 0.6, buf } = {}) {
     const c = this.ctx, s = c.createBufferSource(); s.buffer = buf || this.white;
     const fl = c.createBiquadFilter(); fl.type = type; fl.frequency.value = f; fl.Q.value = q;
@@ -261,7 +261,7 @@ const SND = {
     if (!settings.voice || !settings.sound || G.skipping || !('speechSynthesis' in window)) return;
     try {
       const u = new SpeechSynthesisUtterance(text);
-      u.rate = opt.rate || 1.12; u.pitch = opt.pitch ?? 0.95; u.volume = opt.vol ?? 1;
+      u.rate = opt.rate || 1.12; u.pitch = opt.pitch ?? 0.95; u.volume = (opt.vol ?? 1) * (settings.voiceVol ?? 1);
       const v = this.pickVoice(); if (v) u.voice = v;
       if (!opt.queue) speechSynthesis.cancel();
       speechSynthesis.speak(u);
