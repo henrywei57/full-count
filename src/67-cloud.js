@@ -8,6 +8,7 @@
 //   users/{uid}/rosters/{id}    your rosters (only you can read them)
 //   users/{uid}/friends/{uid}   your friends list
 //   users/{uid}/inbox/{fromUid} friend requests and game invites sent to you
+//   users/{uid}/games/{id}      your finished games: box scores and stats (62-records.js)
 //   codes/{code}                friend code -> uid
 // ============================================================================
 
@@ -66,6 +67,7 @@ const Cloud = {
     const list = [];
     rs.forEach((d) => { try { list.push(JSON.parse(d.data().json)); } catch (e) { /* skip a broken one */ } });
     for (const r of mergeRosters(list)) this.saveRoster(r);
+    this.syncGames(u.uid);
     this.unsub.push(F.onSnapshot(F.collection(db, 'users', u.uid, 'friends'), (qs) => {
       this.friends = qs.docs.map((d) => ({ uid: d.id, ...d.data() }));
       this.watchFriends(); cloudRender();
@@ -99,6 +101,23 @@ const Cloud = {
     if (!this.user) return;
     const { F, db } = this;
     F.setDoc(F.doc(db, 'users', this.user.uid, 'rosters', d.id), { json: JSON.stringify(d), updated: d.updated }).catch((e) => this.fail(e));
+  },
+  // finished games: the ones in your account and the ones on this device end up in both
+  async syncGames(uid) {
+    const { F, db } = this;
+    try {
+      const qs = await F.getDocs(F.collection(db, 'users', uid, 'games')), cloud = [];
+      qs.forEach((d) => { try { cloud.push(JSON.parse(d.data().json)); } catch (e) { /* skip a broken one */ } });
+      if (this.user?.uid !== uid) return;
+      const have = new Set(cloud.map((g) => g && g.id));
+      if (mergeGames(cloud)) renderStats();
+      for (const g of gamesList()) if (!have.has(g.id)) this.saveGameRec(g);
+    } catch (e) { console.warn('[cloud] games', e); }   // older Firestore rules without games: they stay on this device
+  },
+  saveGameRec(g) {
+    if (!this.user) return;
+    const { F, db } = this;
+    F.setDoc(F.doc(db, 'users', this.user.uid, 'games', g.id), { json: JSON.stringify(g), at: g.at }).catch((e) => console.warn('[cloud] game', e));
   },
   deleteRoster(id) {
     if (!this.user) return;

@@ -288,6 +288,30 @@ button:focus-visible,select:focus-visible{outline:2px solid var(--gold);outline-
 .fr-note a{color:var(--play)}
 .tm-acts{margin:4px 0 2px}
 
+/* ---------- stats, box scores, resume ---------- */
+#statsScreen,#boxScreen{align-items:flex-start}
+#boxScreen .card{background:#09111f}
+.bx-ls{overflow-x:auto;margin:4px 0 10px}
+.bx-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+@media (max-width:860px){.bx-grid{grid-template-columns:1fr}}
+.bx-team h3{margin:4px 0 6px;font-family:var(--f-display);font-weight:800;letter-spacing:.08em;font-size:15px;padding:5px 9px;border-radius:3px}
+.bx-table{margin-bottom:6px}
+.bx-table td.who,.st-table td.who{text-align:left;white-space:nowrap}
+.bx-table th:first-child,.st-table th:first-child{text-align:left}
+.bx-pos{color:var(--dust);font-size:11px;margin-left:6px}
+.bx-sub{display:inline-block;width:12px}
+.bx-dec{color:var(--gold);font-weight:800;font-size:11px;margin-left:6px}
+.bx-tot td{font-weight:800;border-top:1px solid var(--line)}
+.bx-notes{font-size:12px;color:var(--dust);margin:2px 0 10px;line-height:1.5}
+.bx-notes b{color:var(--chalk);font-weight:700}
+.st-tabs,.st-filter{margin:8px 0 10px}
+.st-table th[data-sort]{cursor:pointer}
+.st-table th.on{color:var(--gold)}
+.st-table .good{color:var(--ball)}.st-table .bad{color:var(--strike)}
+.resume{display:flex;align-items:center;gap:8px;margin-bottom:12px;padding:10px 12px;background:var(--panel);border:1px solid var(--gold);border-radius:4px}
+.resume-txt{flex:1;display:flex;flex-direction:column;gap:2px;font-size:13px;color:var(--dust)}
+.resume-txt b{font-family:var(--f-display);letter-spacing:.1em;color:var(--gold);font-size:13px}
+
 /* ---------- tutorial ---------- */
 #tutCard{position:fixed;right:16px;top:calc(110px + env(safe-area-inset-top,0px));z-index:6;width:min(330px,calc(100vw - 32px));background:var(--panel);border:1px solid var(--gold);border-radius:6px;padding:12px 14px;display:flex;flex-direction:column;gap:8px;box-shadow:0 10px 30px rgba(0,0,0,.45)}
 #tutCard.big{left:50%;top:50%;right:auto;transform:translate(-50%,-50%);width:min(460px,calc(100vw - 32px));padding:20px 22px;z-index:9}
@@ -334,7 +358,7 @@ body.letterbox #tutCard{display:none}
 
 /* ---------- roster builder ---------- */
 .menu-extra{display:flex;gap:8px;margin-top:8px}
-.menu-extra button{flex:1;display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:left;font-family:var(--f-display);font-weight:700;font-size:17px;letter-spacing:.04em;text-transform:uppercase;background:var(--panel)}
+.menu-extra button{flex:1;min-width:0;display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:left;font-family:var(--f-display);font-weight:700;font-size:15px;letter-spacing:.03em;text-transform:uppercase;background:var(--panel);padding-left:10px;padding-right:8px}
 .menu-extra small{font-family:var(--f-body);text-transform:none;font-weight:500;font-size:12px;color:var(--dust);letter-spacing:0}
 .menu-extra .dot{display:inline-block;min-width:18px;height:18px;padding:0 5px;margin-left:6px;border-radius:9px;background:var(--strike);color:#fff;font-size:12px;line-height:18px;text-align:center;vertical-align:2px}
 .tp-custom{font-family:var(--f-display);font-weight:700;font-size:11px;letter-spacing:.18em;color:var(--gold)}
@@ -572,11 +596,16 @@ span.chip{cursor:default}
         <button data-mode="spectate">CPU vs CPU <small>Sit back and watch</small></button>
       </div>
       <div class="menu-extra">
-        <button class="ghost" id="btnRosters">Roster Builder<small>Build your own team</small></button>
+        <button class="ghost" id="btnRosters">Roster Builder<small>Build a team</small></button>
         <button class="ghost" id="btnFriends"><span>Friends<span id="frBadge"></span></span><small id="frSub">Sign in to add friends</small></button>
+        <button class="ghost" id="btnStats">Stats<small>Box scores</small></button>
       </div>
     </div>
     <div class="setup">
+      <div class="resume hidden" id="resumeBox">
+        <div class="resume-txt"><b>GAME IN PROGRESS</b><span id="resumeLabel"></span></div>
+        <button class="cta" id="btnResumeGame">RESUME</button><button class="ghost" id="btnDiscardSave">Discard</button>
+      </div>
       <div id="netPanel" class="hidden">
         <h3>ONLINE 1V1</h3>
         <div class="net-row" id="netHostRow"><button class="cta" id="btnHost">HOST A GAME</button></div>
@@ -652,6 +681,7 @@ span.chip{cursor:default}
       <button class="ghost" id="btnZone">Strike zone: On</button>
       <button class="ghost" id="btnBatCam">Batting cam: Strike Zone</button>
       <button class="ghost" id="btnTeam">Team: lineup, bench &amp; bullpen</button>
+      <button class="ghost" id="btnBox">Box score</button>
       <button class="ghost" id="btnQuit">Quit to menu</button>
     </div>
   </div>
@@ -723,7 +753,22 @@ span.chip{cursor:default}
     <div class="ls-wrap"><table class="linescore" id="finalLS"></table></div>
     <div class="potg" id="potg"></div>
     <div class="final-sub" id="finalSub"></div>
-    <div class="row-actions"><button class="cta" id="btnAgain">PLAY AGAIN</button><button class="ghost" id="btnMenu">Main menu</button></div>
+    <div class="row-actions"><button class="cta" id="btnAgain">PLAY AGAIN</button><button class="ghost" id="btnFinalBox">Box score</button><button class="ghost" id="btnMenu">Main menu</button></div>
+  </div>
+</div>
+
+<div id="statsScreen" class="screen modal hidden">
+  <div class="card tm-card">
+    <div class="fr-head"><h2>STATS</h2><span id="stSub" class="tm-sub"></span><button class="ghost" id="stClose">Back</button></div>
+    <div class="seg st-tabs" id="stTabs"><button data-t="bat" class="on">Hitting</button><button data-t="pit">Pitching</button><button data-t="games">Games</button></div>
+    <div id="stBody"></div>
+  </div>
+</div>
+
+<div id="boxScreen" class="screen modal hidden">
+  <div class="card tm-card">
+    <div class="fr-head"><h2>BOX SCORE</h2><span id="bxSub" class="tm-sub"></span><button class="ghost" id="bxClose">Close</button></div>
+    <div id="bxBody"></div>
   </div>
 </div>
 

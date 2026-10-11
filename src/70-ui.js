@@ -892,6 +892,8 @@ window.addEventListener('keydown', (e) => {
   if (k === 'escape' && !$('rosterScreen').classList.contains('hidden')) { if (RS.pick) rsClosePick(); else closeRosters(); return; }
   if (k === 'escape' && !$('friendsScreen').classList.contains('hidden')) { closeFriends(); return; }
   if (k === 'escape' && !$('teamScreen').classList.contains('hidden')) { closeTeam(); return; }
+  if (k === 'escape' && !$('boxScreen').classList.contains('hidden')) { closeBox(); return; }
+  if (k === 'escape' && !$('statsScreen').classList.contains('hidden')) { closeStats(); return; }
   if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA')) return;
   if (k === 'escape' || (k === 'p' && G.phase !== 'menu')) { togglePause(); return; }
   if (G.phase === 'menu' || G.phase === 'boot' || G.paused) return;
@@ -1168,6 +1170,7 @@ function renderMenu() {
   play.textContent = derby ? 'START DERBY' : tut ? 'START TUTORIAL' : prac ? 'START PRACTICE' : spec ? 'WATCH GAME' : lock ? 'PLAY AS ' + (lock ? lockName() : '') : online ? (NET.open ? 'START ONLINE GAME' : 'WAITING FOR FRIEND') : 'PLAY BALL';
   if (host && NET.open && block !== (NET.blockShown || '')) { NET.blockShown = block; netStatus(block || 'Ready! Press Start when you are.', block ? 'bad' : 'good'); }
   try { localStorage.setItem('fullcount.menu', JSON.stringify(menu)); } catch (e) { /* ignore */ }
+  renderResume();
   if (host && NET.open) netSendLobby();
   if (typeof renderAccount === 'function') renderAccount();
 }
@@ -1400,6 +1403,7 @@ function boot() {
   buildRosterUI();
   buildTutorialUI();
   buildTeamUI();
+  buildRecordsUI();
   $('btnRosters').addEventListener('click', openRosters);
   buildMenu();
   buildCloudUI();
@@ -1419,7 +1423,7 @@ function boot() {
 }
 // Debug handle: lets a test harness advance the simulation without waiting on animation frames.
 window.__fullcount = {
-  G, TEAMS, settings, NET, keys, BAT_CAMS, Play, Runner, BASES, simBatted, V3, getModel, ballMesh, startPickoff, stealCmd, camTo, setPark, PARKS, fenceDist, fenceH, TUT, tutStart, rosterCost, teamToDef, cleanRoster, buildCustomTeam, Cloud, cloudRender, inviteToast, get ROSTERS() { return ROSTERS; },
+  G, TEAMS, settings, NET, keys, BAT_CAMS, Play, Runner, BASES, simBatted, V3, getModel, ballMesh, startPickoff, stealCmd, camTo, setPark, PARKS, fenceDist, fenceH, gameRecord, gamesList, loadSave, openLiveBox, openStats, toMenu, TUT, tutStart, rosterCost, teamToDef, cleanRoster, buildCustomTeam, Cloud, cloudRender, inviteToast, get ROSTERS() { return ROSTERS; },
   step(sec, dt = 1 / 60) {
     const n = Math.round(sec / dt);
     for (let i = 0; i < n && !G.paused; i++) { if (isGuest()) guestUpdate(dt); else update(dt); netTick(); }

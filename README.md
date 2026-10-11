@@ -75,6 +75,12 @@ Who wins the race comes down to the runner's speed (fast runners also get better
 
 When you're pitching with runners on, Shift + 1 / 2 / 3 throws over. The runner dives back and is usually safe, but a runner who was going on that pitch gets caught leaning: he's either picked off or hung up between bases. CPU pitchers throw over too, mostly to fast runners.
 
+## Box scores, saved games and stats
+
+- **Box score**: from the pause menu during a game, or the final screen. Every batter (subs indented) with AB, R, H, RBI, BB and K, then doubles, triples, homers and steals, and every pitcher with IP, H, R, BB, K, HR and pitch count, plus the win, loss and save.
+- **Saved games**: Play Ball and Player Lock games save themselves before every batter. Quit whenever you like (or close the tab) and press **Resume** on the main menu to pick up with the same batter, score, lineups, bullpen and pitch counts. Starting another game replaces the save.
+- **Stats**: every finished game (Play Ball, Player Lock, Online, Season) is kept with its box score. **Stats** on the main menu adds up every player's numbers across your games (hitting: G, PA, AB, H, 2B, 3B, HR, RBI, R, BB, K, SB, AVG, OBP, SLG, OPS; pitching: G, W, L, SV, IP, H, R, BB, K, HR, RA9, WHIP), sortable by any column, and lists your games, each with its box score. Signed in with Google, your games are saved to your account and come with you to any device. (If you set up Firebase before this version, publish the updated `firestore.rules` so the account can store games.)
+
 ## Ballparks
 
 Games are played in the home team's real ballpark: all 30 MLB parks, with their wall distances down each line, in the alleys and to center, and their wall heights. Pick any park from the **Ballpark** menu instead. (The dimensions are close approximations.)

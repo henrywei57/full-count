@@ -259,7 +259,10 @@ function netGS() {
     pitcher: G.pitcher.map((p) => (p ? p.id : null)), stats: [...G.stats], pstats: [...G.pstats],
     abPitches: G.abPitches, lastP: G.lastP || null,
     // each side's game roster, so the guest's Team panel shows the real thing
-    ros: [0, 1].map((ti) => ({ lu: G.lu[ti].map((p) => [p.id, p.pos]), bench: G.bench[ti].map((p) => p.id), pen: G.bullpen[ti].map((p) => p.id) })),
+    ros: [0, 1].map((ti) => ({ lu: G.lu[ti].map((p) => [p.id, p.pos]), bench: G.bench[ti].map((p) => p.id), pen: G.bullpen[ti].map((p) => p.id),
+      // for the box score
+      pl: G.played[ti].map((x) => [x.pl.id, x.pos, x.for ? 1 : 0]), pi: G.pitched[ti].map((p) => p.id) })),
+    dec: G.phase === 'final' ? decisions() : null,
     chal: G.challenges, ump: G.ump,
     chk: G.challengeable && G.challengeable.who === 'remote' ? G.challengeable.side : G.phase === 'reviewWait' && G.review && G.review.who === 'remote' ? G.review.side : -1,
     rv: G.phase === 'reviewWait' && G.review && G.review.who === 'remote' ? G.review.c.base : 0,
@@ -331,7 +334,7 @@ function pingHUD() {
 // ------------------------------------------------------------ guest side ----
 function guestStart() {
   setPhase('wait');
-  G.lu = [[], []]; G.pos = [{}, {}]; G.bench = [[], []]; G.bullpen = [[], []];
+  G.lu = [[], []]; G.pos = [{}, {}]; G.bench = [[], []]; G.bullpen = [[], []]; G.played = [[], []]; G.pitched = [[], []];
   G.fielders = []; G.fByRole = {}; G.swing = null; G.P = null; G.localPitch = false; G.lastP = null; G.batter = null;
   Object.assign(NET, { lastAbLen: 0, snap: null, lastSeq: -1, bb: null, ball: null, pclock: { pid: -1, t: 0 } });
   NET.pred = { m: null, key: null, on: false, v: 0, lastIn: -9, hold: 0 };
@@ -367,7 +370,10 @@ function netApplyGS(s) {
     G.pos[ti] = Object.fromEntries(G.lu[ti].map((p) => [p.pos, p]));
     G.bench[ti] = (r.bench || []).map((id) => PBYID[id]).filter(Boolean);
     G.bullpen[ti] = (r.pen || []).map((id) => PBYID[id]).filter(Boolean);
+    if (Array.isArray(r.pl)) G.played[ti] = r.pl.map(([id, pos, f]) => ({ pl: gamePlayer(PBYID[id], pos), pos, for: f ? 1 : 0 })).filter((x) => x.pl);
+    if (Array.isArray(r.pi)) G.pitched[ti] = r.pi.map((id) => PBYID[id]).filter(Boolean);
   });
+  if (s.dec && typeof s.dec === 'object') G.decIds = Object.fromEntries(Object.entries(s.dec).filter(([, v]) => ['W', 'L', 'S'].includes(v)));
   renderTeam();
   G.challenges = s.chal || [0, 0]; G.ump = s.ump ?? G.ump;
   const canChallenge = s.chk >= 0 && s.chk === localSide();
@@ -507,6 +513,7 @@ function guestScreen(m) {
   if (m.id === 'breakCard') { $('breakTitle').textContent = String(d.title || ''); $('breakSub').textContent = String(d.sub || ''); $('breakLS').innerHTML = linescoreHTML(); }
   if (m.id === 'final') {
     setPhase('final');
+    recordGame();
     $('finalTitle').textContent = String(d.title || 'FINAL'); $('finalSub').textContent = String(d.sub || '');
     $('finalLS').innerHTML = linescoreHTML(); $('potg').innerHTML = d.potg ? potgHTML(d.potg) : '';
   }

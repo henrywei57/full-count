@@ -149,7 +149,7 @@ function batGeom(x, y) {
 
 // ------------------------------------------------------------ game start ----
 function startGame(cfg) {
-  G.cfg = cfg;
+  G.cfg = { ...cfg }; delete G.cfg.resume;   // cfg.resume: a saved game to pick back up (62-records.js)
   G.mode = cfg.mode; G.diff = DIFFS[cfg.diff ?? 1]; G.innings = cfg.innings || 3;
   // cfg.teams = [away, home] as team specs (built-in key or a whole custom roster)
   const specs = distinctSpecs(...(cfg.teams || [{ b: TEAMS[cfg.away || 0].key }, { b: TEAMS[cfg.home ?? 3].key }]));
@@ -188,6 +188,9 @@ function startGame(cfg) {
   G.lu = []; G.pos = []; G.bench = []; G.bullpen = []; G.gone = []; G.played = []; G.pitched = [];
   G.pitcher = [];
   for (let ti = 0; ti < 2; ti++) initGameRoster(ti, cfg.starters && cfg.starters[ti]);
+  G.gameId = 'g' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  G.dec = null; G.decIds = null; G.enterLead = {};
+  const resumed = !!cfg.resume && restoreSave(cfg.resume);
   for (const m of MODELS) m.root.visible = false;
   setCrowdColors(G.teams[1], G.teams[0]);
   hudTeams();
@@ -212,6 +215,7 @@ function startGame(cfg) {
     newBatter();
     return;
   }
+  if (resumed) { hudLock(); resumeHalf(); return; }
   if (G.mode === 'lock') {
     const me = PBYID[G.lock];
     Caster.line(`Player Lock: you are ${me.name}. The rest of the game sims until you are involved.`);
@@ -261,6 +265,7 @@ function bringReliever(ti, pick) {
   G.pen[ti]++;
   G.gone[ti].add(G.pitcher[ti].id);
   G.pitcher[ti] = np; G.pitched[ti].push(np);
+  G.enterLead[np.id] = G.score[ti] - G.score[1 - ti];   // for the save
   if (ti === 1 - G.half) {
     const f = new Fielder(np, 'P', getModel(np)); f.setHome(...ROLE_POS.P);
     G.fielders[0] = f; G.fByRole.P = f;
@@ -280,6 +285,7 @@ function newBatter() {
   G.batterModel = getModel(pl);
   applyAlignment();
   hudBatter(); hudPitcher(); hudCount(); drawTracker(); drawBoards();
+  autoSave();
   if (G.mode !== 'derby' && Math.random() < 0.8) SND.say(`Now batting, ${pl.pos === 'DH' ? 'the designated hitter' : ''} number ${pl.num}, ${pl.name}.`, { queue: true, rate: 1.0, pitch: 0.85 });
   enterPrePitch();
 }
@@ -1191,8 +1197,9 @@ function settleAB(k) {
 }
 function scoreRuns(n, scorers) {
   if (!n) return;
-  const bi = G.half;
+  const bi = G.half, before = G.score.slice();
   G.score[bi] += n; G.line[bi][G.inning - 1] += n; G.prac.runs += n;
+  noteLead(bi, before);
   pstat(curPitcher()).r += n;
   for (const s of scorers) bstat(s).r++;
   hudScore(); drawBoards();
@@ -1368,6 +1375,8 @@ function endGame(walkoff) {
   $('potg').innerHTML = G.potg ? potgHTML(G.potg) : '';
   Caster.line(walkoff ? `And the ${h.name} walk it off! What a finish!` : `That's the ballgame. ${$('finalSub').textContent}`);
   setPhase('final');
+  recordGame();
+  if (canSave()) clearSave();
   setTimeout(() => { if (G.phase === 'final') showScreen('final'); }, walkoff ? 3200 : 1500);
 }
 function potgHTML(b) { return `<div><span>PLAYER OF THE GAME</span><br><b>${esc(b.name)}</b><br><span>${esc(b.line)}</span></div>`; }

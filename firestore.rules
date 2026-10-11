@@ -21,6 +21,11 @@ service cloud.firestore {
       match /friends/{fid} {
         allow read, write: if isMe(uid);
       }
+      // your finished games (box scores and stats): only you
+      match /games/{gid} {
+        allow read, delete: if isMe(uid);
+        allow write: if isMe(uid) && shortStr(request.resource.data.json, 60000);
+      }
       // friend requests and game invites: one slot per sender, written only as yourself
       match /inbox/{fromUid} {
         allow read, delete: if isMe(uid);
