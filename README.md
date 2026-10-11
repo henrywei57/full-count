@@ -55,6 +55,10 @@ When you're batting, a runner panel lists every runner with where he's headed, a
 
 After a fielder gloves the ball he gathers into his throw, and your throw comes out as soon as the ball is out of the glove. Throws go to whichever fielder can get to that base first: on the bag if he gets there in time, otherwise out in front of him on his way, and he still has to step on the bag.
 
+Every base is covered for the whole play. When the man covering a bag goes after the ball, takes a throw somewhere else, makes a throw or gets steered away by you, the nearest free fielder takes the bag: the pitcher covers first when the first baseman fields it, the second baseman covers second behind the pivot, the shortstop takes third when the third baseman charges. When you press a base and nobody can beat you to that bag (the first baseman fielding a grounder near first, the shortstop a step from second), you run it there yourself instead of throwing.
+
+Defense comes from the actual player: his glove (FLD) sets how quickly he reads the ball, how far he can reach, how fast he gets it out of his glove and how often he boots it or throws it away; his arm sets how hard he throws; his speed sets his range. A player out of position loses some of each.
+
 On a ball to the outfield the free middle infielder goes out to be the relay man, lined up between the ball and the base it's likely going to. A throw of more than about 225 feet from an outfielder goes to him, and he turns and fires it on to the base you picked. On defense the AI can cut it off and go somewhere else instead.
 
 ## Bench and bullpen

@@ -30,7 +30,12 @@ class Fielder {
     this.arm = 98 + (pl.arm ?? 60) * 0.42;
     this.fld = pl.fld ?? 60;
     this.isOF = OF_ROLES.has(role);
-    this.baseReact = role === 'P' ? 0.45 : role === 'C' ? 0.35 : this.isOF ? 0.42 : 0.27;
+    // the glove: a good one reads the ball sooner, gets to more of them, gets rid of it quicker
+    // and throws it away less (arm is the throw's speed, and its accuracy too)
+    const g = clamp((this.fld - 50) / 45, 0, 1);
+    this.baseReact = (role === 'P' ? 0.45 : role === 'C' ? 0.35 : this.isOF ? 0.42 : 0.27) + (0.5 - g) * 0.16;
+    this.reach = 3.7 + g * 1.0;
+    this.transfer = (0.5 - g) * 0.26;
     this.react = this.baseReact;
     this.acc = this.isOF ? 12.5 : role === 'P' || role === 'C' ? 15 : 21;
     this.reset();
@@ -214,7 +219,7 @@ class Play {
         // infielders give ground slowly when they have to go back on a ball
         const back = !f.isOF && Math.hypot(s.x, s.z) > Math.hypot(f.pos.x, f.pos.z) + 6;
         const vmax = back ? f.speed * 0.78 : f.speed;
-        if (runTime(dist - 3.4, vmax, f.acc, v0) <= dtAvail) { plan = { t: s.t, i, x: s.x, z: s.z, air, dive: false }; break; }
+        if (runTime(dist - (f.reach - 0.8), vmax, f.acc, v0) <= dtAvail) { plan = { t: s.t, i, x: s.x, z: s.z, air, dive: false }; break; }
         if (!divePlan && air && s.y < 6 && runTime(dist - 8.2, vmax, f.acc, v0) <= dtAvail) divePlan = { t: s.t, i, x: s.x, z: s.z, air, dive: true };
         if (!divePlan && !air && !f.isOF && runTime(dist - 5.2, vmax, f.acc, v0) <= dtAvail) divePlan = { t: s.t, i, x: s.x, z: s.z, air, dive: true, gdive: true };
       }
@@ -254,6 +259,33 @@ class Play {
     }
   }
   replan() { this.planFielders(this.t); }
+  // Someone is on (or on his way to) every bag, the whole play. When the man covering one goes
+  // after the ball, takes a throw somewhere else, makes a throw or gets steered away by you,
+  // the nearest free fielder takes the bag: the pitcher to first, the second baseman to
+  // second behind the pivot, the shortstop to third when the third baseman charges.
+  ensureCoverage() {
+    if (!this.cover || this.done || this.hr || this.dead || this.awarded || this.outs >= 3) return;
+    const b = this.ball;
+    const busy = (f) => (f === this.chaser && b.mode === 'flight') || f === b.holder || f.throwing || f.task === 'receive' || (f === this.uf && this.ufManual) || (f.downUntil && this.t < f.downUntil);
+    const onBag = (f, k) => Math.hypot(BASES[k].x - f.pos.x, BASES[k].z - f.pos.z) < 6;
+    for (const f of this.F) if (f.task === 'cover' && this.cover[f.coverBase] !== f) f.task = 'hold';
+    for (let k = 1; k <= 4; k++) {
+      const c = this.cover[k];
+      if (c && !busy(c) && c.task === 'cover' && c.coverBase === k) continue;
+      if (c && c === b.holder && (onBag(c, k) || c.runTo === k)) continue;   // he has the ball on the bag, or is taking it there
+      if (b.holder && b.holder !== c && (onBag(b.holder, k) || b.holder.runTo === k)) continue;
+      const bp = BASES[k];
+      let best = null, bt = Infinity;
+      for (const f of this.F) {
+        if (busy(f) || (f.task === 'cover' && this.cover[f.coverBase] === f && f.coverBase !== k)) continue;
+        if (f.isOF && k !== 2) continue;   // an outfielder only ever helps out at second
+        const t = runTime(Math.max(0, Math.hypot(bp.x - f.pos.x, bp.z - f.pos.z) - 1.5), f.speed, f.acc) + (f.isOF ? 1.5 : 0) + (f.role === 'C' && k !== 4 ? 1 : 0);
+        if (t < bt) { bt = t; best = f; }
+      }
+      this.cover[k] = best;
+      if (best) { best.task = 'cover'; best.coverBase = k; }
+    }
+  }
   // ------------------------------------------------------- human input ----
   setInput(x, z) {
     this.inp.x = x; this.inp.z = z;
@@ -333,6 +365,7 @@ class Play {
       if (P) { P.decideAt = 0; this.execThrow(P, base); }
     }
     this.updateBall();
+    this.ensureCoverage();
     this.updateFielders(dt);
     this.trackBallBase();
     this.updateRunners(dt);
@@ -515,7 +548,7 @@ class Play {
     if (!pl || t < pl.t - 0.06) return;
     const dist = Math.hypot(s.x - f.pos.x, s.z - f.pos.z);
     const air = !s.b, okH = air ? s.y <= 9.5 : s.y <= 3.2;
-    const reach = pl.dive ? (air ? 9 : 6.5) : 4.2;
+    const reach = pl.dive ? (air ? 9 : 6.5) : f.reach;
     if (okH && dist <= reach && !s.dead && !s.hr) {
       if (pl.dive) {
         this.dove = true;
@@ -560,9 +593,9 @@ class Play {
       SND.pop(0.7);
       this.events.push('catch');
     } else SND.thud(0.4);
-    f.decideAt = this.t + bobble + (dove ? 0.9 : 0) + (air ? (f.isOF ? 0.7 : 0.35) : f.isOF ? 1.0 : 0.5);
+    f.decideAt = this.t + bobble + (dove ? 0.9 : 0) + (air ? (f.isOF ? 0.7 : 0.35) : f.isOF ? 1.0 : 0.5) + f.transfer;
     // you can let it go as soon as the ball's out of the glove: no standing around
-    f.quickAt = this.t + bobble + (dove ? 0.7 : 0) + (air ? 0.15 : 0.25);
+    f.quickAt = this.t + bobble + (dove ? 0.7 : 0) + (air ? 0.15 : 0.25) + Math.max(0, f.transfer * 0.6);
     f.aimBase = null; f.promptStart = null;
   }
   recordOut(r, how, base) {
@@ -587,7 +620,7 @@ class Play {
     }
     const human = this.humanHolder(f) && f === this.uf;
     if (human && this.queuedThrow != null && t >= Math.max(f.quickAt, f.readyAt - 0.12)) {
-      const base = this.queuedThrow; this.queuedThrow = null; this.prompt = false; f.holding = false; this.execThrow(f, base); tutNote('throw'); return;
+      const base = this.queuedThrow; this.queuedThrow = null; this.prompt = false; f.holding = false; this.humanThrow(f, base); tutNote('throw'); return;
     }
     if (t < f.animHold) return;
     // a human carrying the ball: step on bags and tag runners on the way
@@ -612,7 +645,7 @@ class Play {
     }
     if (t < f.decideAt) return;
     if (this.hf && this.humanHolder(f)) {
-      if (this.queuedThrow != null) { const base = this.queuedThrow; this.queuedThrow = null; this.prompt = false; f.holding = false; this.execThrow(f, base); tutNote('throw'); return; }
+      if (this.queuedThrow != null) { const base = this.queuedThrow; this.queuedThrow = null; this.prompt = false; f.holding = false; this.humanThrow(f, base); tutNote('throw'); return; }
       if (this.userDef) {
         const anyRunning = this.R.some((r) => r.state === 'run');
         if (anyRunning || !f.holding) {
@@ -660,6 +693,18 @@ class Play {
     }
     return { type: 'hold' };
   }
+  // You pressed a base. If nobody can beat you to that bag, you take it there yourself (the
+  // first baseman fielding a grounder near the bag, a shortstop a step from second).
+  humanThrow(f, base) {
+    const bp = BASES[base], d = Math.hypot(bp.x - f.pos.x, bp.z - f.pos.z);
+    let other = Infinity;
+    for (const g of this.F) {
+      if (g === f || g.throwing || (g.downUntil && this.t < g.downUntil)) continue;
+      other = Math.min(other, runTime(Math.max(0, Math.hypot(bp.x - g.pos.x, bp.z - g.pos.z) - 2), g.speed, g.acc));
+    }
+    if (d < 7 || (d < 70 && runTime(Math.max(0, d - 1.4), f.speed, f.acc) <= other)) { f.runTo = base; f.promptStart = null; f.anim('run'); return; }
+    this.execThrow(f, base);
+  }
   execThrow(f, base) {
     const bp = BASES[base], d = Math.hypot(bp.x - f.pos.x, bp.z - f.pos.z);
     if (d < 7) { f.runTo = base; return; }
@@ -691,7 +736,7 @@ class Play {
     }
     if (recv) { recv.task = 'receive'; recv.recvAt = to; }
     const d = Math.hypot(to.x - from.x, to.z - from.z);
-    const errP = 0.008 + (75 - (f.pl.arm ?? 60)) * 0.0002 + (d > 200 ? 0.01 : 0);
+    const errP = Math.max(0.002, 0.008 + (75 - (f.pl.arm ?? 60)) * 0.0002 + (70 - f.fld) * 0.00018 + (d > 200 ? 0.01 : 0));
     this.ball.mode = 'throw'; this.ball.holder = null;
     this.ball.thr = { from, to, t0: this.t, T: Math.max(0.15, d / speed), arc: d * 0.02 + (d > 150 ? d * 0.03 : 0), base, err: Math.random() < errP, by: f, recv, relay: !!relay };
     f.task = 'hold';
