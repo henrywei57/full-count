@@ -253,7 +253,7 @@ function netSendFast(m) {
 // Custom rosters travel as data, so your friend doesn't need them saved.
 function netSendLobby() {
   if (NET.role !== 'host' || !NET.open) return;
-  const m = { t: 'lobby', me: meId(), side: menu.side, innings: menu.innings, diff: menu.diff, pdiff: menu.pdiff, ump: menu.ump, park: menu.park || '', hostSpec: teamSpec(menuTeam(menu.side ? 'home' : 'away')) };
+  const m = { t: 'lobby', me: meId(), coop: menu.coop ? 1 : 0, coopTeams: menu.coop ? [teamSpec(menuTeam('away')), teamSpec(menuTeam('home'))] : null, side: menu.side, innings: menu.innings, diff: menu.diff, pdiff: menu.pdiff, ump: menu.ump, park: menu.park || '', hostSpec: teamSpec(menuTeam(menu.side ? 'home' : 'away')) };
   const s = JSON.stringify(m);
   if (s !== NET.lobbySent) { NET.lobbySent = s; netSend(m); }
 }
@@ -266,7 +266,7 @@ function specOK(s) {
 function hostStartOnline() {
   if (!(NET.role === 'host' && NET.open) || onlineBlock()) return;
   const P = onlinePicks();
-  const cfg = { mode: 'online', teams: distinctSpecs(teamSpec(P.teams[0]), teamSpec(P.teams[1])), side: menu.side, innings: menu.innings, diff: menu.diff, pdiff: menu.pdiff, manual: 1, ump: menu.ump, park: menu.park || '', tok: Math.random().toString(36).slice(2, 12) };
+  const cfg = { mode: 'online', teams: distinctSpecs(teamSpec(P.teams[0]), teamSpec(P.teams[1])), side: menu.side, innings: menu.innings, diff: menu.diff, pdiff: menu.pdiff, manual: 1, ump: menu.ump, park: menu.park || '', coop: menu.coop ? 1 : 0, tok: Math.random().toString(36).slice(2, 12) };
   netSend({ t: 'start', cfg });
   startGame(cfg);
 }
@@ -313,11 +313,11 @@ function hostOnMsg(m) {
     case 'skip': skip(true); break;
     case 'trot': if (pl && (pl.hr || pl.awarded) && pl.t > 2) pl.skipTrot(); break;
     case 'pause': togglePause(!!m.v, true); break;
-    case 'sub': { const s = G.ctrl.indexOf('remote'); if (s >= 0 && ['ph', 'pr', 'def', 'pen', 'ibb'].includes(m.kind)) doSub(s, m.kind, m.target == null ? null : String(m.target), String(m.inId || '')); break; }
+    case 'sub': { const s = G.coop ? G.coopSide : G.ctrl.indexOf('remote'); if (s >= 0 && ['ph', 'pr', 'def', 'pen', 'ibb'].includes(m.kind)) doSub(s, m.kind, m.target == null ? null : String(m.target), String(m.inId || '')); break; }
     case 'again': if (G.phase === 'final') hostRestart(); break;
     case 'challenge':
-      if (G.phase === 'reviewWait' && G.review && G.review.who === 'remote') startReview();
-      else if (G.challengeable && G.challengeable.who === 'remote') startChallenge(G.challengeable.side);
+      if (G.phase === 'reviewWait' && G.review && canAct(G.review.who, 'remote')) startReview();
+      else if (G.challengeable && canAct(G.challengeable.who, 'remote')) startChallenge(G.challengeable.side);
       break;
   }
 }
@@ -393,8 +393,8 @@ function netGS() {
       pl: G.played[ti].map((x) => [x.pl.id, x.pos, x.for ? 1 : 0]), pi: G.pitched[ti].map((p) => p.id) })),
     dec: G.phase === 'final' ? decisions() : null,
     chal: G.challenges, ump: G.ump, specs: NET.specs.length,
-    chk: G.challengeable && G.challengeable.who === 'remote' ? G.challengeable.side : G.phase === 'reviewWait' && G.review && G.review.who === 'remote' ? G.review.side : -1,
-    rv: G.phase === 'reviewWait' && G.review && G.review.who === 'remote' ? G.review.c.base : 0,
+    chk: G.challengeable && canAct(G.challengeable.who, 'remote') ? G.challengeable.side : G.phase === 'reviewWait' && G.review && canAct(G.review.who, 'remote') ? G.review.side : -1,
+    rv: G.phase === 'reviewWait' && G.review && canAct(G.review.who, 'remote') ? G.review.c.base : 0,
   };
 }
 function netSnapshot() {

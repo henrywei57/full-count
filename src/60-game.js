@@ -25,30 +25,52 @@ const curPitcher = () => G.pitcher[1 - G.half];
 // Player Lock "skip": the CPU plays your part until the next batter
 const sideCtrl = (s) => (!G.ctrl ? 'cpu' : G.simAB && s === G.lockSide ? 'cpu' : G.ctrl[s]);
 // Practice drills (G.drill) hand one job to you and give the rest to the CPU.
+// Co-op (online, two players on one team against the CPU): you take turns in the batting
+// order (the host leads off) and whoever is up runs the bases; one of you pitches each inning
+// (the host in odd innings) while the other plays the field, then you swap.
+function coopWho(kind) {
+  if (kind === 'bat' || kind === 'run') return G.order[G.coopSide] % 2 === 0 ? 'host' : 'guest';
+  const pitcher = G.inning % 2 === 1 ? 'host' : 'guest';
+  return kind === 'pitch' ? pitcher : pitcher === 'host' ? 'guest' : 'host';
+}
+// what the co-op partner who isn't doing anything sees before the pitch
+function coopHint() {
+  const mine = NET.role === 'guest' ? 'guest' : 'host', batting = G.half === G.coopSide;
+  if (batting) return coopWho('bat') === mine ? '' : 'Co-op: your partner is up. You bat next.';
+  return coopWho('pitch') === mine ? '' : 'Co-op: your partner is pitching this inning. You have the field: get ready to make the plays.';
+}
+function coopCtrl(kind) { return NET.role !== 'spec' && coopWho(kind) === (NET.role === 'guest' ? 'guest' : 'host') ? 'local' : 'remote'; }
 function batCtrl() {
   if (!G.teams || !G.batter || G.drill === 'run' || G.drill === 'field') return 'cpu';
   const c = sideCtrl(G.half);
   if (c === 'cpu' || (G.lock && G.batter.id !== G.lock)) return 'cpu';
-  return c;
+  return c === 'coop' ? coopCtrl('bat') : c;
 }
 function pitchCtrl() {
   if (!G.teams || G.mode === 'derby' || G.drill === 'field' || G.drill === 'run' || G.drill === 'bat') return 'cpu';
   const c = sideCtrl(1 - G.half), p = curPitcher();
   if (c === 'cpu' || (G.lock && (!p || p.id !== G.lock))) return 'cpu';
-  return c;
+  return c === 'coop' ? coopCtrl('pitch') : c;
 }
 function fieldCtrl() {
   if (!G.teams || G.mode === 'derby' || G.drill === 'pitch' || G.drill === 'run' || G.drill === 'bat') return 'cpu';
   const c = sideCtrl(1 - G.half);
   if (c === 'cpu' || (G.lock && (G.lockFieldSim || !(G.fielders || []).some((f) => f.pl.id === G.lock)))) return 'cpu';
-  return c;
+  return c === 'coop' ? coopCtrl('field') : c;
 }
-function runCtrl() { if (!G.teams || G.mode === 'derby' || G.drill === 'pitch' || G.drill === 'field') return 'cpu'; return sideCtrl(G.half); }
+function runCtrl() {
+  if (!G.teams || G.mode === 'derby' || G.drill === 'pitch' || G.drill === 'field') return 'cpu';
+  const c = sideCtrl(G.half);
+  return c === 'coop' ? coopCtrl('run') : c;
+}
 const userBats = () => batCtrl() === 'local';
 const userPitches = () => pitchCtrl() === 'local';
 const userFields = () => fieldCtrl() === 'local';
 const userRuns = () => runCtrl() === 'local';
-const localSide = () => (G.ctrl ? G.ctrl.indexOf('local') : -1);
+const localSide = () => (G.coop ? (NET.role === 'spec' ? -1 : G.coopSide) : G.ctrl ? G.ctrl.indexOf('local') : -1);
+// who may challenge a call or make a move for a side: 'both' when it's a co-op team
+const humanWho = (c) => (c === 'coop' ? 'both' : c);
+const canAct = (who, me) => who === me || who === 'both';
 function setPhase(name, dur = 0) { G.phase = name; G.pt = 0; G.dur = dur; }
 function bstat(pl) { if (!G.stats.has(pl.id)) G.stats.set(pl.id, { pa: 0, ab: 0, h: 0, d: 0, t: 0, hr: 0, rbi: 0, bb: 0, k: 0, r: 0, sb: 0, cs: 0 }); return G.stats.get(pl.id); }
 function pstat(pl) { if (!G.pstats.has(pl.id)) G.pstats.set(pl.id, { outs: 0, h: 0, r: 0, er: 0, bb: 0, k: 0, pc: 0, hr: 0, wp: 0 }); return G.pstats.get(pl.id); }
@@ -169,9 +191,11 @@ function startGame(cfg) {
   // look players up by id (lock, online, HUD); a custom team's players are only registered for the game they play in
   for (const t of G.teams) for (const p of teamPlayers(t)) PBYID[p.id] = p;
   G.lock = null;
+  G.coop = !!(cfg.mode === 'online' && cfg.coop); G.coopSide = cfg.side | 0;
   G.season = cfg.season || null;   // which season game this is (63-season.js)
   if (cfg.mode === 'exhibition' || cfg.mode === 'lock' || cfg.mode === 'season') { G.ctrl = ['cpu', 'cpu']; G.ctrl[cfg.side] = 'local'; }
   else if (cfg.mode === 'derby') G.ctrl = ['local', 'cpu'];
+  else if (cfg.mode === 'online' && cfg.coop) { G.ctrl = ['cpu', 'cpu']; G.ctrl[cfg.side] = 'coop'; }   // co-op: both of you, one side
   else if (cfg.mode === 'online') { G.ctrl = ['remote', 'remote']; if (!cfg.spec) G.ctrl[cfg.guest ? 1 - cfg.side : cfg.side] = 'local'; }   // a spectator controls nothing
   else if (G.drill) G.ctrl = youBat ? ['local', 'cpu'] : ['cpu', 'local'];
   else G.ctrl = ['cpu', 'cpu'];
@@ -338,6 +362,7 @@ function prePitchUI() {
   } else if (ub) setHint('Aim the PCI &middot; <kbd>Click</kbd> swing &middot; <kbd>Right-click</kbd> power &middot; <kbd>J</kbd> contact &middot; <kbd>B</kbd> bunt' + (G.bases.some(Boolean) && userRuns() && G.mode !== 'derby' ? ' &middot; <kbd>E</kbd> steal' : ''));
   else if (userRuns() && G.bases.some(Boolean)) setHint('You run the bases &middot; <kbd>E</kbd> steal &middot; <kbd>Q</kbd> call it off &middot; click a runner\'s tag to pick just him');
   else if (G.drill === 'field') setHint('Fielding practice &middot; <kbd>WASD</kbd> move &middot; <kbd>1</kbd>&ndash;<kbd>4</kbd> throw');
+  else if (G.coop && localSide() >= 0) setHint(coopHint());
   else if (G.mode === 'online') setHint('Waiting for your opponent&hellip;');
   else if (G.mode === 'lock' && G.half === 1 - G.lockSide && G.fielders.some((f) => f.pl.id === G.lock)) setHint('You are in the field &middot; get within the gold ring of the ball to field it');
   else setHint(G.mode === 'lock' ? (G.simAB ? 'Skipping to the next batter&hellip;' : 'Simulating until you are up&hellip;') : '');
@@ -949,11 +974,11 @@ function setupReview(pl) {
   const c = cand.find((x) => x.call !== x.truth) || cand.reduce((a, b) => (b.margin < a.margin ? b : a));
   const side = c.call === 'out' ? G.half : 1 - G.half;
   if (G.reviews[side] <= 0) return false;
-  const who = G.lock ? 'cpu' : sideCtrl(side), wrong = c.call !== c.truth;
+  const who = G.lock ? 'cpu' : humanWho(sideCtrl(side)), wrong = c.call !== c.truth;
   if (who === 'cpu') { if (Math.random() >= (wrong ? 0.85 : 0.05)) return false; G.cpuChallengeAt = G.now + 1.0; }
   else if (c.margin >= 0.12) return false;   // not close enough to ask
   G.review = { c, side, who, pl };
-  if (who === 'local') setHint(`Close play at ${BASE_WORD[c.base]}: called <b>${c.call}</b> &middot; <kbd>C</kbd> challenge it &middot; <kbd>Enter</kbd> play on`);
+  if (canAct(who, 'local')) setHint(`Close play at ${BASE_WORD[c.base]}: called <b>${c.call}</b> &middot; <kbd>C</kbd> challenge it &middot; <kbd>Enter</kbd> play on`);
   setPhase('reviewWait', who === 'cpu' ? 1.4 : 3.4);
   hudScore();
   return true;
@@ -1084,7 +1109,7 @@ function setupChallenge(call) {
   const side = call === 'called' ? G.half : 1 - G.half;
   if (G.challenges[side] <= 0) return;
   G.challengeable = { side, call, truth: G.isStrike ? 'called' : 'ball', x: G.cross.x, y: G.cross.y, pre: { ...G.preCall } };
-  let c = sideCtrl(side);
+  let c = humanWho(sideCtrl(side));
   // like MLB, only the batter, pitcher or catcher may challenge; in Player Lock that has to be you
   if (G.lock && side === G.lockSide) {
     const catcher = G.fByRole.C && G.fByRole.C.pl;
@@ -1098,7 +1123,7 @@ function setupChallenge(call) {
     if (Math.random() < (wrong ? (big ? 0.8 : 0.3) : 0.015)) G.cpuChallengeAt = G.now + 0.7; else G.challengeable = null;
   } else {
     G.dur = Math.max(G.dur, 2.8);
-    if (c === 'local') setHint(`<kbd>C</kbd> challenge the call &middot; ${G.challenges[side]} left`);
+    if (canAct(c, 'local')) setHint(`<kbd>C</kbd> challenge the call &middot; ${G.challenges[side]} left`);
   }
   hudScore();
 }

@@ -718,6 +718,7 @@ span.chip{cursor:default}
       <div class="opts">
         <div class="opt hidden" id="optLesson"><span>LESSONS</span><div class="seg" data-key="tutLesson"><button data-v="-1" class="on">All, in order</button><button data-v="0">Hitting</button><button data-v="1">Pitching</button><button data-v="2">Fielding</button><button data-v="3">Baserunning</button><button data-v="4">Pickoffs</button></div></div>
         <div class="opt hidden" id="optDrill"><span>DRILL</span><div class="seg" data-key="drill"><button data-v="0" class="on">Batting</button><button data-v="1">Pitching</button><button data-v="2">Baserunning</button><button data-v="3">Fielding</button></div></div>
+        <div class="opt hidden" id="optCoop"><span>ONLINE</span><div class="seg" data-key="coop"><button data-v="0" class="on">Versus: each other</button><button data-v="1">Co-op: together vs the CPU</button></div></div>
         <div class="opt" id="optSide"><span>YOU PLAY AS</span><div class="seg" data-key="side"><button data-v="0">Away</button><button data-v="1" class="on">Home</button></div></div>
         <div class="opt hidden" id="optSeasonLen"><span>SEASON</span><div class="seg" data-key="seasonLen"><button data-v="12">12 games</button><button data-v="30" class="on">30</button><button data-v="60">60</button><button data-v="162">162</button></div></div>
         <div class="opt" id="optInn"><span>INNINGS</span><div class="seg" data-key="innings"><button data-v="3" class="on">3</button><button data-v="6">6</button><button data-v="9">9</button></div></div>
@@ -8825,30 +8826,52 @@ const curPitcher = () => G.pitcher[1 - G.half];
 // Player Lock "skip": the CPU plays your part until the next batter
 const sideCtrl = (s) => (!G.ctrl ? 'cpu' : G.simAB && s === G.lockSide ? 'cpu' : G.ctrl[s]);
 // Practice drills (G.drill) hand one job to you and give the rest to the CPU.
+// Co-op (online, two players on one team against the CPU): you take turns in the batting
+// order (the host leads off) and whoever is up runs the bases; one of you pitches each inning
+// (the host in odd innings) while the other plays the field, then you swap.
+function coopWho(kind) {
+  if (kind === 'bat' || kind === 'run') return G.order[G.coopSide] % 2 === 0 ? 'host' : 'guest';
+  const pitcher = G.inning % 2 === 1 ? 'host' : 'guest';
+  return kind === 'pitch' ? pitcher : pitcher === 'host' ? 'guest' : 'host';
+}
+// what the co-op partner who isn't doing anything sees before the pitch
+function coopHint() {
+  const mine = NET.role === 'guest' ? 'guest' : 'host', batting = G.half === G.coopSide;
+  if (batting) return coopWho('bat') === mine ? '' : 'Co-op: your partner is up. You bat next.';
+  return coopWho('pitch') === mine ? '' : 'Co-op: your partner is pitching this inning. You have the field: get ready to make the plays.';
+}
+function coopCtrl(kind) { return NET.role !== 'spec' && coopWho(kind) === (NET.role === 'guest' ? 'guest' : 'host') ? 'local' : 'remote'; }
 function batCtrl() {
   if (!G.teams || !G.batter || G.drill === 'run' || G.drill === 'field') return 'cpu';
   const c = sideCtrl(G.half);
   if (c === 'cpu' || (G.lock && G.batter.id !== G.lock)) return 'cpu';
-  return c;
+  return c === 'coop' ? coopCtrl('bat') : c;
 }
 function pitchCtrl() {
   if (!G.teams || G.mode === 'derby' || G.drill === 'field' || G.drill === 'run' || G.drill === 'bat') return 'cpu';
   const c = sideCtrl(1 - G.half), p = curPitcher();
   if (c === 'cpu' || (G.lock && (!p || p.id !== G.lock))) return 'cpu';
-  return c;
+  return c === 'coop' ? coopCtrl('pitch') : c;
 }
 function fieldCtrl() {
   if (!G.teams || G.mode === 'derby' || G.drill === 'pitch' || G.drill === 'run' || G.drill === 'bat') return 'cpu';
   const c = sideCtrl(1 - G.half);
   if (c === 'cpu' || (G.lock && (G.lockFieldSim || !(G.fielders || []).some((f) => f.pl.id === G.lock)))) return 'cpu';
-  return c;
+  return c === 'coop' ? coopCtrl('field') : c;
 }
-function runCtrl() { if (!G.teams || G.mode === 'derby' || G.drill === 'pitch' || G.drill === 'field') return 'cpu'; return sideCtrl(G.half); }
+function runCtrl() {
+  if (!G.teams || G.mode === 'derby' || G.drill === 'pitch' || G.drill === 'field') return 'cpu';
+  const c = sideCtrl(G.half);
+  return c === 'coop' ? coopCtrl('run') : c;
+}
 const userBats = () => batCtrl() === 'local';
 const userPitches = () => pitchCtrl() === 'local';
 const userFields = () => fieldCtrl() === 'local';
 const userRuns = () => runCtrl() === 'local';
-const localSide = () => (G.ctrl ? G.ctrl.indexOf('local') : -1);
+const localSide = () => (G.coop ? (NET.role === 'spec' ? -1 : G.coopSide) : G.ctrl ? G.ctrl.indexOf('local') : -1);
+// who may challenge a call or make a move for a side: 'both' when it's a co-op team
+const humanWho = (c) => (c === 'coop' ? 'both' : c);
+const canAct = (who, me) => who === me || who === 'both';
 function setPhase(name, dur = 0) { G.phase = name; G.pt = 0; G.dur = dur; }
 function bstat(pl) { if (!G.stats.has(pl.id)) G.stats.set(pl.id, { pa: 0, ab: 0, h: 0, d: 0, t: 0, hr: 0, rbi: 0, bb: 0, k: 0, r: 0, sb: 0, cs: 0 }); return G.stats.get(pl.id); }
 function pstat(pl) { if (!G.pstats.has(pl.id)) G.pstats.set(pl.id, { outs: 0, h: 0, r: 0, er: 0, bb: 0, k: 0, pc: 0, hr: 0, wp: 0 }); return G.pstats.get(pl.id); }
@@ -8969,9 +8992,11 @@ function startGame(cfg) {
   // look players up by id (lock, online, HUD); a custom team's players are only registered for the game they play in
   for (const t of G.teams) for (const p of teamPlayers(t)) PBYID[p.id] = p;
   G.lock = null;
+  G.coop = !!(cfg.mode === 'online' && cfg.coop); G.coopSide = cfg.side | 0;
   G.season = cfg.season || null;   // which season game this is (63-season.js)
   if (cfg.mode === 'exhibition' || cfg.mode === 'lock' || cfg.mode === 'season') { G.ctrl = ['cpu', 'cpu']; G.ctrl[cfg.side] = 'local'; }
   else if (cfg.mode === 'derby') G.ctrl = ['local', 'cpu'];
+  else if (cfg.mode === 'online' && cfg.coop) { G.ctrl = ['cpu', 'cpu']; G.ctrl[cfg.side] = 'coop'; }   // co-op: both of you, one side
   else if (cfg.mode === 'online') { G.ctrl = ['remote', 'remote']; if (!cfg.spec) G.ctrl[cfg.guest ? 1 - cfg.side : cfg.side] = 'local'; }   // a spectator controls nothing
   else if (G.drill) G.ctrl = youBat ? ['local', 'cpu'] : ['cpu', 'local'];
   else G.ctrl = ['cpu', 'cpu'];
@@ -9138,6 +9163,7 @@ function prePitchUI() {
   } else if (ub) setHint('Aim the PCI &middot; <kbd>Click</kbd> swing &middot; <kbd>Right-click</kbd> power &middot; <kbd>J</kbd> contact &middot; <kbd>B</kbd> bunt' + (G.bases.some(Boolean) && userRuns() && G.mode !== 'derby' ? ' &middot; <kbd>E</kbd> steal' : ''));
   else if (userRuns() && G.bases.some(Boolean)) setHint('You run the bases &middot; <kbd>E</kbd> steal &middot; <kbd>Q</kbd> call it off &middot; click a runner\'s tag to pick just him');
   else if (G.drill === 'field') setHint('Fielding practice &middot; <kbd>WASD</kbd> move &middot; <kbd>1</kbd>&ndash;<kbd>4</kbd> throw');
+  else if (G.coop && localSide() >= 0) setHint(coopHint());
   else if (G.mode === 'online') setHint('Waiting for your opponent&hellip;');
   else if (G.mode === 'lock' && G.half === 1 - G.lockSide && G.fielders.some((f) => f.pl.id === G.lock)) setHint('You are in the field &middot; get within the gold ring of the ball to field it');
   else setHint(G.mode === 'lock' ? (G.simAB ? 'Skipping to the next batter&hellip;' : 'Simulating until you are up&hellip;') : '');
@@ -9749,11 +9775,11 @@ function setupReview(pl) {
   const c = cand.find((x) => x.call !== x.truth) || cand.reduce((a, b) => (b.margin < a.margin ? b : a));
   const side = c.call === 'out' ? G.half : 1 - G.half;
   if (G.reviews[side] <= 0) return false;
-  const who = G.lock ? 'cpu' : sideCtrl(side), wrong = c.call !== c.truth;
+  const who = G.lock ? 'cpu' : humanWho(sideCtrl(side)), wrong = c.call !== c.truth;
   if (who === 'cpu') { if (Math.random() >= (wrong ? 0.85 : 0.05)) return false; G.cpuChallengeAt = G.now + 1.0; }
   else if (c.margin >= 0.12) return false;   // not close enough to ask
   G.review = { c, side, who, pl };
-  if (who === 'local') setHint(`Close play at ${BASE_WORD[c.base]}: called <b>${c.call}</b> &middot; <kbd>C</kbd> challenge it &middot; <kbd>Enter</kbd> play on`);
+  if (canAct(who, 'local')) setHint(`Close play at ${BASE_WORD[c.base]}: called <b>${c.call}</b> &middot; <kbd>C</kbd> challenge it &middot; <kbd>Enter</kbd> play on`);
   setPhase('reviewWait', who === 'cpu' ? 1.4 : 3.4);
   hudScore();
   return true;
@@ -9884,7 +9910,7 @@ function setupChallenge(call) {
   const side = call === 'called' ? G.half : 1 - G.half;
   if (G.challenges[side] <= 0) return;
   G.challengeable = { side, call, truth: G.isStrike ? 'called' : 'ball', x: G.cross.x, y: G.cross.y, pre: { ...G.preCall } };
-  let c = sideCtrl(side);
+  let c = humanWho(sideCtrl(side));
   // like MLB, only the batter, pitcher or catcher may challenge; in Player Lock that has to be you
   if (G.lock && side === G.lockSide) {
     const catcher = G.fByRole.C && G.fByRole.C.pl;
@@ -9898,7 +9924,7 @@ function setupChallenge(call) {
     if (Math.random() < (wrong ? (big ? 0.8 : 0.3) : 0.015)) G.cpuChallengeAt = G.now + 0.7; else G.challengeable = null;
   } else {
     G.dur = Math.max(G.dur, 2.8);
-    if (c === 'local') setHint(`<kbd>C</kbd> challenge the call &middot; ${G.challenges[side]} left`);
+    if (canAct(c, 'local')) setHint(`<kbd>C</kbd> challenge the call &middot; ${G.challenges[side]} left`);
   }
   hudScore();
 }
@@ -10704,7 +10730,7 @@ function h2hGet(uid) {
 }
 function h2hResult() {
   const opp = NET.opp, me = mySide();
-  if (!opp || me < 0 || G.h2hDone === G.gameId || typeof Cloud === 'undefined' || !Cloud.profile) return;
+  if (G.coop || !opp || me < 0 || G.h2hDone === G.gameId || typeof Cloud === 'undefined' || !Cloud.profile) return;
   G.h2hDone = G.gameId;
   const won = G.score[me] > G.score[1 - me], cur = h2hGet(opp.uid) || { w: 0, l: 0 }, rec = { w: cur.w + (won ? 1 : 0), l: cur.l + (won ? 0 : 1) };
   const all = h2hLocal(); all[opp.uid] = { name: opp.name, ...rec, at: Date.now() };
@@ -11689,7 +11715,7 @@ function netSendFast(m) {
 // Custom rosters travel as data, so your friend doesn't need them saved.
 function netSendLobby() {
   if (NET.role !== 'host' || !NET.open) return;
-  const m = { t: 'lobby', me: meId(), side: menu.side, innings: menu.innings, diff: menu.diff, pdiff: menu.pdiff, ump: menu.ump, park: menu.park || '', hostSpec: teamSpec(menuTeam(menu.side ? 'home' : 'away')) };
+  const m = { t: 'lobby', me: meId(), coop: menu.coop ? 1 : 0, coopTeams: menu.coop ? [teamSpec(menuTeam('away')), teamSpec(menuTeam('home'))] : null, side: menu.side, innings: menu.innings, diff: menu.diff, pdiff: menu.pdiff, ump: menu.ump, park: menu.park || '', hostSpec: teamSpec(menuTeam(menu.side ? 'home' : 'away')) };
   const s = JSON.stringify(m);
   if (s !== NET.lobbySent) { NET.lobbySent = s; netSend(m); }
 }
@@ -11702,7 +11728,7 @@ function specOK(s) {
 function hostStartOnline() {
   if (!(NET.role === 'host' && NET.open) || onlineBlock()) return;
   const P = onlinePicks();
-  const cfg = { mode: 'online', teams: distinctSpecs(teamSpec(P.teams[0]), teamSpec(P.teams[1])), side: menu.side, innings: menu.innings, diff: menu.diff, pdiff: menu.pdiff, manual: 1, ump: menu.ump, park: menu.park || '', tok: Math.random().toString(36).slice(2, 12) };
+  const cfg = { mode: 'online', teams: distinctSpecs(teamSpec(P.teams[0]), teamSpec(P.teams[1])), side: menu.side, innings: menu.innings, diff: menu.diff, pdiff: menu.pdiff, manual: 1, ump: menu.ump, park: menu.park || '', coop: menu.coop ? 1 : 0, tok: Math.random().toString(36).slice(2, 12) };
   netSend({ t: 'start', cfg });
   startGame(cfg);
 }
@@ -11749,11 +11775,11 @@ function hostOnMsg(m) {
     case 'skip': skip(true); break;
     case 'trot': if (pl && (pl.hr || pl.awarded) && pl.t > 2) pl.skipTrot(); break;
     case 'pause': togglePause(!!m.v, true); break;
-    case 'sub': { const s = G.ctrl.indexOf('remote'); if (s >= 0 && ['ph', 'pr', 'def', 'pen', 'ibb'].includes(m.kind)) doSub(s, m.kind, m.target == null ? null : String(m.target), String(m.inId || '')); break; }
+    case 'sub': { const s = G.coop ? G.coopSide : G.ctrl.indexOf('remote'); if (s >= 0 && ['ph', 'pr', 'def', 'pen', 'ibb'].includes(m.kind)) doSub(s, m.kind, m.target == null ? null : String(m.target), String(m.inId || '')); break; }
     case 'again': if (G.phase === 'final') hostRestart(); break;
     case 'challenge':
-      if (G.phase === 'reviewWait' && G.review && G.review.who === 'remote') startReview();
-      else if (G.challengeable && G.challengeable.who === 'remote') startChallenge(G.challengeable.side);
+      if (G.phase === 'reviewWait' && G.review && canAct(G.review.who, 'remote')) startReview();
+      else if (G.challengeable && canAct(G.challengeable.who, 'remote')) startChallenge(G.challengeable.side);
       break;
   }
 }
@@ -11829,8 +11855,8 @@ function netGS() {
       pl: G.played[ti].map((x) => [x.pl.id, x.pos, x.for ? 1 : 0]), pi: G.pitched[ti].map((p) => p.id) })),
     dec: G.phase === 'final' ? decisions() : null,
     chal: G.challenges, ump: G.ump, specs: NET.specs.length,
-    chk: G.challengeable && G.challengeable.who === 'remote' ? G.challengeable.side : G.phase === 'reviewWait' && G.review && G.review.who === 'remote' ? G.review.side : -1,
-    rv: G.phase === 'reviewWait' && G.review && G.review.who === 'remote' ? G.review.c.base : 0,
+    chk: G.challengeable && canAct(G.challengeable.who, 'remote') ? G.challengeable.side : G.phase === 'reviewWait' && G.review && canAct(G.review.who, 'remote') ? G.review.side : -1,
+    rv: G.phase === 'reviewWait' && G.review && canAct(G.review.who, 'remote') ? G.review.c.base : 0,
   };
 }
 function netSnapshot() {
@@ -13695,9 +13721,9 @@ function absReveal(overturned, truth) {
 }
 function requestChallenge() {
   if (isGuest()) { if (G.chkSide === localSide()) netSend({ t: 'act', a: 'challenge' }); return; }
-  if (G.phase === 'reviewWait' && G.review && G.review.who === 'local') { startReview(); return; }
+  if (G.phase === 'reviewWait' && G.review && canAct(G.review.who, 'local')) { startReview(); return; }
   const c = G.challengeable;
-  if (c && c.who === 'local') startChallenge(c.side);
+  if (c && canAct(c.who, 'local')) startChallenge(c.side);
 }
 
 // while you hold the ball: 1-4 throw to a base, and the smart throw is ringed in green
@@ -14286,7 +14312,7 @@ function primaryAction(kind) {
 function skip(force) {
   if (isGuest()) { netSend({ t: 'act', a: 'skip' }); return; }
   // waiting on a challenge: only the side that can challenge can wave it off
-  if (G.phase === 'reviewWait') { if (G.review && G.review.who === (force ? 'remote' : 'local')) G.pt = G.dur; return; }
+  if (G.phase === 'reviewWait') { if (G.review && canAct(G.review.who, force ? 'remote' : 'local')) G.pt = G.dur; return; }
   if (['postPitch', 'postPlay', 'postFoul', 'halfIntro', 'break', 'derbyResult'].includes(G.phase) && (force || G.pt > 0.3)) G.pt = G.dur;
 }
 function toggleZone() { settings.zone = !settings.zone; saveSettings(); zoneGroup.visible = settings.zone && (userBats() || userPitches()) && ['prePitch', 'windup', 'pitch'].includes(G.phase); $('btnZone').textContent = `Strike zone: ${settings.zone ? 'On' : 'Off'}`; }
@@ -14310,7 +14336,7 @@ function togglePause(force, remote) {
 }
 
 // ------------------------------------------------------------------ menus ----
-const menu = { mode: 'exhibition', away: 'NYY', home: 'LAD', park: '', seasonLen: 30, side: 1, innings: 3, diff: 1, pdiff: 1, manual: 1, batter: 3, lockPick: 'h3', ump: 1, view: 2, lockField: 1, lockSkip: 1, batCam: settings.batCam || 0, netTeam: 'LAD', drill: 0, tutLesson: -1 };
+const menu = { mode: 'exhibition', away: 'NYY', home: 'LAD', park: '', seasonLen: 30, coop: 0, side: 1, innings: 3, diff: 1, pdiff: 1, manual: 1, batter: 3, lockPick: 'h3', ump: 1, view: 2, lockField: 1, lockSkip: 1, batCam: settings.batCam || 0, netTeam: 'LAD', drill: 0, tutLesson: -1 };
 try { Object.assign(menu, JSON.parse(localStorage.getItem('fullcount.menu') || '{}')); } catch (e) { /* ignore */ }
 menu.batCam = settings.batCam || 0;   // the pause screen can change it too; settings wins
 // teams used to be saved as an index into the built-in list
@@ -14350,6 +14376,12 @@ function lockOptions(team) {
 }
 // online: the two picks shown in the matchup, as [away, home] teams plus which one is mine to change
 function onlinePicks() {
+  // co-op: the host picks both teams; you two share one side
+  if (NET.role === 'guest' && NET.lobby && NET.lobby.coop) {
+    const L = NET.lobby, t = (L.coopTeams || []).map((x) => (specOK(x) ? teamFromSpec(specOK(x)) : null));
+    return { teams: [t[0] || null, t[1] || null], mySide: L.side, coop: true };
+  }
+  if (NET.role !== 'guest' && menu.coop) return { teams: [menuTeam('away'), menuTeam('home')], mySide: menu.side, coop: true };
   if (NET.role === 'guest') {
     const L = NET.lobby, mySide = L ? 1 - L.side : 1, mine = menuTeam('netTeam'), theirs = L && L.hostSpec ? teamFromSpec(L.hostSpec) : null;
     return { teams: mySide ? [theirs, mine] : [mine, theirs], mySide };
@@ -14372,19 +14404,25 @@ function renderMenu() {
   $('matchup').classList.toggle('hidden', !showTeams);
   if (online && showTeams) {
     const P = onlinePicks();
-    $('pickA').innerHTML = teamPickHTML(P.mySide === 0 ? 'AWAY · YOU' : 'AWAY · FRIEND', P.teams[0], 'away', P.mySide === 0);
-    $('pickH').innerHTML = teamPickHTML(P.mySide === 1 ? 'HOME · YOU' : 'HOME · FRIEND', P.teams[1], 'home', P.mySide === 1);
+    if (P.coop) {
+      $('pickA').innerHTML = teamPickHTML(P.mySide === 0 ? 'AWAY · YOU TWO' : 'AWAY · CPU', P.teams[0], 'away', !guest);
+      $('pickH').innerHTML = teamPickHTML(P.mySide === 1 ? 'HOME · YOU TWO' : 'HOME · CPU', P.teams[1], 'home', !guest);
+    } else {
+      $('pickA').innerHTML = teamPickHTML(P.mySide === 0 ? 'AWAY · YOU' : 'AWAY · FRIEND', P.teams[0], 'away', P.mySide === 0);
+      $('pickH').innerHTML = teamPickHTML(P.mySide === 1 ? 'HOME · YOU' : 'HOME · FRIEND', P.teams[1], 'home', P.mySide === 1);
+    }
   } else if (showTeams) {
     $('pickA').innerHTML = teamPickHTML(derby ? 'BP PITCHER FROM' : prac ? 'OPPONENT' : 'AWAY', menuTeam('away'), 'away');
     $('pickH').innerHTML = teamPickHTML(derby || prac || season ? 'YOUR TEAM' : 'HOME', menuTeam('home'), 'home');
   }
   $('pickA').classList.toggle('hidden', derby || season); $('vsLabel').classList.toggle('hidden', derby || season);
   $('optSide').classList.toggle('hidden', derby || spec || prac || season || !showTeams);
+  $('optCoop').classList.toggle('hidden', !online || !showTeams);
   $('optSeasonLen').classList.toggle('hidden', !season || activeSeason);
   $('optDrill').classList.toggle('hidden', !prac || tut);
   $('optLesson').classList.toggle('hidden', !tut);
   $('tutNew').classList.toggle('hidden', (() => { try { return !!localStorage.getItem('fullcount.tutSeen'); } catch (e) { return true; } })());
-  $('optSide').querySelector('span').textContent = lock ? 'YOUR TEAM' : 'YOU PLAY AS';
+  $('optSide').querySelector('span').textContent = lock ? 'YOUR TEAM' : online && (guest ? L.coop : menu.coop) ? 'YOU TWO PLAY' : 'YOU PLAY AS';
   $('optInn').classList.toggle('hidden', derby || prac || !showTeams);
   $('optDiff').classList.toggle('hidden', spec || tut || !showTeams);
   $('optPDiff').classList.toggle('hidden', spec || tut || derby || !showTeams);
@@ -14396,7 +14434,7 @@ function renderMenu() {
   $('optLockSkip').classList.toggle('hidden', !lock);
   $('optUmp').classList.toggle('hidden', derby || tut || !showTeams);
   $('optPark').classList.toggle('hidden', tut || season || !showTeams);
-  for (const el of ['optSide', 'optInn', 'optDiff', 'optPDiff', 'optUmp', 'optPark']) $(el).style.pointerEvents = guest ? 'none' : '';
+  for (const el of ['optSide', 'optInn', 'optDiff', 'optPDiff', 'optUmp', 'optPark', 'optCoop']) $(el).style.pointerEvents = guest ? 'none' : '';
   if (showTeams) {
     // the ballpark: the home team's, or any of the others
     const hk = online ? onlinePicks().teams[1] : menuTeam('home'), hp = (hk && PARKS[hk.park || hk.key]) || PARKS.FC;
@@ -14437,7 +14475,7 @@ function renderMenu() {
 // why the host can't start the online game yet ('' when it's fine)
 function onlineBlock() {
   const P = onlinePicks();
-  if (!P.teams[1 - P.mySide]) return 'Waiting for your friend to pick a team…';
+  if (!P.coop && !P.teams[1 - P.mySide]) return 'Waiting for your friend to pick a team…';
   if (P.teams.some((t) => t.custom && t.cost > ROSTER_BUDGET)) return 'A custom roster is over the point cap. Fix it in the Roster Builder first.';
   return '';
 }
@@ -14454,6 +14492,7 @@ function buildMenu() {
     const k = b.dataset.k, d = +b.dataset.d;
     if (menu.mode === 'online') {
       const P = onlinePicks();
+      if (P.coop) { if (NET.role !== 'guest') cycleTeam(k, d, menu[k === 'away' ? 'home' : 'away']); renderMenu(); return; }
       if ((k === 'home' ? 1 : 0) !== P.mySide) return;
       if (NET.role === 'guest') { cycleTeam('netTeam', d); netSendPick(); }
       else cycleTeam(k, d);
@@ -14470,8 +14509,9 @@ function buildMenu() {
     if (!v) return;
     if (menu.mode === 'online') {
       const P = onlinePicks();
-      if ((k === 'home' ? 1 : 0) !== P.mySide) return;
-      if (NET.role === 'guest') { menu.netTeam = v; netSendPick(); } else menu[k] = v;
+      if (P.coop) { if (NET.role !== 'guest') menu[k] = v; }
+      else if ((k === 'home' ? 1 : 0) !== P.mySide) return;
+      else if (NET.role === 'guest') { menu.netTeam = v; netSendPick(); } else menu[k] = v;
     } else {
       const other = menu[k === 'away' ? 'home' : 'away'];
       if (v === other && menu.mode !== 'derby') return;
