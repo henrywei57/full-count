@@ -56,7 +56,7 @@ function subIn(ti, outPl, inPl, pos = outPl.pos) {
 }
 // is this side yours to manage right now, and what can you do?
 function canManage(ti) {
-  return G.teams && !G.drill && G.mode !== 'derby' && G.mode !== 'lock' && !G.replay && (G.phase === 'prePitch' || G.phase === 'halfIntro') && !(G.phase === 'prePitch' && G.pitchUI.state !== 'aim' && pitchCtrl() === 'local');
+  return G.teams && !G.drill && G.mode !== 'derby' && G.mode !== 'lock' && !G.squad && !G.replay && (G.phase === 'prePitch' || G.phase === 'halfIntro') && !(G.phase === 'prePitch' && G.pitchUI.state !== 'aim' && pitchCtrl() === 'local');
 }
 function subRules(ti) {
   const ok = canManage(ti), bat = ti === G.half, pre = G.phase === 'prePitch';
@@ -118,7 +118,7 @@ const POS_NAME = { C: 'catcher', '1B': 'first', '2B': 'second', '3B': 'third', S
 function cpuManager() {
   if (G.drill || G.mode === 'derby') return;
   const ti = G.half;
-  if (sideCtrl(ti) !== 'cpu' || G.lock) return;
+  if (sideCtrl(ti) !== 'cpu' || (G.lock && !G.squad)) return;   // a squad: the CPU manages, but never subs out one of you
   const lateClose = G.inning >= G.innings - 1 && Math.abs(G.score[0] - G.score[1]) <= 2;
   if (!lateClose || !G.bench[ti].length) return;
   const next = G.lu[ti][G.order[ti] % 9];
@@ -126,13 +126,13 @@ function cpuManager() {
   // keep the only catcher in the game
   const playsC = (p) => (p.def ? !!p.def.C : !!(p.mlbId && POOL_H.get(p.mlbId) && POOL_H.get(p.mlbId).def.C));
   const lastC = next.pos === 'C' && !G.bench[ti].some(playsC);
-  if (best && !lastC && batScore(best) - batScore(next) >= 18 && Math.random() < 0.7) {
+  if (best && !lastC && !seatOf(next.id) && batScore(best) - batScore(next) >= 18 && Math.random() < 0.7) {
     const np = subIn(ti, next, best);
     if (np) { hudBanner('PINCH HITTER', `${np.name} bats for ${lastName(next.name)}`, ''); Caster.line(`${np.name} will pinch-hit for ${lastName(next.name)}.`, true, { queue: true }); }
   }
   for (const b of [3, 2]) {
     const r = G.bases[b];
-    if (!r || r.spd >= 60) continue;
+    if (!r || r.spd >= 60 || seatOf(r.id)) continue;
     const fast = G.bench[ti].slice().sort((a, c) => c.spd - a.spd)[0];
     if (fast && fast.spd - r.spd >= 22 && Math.random() < 0.6) {
       const np = subIn(ti, r, fast);
@@ -147,7 +147,7 @@ const TM = { pending: null };   // { kind: 'ph' | 'pr' | 'def', target }
 function mySide() { return G.mode === 'online' ? localSide() : G.ctrl ? G.ctrl.indexOf('local') : -1; }
 function openTeam() {
   const ti = mySide();
-  if (ti < 0 || !G.teams || G.mode === 'lock' || G.drill || G.mode === 'derby') return;
+  if (ti < 0 || !G.teams || G.mode === 'lock' || G.squad || G.drill || G.mode === 'derby') return;
   TM.pending = null;
   $('teamScreen').classList.remove('hidden');
   // the game waits while you think (online it keeps going: your friend is waiting too)
@@ -204,7 +204,7 @@ function teamMove(kind, target, inId) {
   renderTeam();
 }
 // I: put the batter on intentionally (your team in the field, before a pitch)
-function requestIBB() { const ti = mySide(); if (ti >= 0 && subRules(ti).ibb) teamMove('ibb', null, ''); }
+function requestIBB() { const ti = mySide(); if (ti >= 0 && !G.squad && subRules(ti).ibb) teamMove('ibb', null, ''); }
 function buildTeamUI() {
   $('tmClose').addEventListener('click', closeTeam);
   $('btnTeam').addEventListener('click', () => { togglePause(false); openTeam(); });

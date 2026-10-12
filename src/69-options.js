@@ -15,6 +15,7 @@ const CONTROLS = [
   ['c', 'C', 'Challenge a call'], ['u', 'U', 'Team panel'], ['i', 'I', 'Intentional walk'], ['r', 'R', 'Replay'], ['enter', 'Enter', 'Skip ahead'],
   ['z', 'Z', 'Strike zone on/off'], ['m', 'M', 'Sound on/off'], ['p', 'P', 'Pause'],
   ['t', 'T', 'Re-center the camera (Player Lock)'], ['v', 'V', 'Camera view (Player Lock)'], ['tab', 'Tab', 'Skip the at-bat (Player Lock)'], ['f', 'F', 'Fast-forward (CPU vs CPU)'],
+  ['y', 'Y', 'Chat (online)'], ['g', 'G', 'Voice chat: mute, or hold to talk (online)'],
 ];
 const NO_BIND = new Set(['escape', 'shift', 'control', 'alt', 'meta', 'capslock', 'contextmenu', 'os']);
 let KEYMAP = new Map(), KEYTAKEN = new Set();
@@ -71,6 +72,10 @@ function renderOptions() {
     <div class="op-row"><label for="opVol">Game sound</label><input type="range" id="opVol" min="0" max="100" step="5" value="${pct(gameVolume())}"><span>${settings.sound ? pct(gameVolume()) + '%' : 'Muted (M)'}</span></div>
     <div class="op-row"><label for="opVoice">Commentary voice</label><input type="range" id="opVoice" min="0" max="100" step="5" value="${pct(settings.voiceVol ?? 1)}"><span>${settings.voice ? pct(settings.voiceVol ?? 1) + '%' : 'Off'}</span></div>
     <div class="op-row"><label><input type="checkbox" id="opVoiceOn" ${settings.voice ? 'checked' : ''}> Play-by-play voice</label></div>
+    <h3>ONLINE VOICE CHAT</h3>
+    <div class="op-row"><label for="opVc">Voice volume</label><input type="range" id="opVc" min="0" max="100" step="5" value="${pct(settings.vcVol ?? 1)}"><span>${pct(settings.vcVol ?? 1)}%</span></div>
+    <div class="op-row"><label><input type="checkbox" id="opPtt" ${settings.vcPTT ? 'checked' : ''}> Push to talk: your mic is on only while you hold ${esc(voiceKeyName())}</label></div>
+    <div class="op-row"><label><input type="checkbox" id="opNear" ${settings.vcNear ? 'checked' : ''}> Proximity voice in squad games: you hear a friend louder the closer his player is to yours</label></div>
     <h3>DISPLAY</h3>
     <div class="op-row"><label><input type="checkbox" id="opCb" ${settings.cb ? 'checked' : ''}> Colorblind-friendly colors</label><span class="op-chips">${chips}</span></div>
     <p class="fr-note">Pitch types, and balls and strikes on the pitch tracker, use colors that stay distinct with red-green colorblindness.</p>
@@ -90,6 +95,7 @@ function buildOptionsUI() {
     const t = e.target;
     if (t.id === 'opVol') { settings.volume = +t.value / 100; if (!settings.sound && settings.volume > 0) SND.setOn(true); applyVolume(); }
     else if (t.id === 'opVoice') settings.voiceVol = +t.value / 100;
+    else if (t.id === 'opVc') settings.vcVol = +t.value / 100;
     else return;
     saveSettings();
     const span = t.parentElement.querySelector('span');
@@ -101,6 +107,8 @@ function buildOptionsUI() {
     else if (t.id === 'opCb') { settings.cb = t.checked; applyPalette(); if (G.teams) { hudPitcher(); drawTracker(); } }
     else if (t.id === 'opZone') { if (!!settings.zone !== t.checked) toggleZone(); }
     else if (t.id === 'opGuide') settings.guide = t.checked;
+    else if (t.id === 'opPtt') { settings.vcPTT = t.checked; VOICE.ptt = false; voiceMicApply(); }
+    else if (t.id === 'opNear') settings.vcNear = t.checked;
     else return;
     saveSettings(); renderOptions();
   });
