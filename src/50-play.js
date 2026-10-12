@@ -98,9 +98,14 @@ class Runner {
   }
 }
 
+// one person steering a fielder: any fielder (lock null) or only his own Player Lock man
+const newCtl = (sid, lock) => ({ sid, lock: lock || null, f: null, manual: false, inp: { x: 0, z: 0 }, lastInput: -9, queuedThrow: null, prompt: false, remotePos: null });
+
 class Play {
-  // o.field: null for a CPU defense, else { lock: playerId|null, manual: bool } for a human defense
+  // o.field: null for a CPU defense, else { lock: playerId|null, manual: bool } for a human defense,
+  //          or { multi: [{ sid, lock }], manual } for an online squad: one person per fielder they play
   // o.run:   null for CPU baserunning, else { lock: playerId|null } (AI still assists unless told otherwise)
+  //          or { multi: true } (each person runs only his own player)
   // o.kind:  'hit' (a batted ball, o.bb), 'steal' (the catcher has the pitch), 'pick' (pickoff to o.pickBase)
   //          or 'wild' (a pitch got by the catcher: o.bb is the loose ball)
   constructor(o) {
@@ -109,14 +114,16 @@ class Play {
     this.outs = o.outs; this.startOuts = o.outs;
     this.hf = o.field || null; this.hrun = o.run || null;
     this.userDef = !!(this.hf && this.hf.manual);
+    // the people steering fielders (uf, ufManual, inp... are the first one's, for a single human defense)
+    this.ctl = this.hf ? (this.hf.multi || [{ sid: null, lock: this.hf.lock }]).map((c) => newCtl(c.sid, c.lock)) : [];
+    this.c0 = this.ctl[0] || newCtl(null, null);
     this.t = 0; this.done = false; this.endAt = null;
     this.ball = { mode: 'flight', pos: new V3(), holder: null, thr: null, si: 0 };
     this.runs = []; this.outEvents = []; this.error = false; this.caught = false; this.firstFielder = null; this.firstAir = false;
     this.fairKnown = false; this.foul = false; this.hr = !!(o.bb && o.bb.hr); this.awarded = false; this.thirdOutForce = false;
-    this.queuedThrow = null; this.prompt = false; this.events = []; this.chaser = null; this.dove = false; this.wallCatch = false;
-    this.uf = null; this.ufManual = false; this.lastInput = -9; this.inp = { x: 0, z: 0 };
+    this.events = []; this.chaser = null; this.dove = false; this.wallCatch = false;
     // ballBase: a fielder standing on a bag with the ball, ready to tag whoever arrives
-    this.ballBase = null; this.remotePos = null;
+    this.ballBase = null;
     // close plays at the bags (for replay review); a human umpire misses a few of the closest
     this.calls = []; this.umpErr = !G.drill && G.mode !== 'tutorial' && G.mode !== 'derby';
     for (const f of this.F) f.reset();
@@ -129,7 +136,7 @@ class Play {
       let f = true; for (let b = 1; b < r.base; b++) if (!occ[b]) f = false;
       r.forced = f;
     }
-    if (this.hf && this.hf.lock) this.uf = this.F.find((f) => f.pl.id === this.hf.lock) || null;
+    this.lockCtl();
     if (this.hr) { this.setupTrot(); this.planFielders(0); return; }
     this.planFielders(0);
     const fly = this.chaser && this.chaser.plan && this.chaser.plan.air;
@@ -156,7 +163,7 @@ class Play {
         if (bat) { let f = true; for (let b = 1; b < r.base; b++) if (!occ[b]) f = false; r.forced = f; }
         if (r.state === 'base') { r.lead = Math.max(r.lead, 15); r.leadVis = r.lead; }   // the secondary lead
       }
-      if (this.hf && this.hf.lock) this.uf = this.F.find((f) => f.pl.id === this.hf.lock) || null;
+      this.lockCtl();
       this.planFielders(0);
       return;
     }
@@ -165,7 +172,7 @@ class Play {
     const holder = this.kind === 'steal' ? C : P;
     this.ball.mode = 'held'; this.ball.holder = holder;
     holder.m.root.updateMatrixWorld(true); handWorld(holder.m, holder.m.lefty ? 'R' : 'L', this.ball.pos);
-    if (this.hf) this.uf = this.hf.lock ? this.F.find((f) => f.pl.id === this.hf.lock) || null : holder;
+    this.lockCtl(holder);
     if (this.kind === 'steal') {
       // pop time: the transfer is quicker for a strong arm
       holder.readyAt = 0.1; holder.decideAt = clamp(0.68 - ((holder.pl.arm ?? 60) - 50) * 0.004 + rand(-0.06, 0.06), 0.4, 0.85);
@@ -190,6 +197,30 @@ class Play {
   setupTrot() {
     for (const r of this.R) { r.target = 4; r.state = 'run'; r.next = r.base + 1; r.d = r.isBatter ? 0 : r.lead; r.lead = 0; r.leadVis = 0; r.v = 4; r.delay = r.isBatter ? 0.9 : 0.25; }
   }
+  // ------------------------------------------------- who steers what ----
+  // each locked person gets his own player; anyone free starts on `free` (or whoever chases it)
+  lockCtl(free = null) {
+    for (const c of this.ctl) c.f = c.lock ? this.F.find((f) => f.pl.id === c.lock) || null : free || c.f;
+  }
+  // the person steering this fielder, if anyone is
+  ctlOf(f) { for (const c of this.ctl) if (c.f === f) return c; return null; }
+  steered(f) { const c = this.ctlOf(f); return !!c && c.manual; }
+  // whoever gets to tell this ball-holder where to throw: the one steering him, else a person
+  // who can take over any fielder
+  ctlFor(f) { return this.ctlOf(f) || this.ctl.find((c) => !c.lock) || null; }
+  // the whole defense back to the CPU (Player Lock skipping a play you're not in)
+  cpuDefense() { this.hf = null; this.userDef = false; this.ctl = []; this.c0 = newCtl(null, null); }
+  get uf() { return this.c0.f; }
+  set uf(f) { this.c0.f = f; }
+  get ufManual() { return this.c0.manual; }
+  set ufManual(v) { this.c0.manual = v; }
+  get inp() { return this.c0.inp; }
+  get queuedThrow() { return this.c0.queuedThrow; }
+  set queuedThrow(v) { this.c0.queuedThrow = v; }
+  get prompt() { return this.c0.prompt; }
+  set prompt(v) { this.c0.prompt = v; }
+  get remotePos() { return this.c0.remotePos; }
+  set remotePos(v) { this.c0.remotePos = v; }
   // ---------------------------------------------------------- planning ----
   planFielders(fromT) {
     const S = this.bb.S;
@@ -198,7 +229,7 @@ class Play {
     for (const f of this.F) {
       f.plan = null;
       // a fielder the human is steering isn't counted on; the AI plays the ball behind him
-      if (f.excluded || (f.downUntil && f.downUntil > fromT + 0.4) || (f === this.uf && this.ufManual)) continue;
+      if (f.excluded || (f.downUntil && f.downUntil > fromT + 0.4) || this.steered(f)) continue;
       const react = fromT === 0 ? f.react : 0.08;
       const start = f.downUntil > fromT ? f.downUntil : fromT;
       let plan = null, divePlan = null;
@@ -237,7 +268,7 @@ class Play {
     }
     this.chaser = best ? best.f : null;
     this.assignTasks();
-    if (this.hf && !this.hf.lock && !this.ufManual && this.chaser) this.uf = this.chaser;
+    if (this.chaser) for (const c of this.ctl) if (!c.lock && !c.manual) c.f = this.chaser;
   }
   assignTasks() {
     const ch = this.chaser, by = (r) => this.F.find((f) => f.role === r);
@@ -266,7 +297,7 @@ class Play {
   ensureCoverage() {
     if (!this.cover || this.done || this.hr || this.dead || this.awarded || this.outs >= 3) return;
     const b = this.ball;
-    const busy = (f) => (f === this.chaser && b.mode === 'flight') || f === b.holder || f.throwing || f.task === 'receive' || (f === this.uf && this.ufManual) || (f.downUntil && this.t < f.downUntil);
+    const busy = (f) => (f === this.chaser && b.mode === 'flight') || f === b.holder || f.throwing || f.task === 'receive' || this.steered(f) || (f.downUntil && this.t < f.downUntil);
     const onBag = (f, k) => Math.hypot(BASES[k].x - f.pos.x, BASES[k].z - f.pos.z) < 6;
     for (const f of this.F) if (f.task === 'cover' && this.cover[f.coverBase] !== f) f.task = 'hold';
     for (let k = 1; k <= 4; k++) {
@@ -287,43 +318,46 @@ class Play {
     }
   }
   // ------------------------------------------------------- human input ----
-  setInput(x, z) {
-    this.inp.x = x; this.inp.z = z;
-    if (!this.hf || !this.uf) return;
-    const was = this.ufManual;
-    if (Math.hypot(x, z) > 0.2) { this.ufManual = true; this.lastInput = this.t; }
-    else if (this.ufManual && this.t - this.lastInput > 0.9 && this.ball.holder !== this.uf) this.ufManual = false;
-    if (was !== this.ufManual && this.ball.mode === 'flight' && !this.hr && !this.dead) this.replan();
+  // c: which person (the only one unless it's an online squad)
+  setInput(x, z, c = this.c0) {
+    c.inp.x = x; c.inp.z = z;
+    if (!this.hf || !c.f) return;
+    const was = c.manual;
+    if (Math.hypot(x, z) > 0.2) { c.manual = true; c.lastInput = this.t; }
+    else if (c.manual && this.t - c.lastInput > 0.9 && this.ball.holder !== c.f) c.manual = false;
+    if (was !== c.manual && this.ball.mode === 'flight' && !this.hr && !this.dead) this.replan();
   }
-  userSwitch() {
-    if (!this.hf || this.hf.lock || this.done) return;
+  userSwitch(c = this.c0) {
+    if (!this.hf || c.lock || this.done) return;
     const bp = this.ball.mode === 'flight' && this.chaser && this.chaser.plan ? new V3(this.chaser.plan.x, 0, this.chaser.plan.z) : this.ball.pos;
     let best = null, bd = 1e9;
-    for (const f of this.F) { if (f === this.uf) continue; const d = Math.hypot(f.pos.x - bp.x, f.pos.z - bp.z); if (d < bd) { bd = d; best = f; } }
-    if (best) { this.uf = best; this.ufManual = false; }
+    for (const f of this.F) { if (f === c.f) continue; const d = Math.hypot(f.pos.x - bp.x, f.pos.z - bp.z); if (d < bd) { bd = d; best = f; } }
+    if (best) { c.f = best; c.manual = false; }
   }
-  userDive() {
-    const f = this.uf;
+  userDive(c = this.c0) {
+    const f = c.f;
     if (!f || this.done || f === this.ball.holder || f.throwing || (f.downUntil && this.t < f.downUntil)) return;
-    let dx = this.inp.x, dz = this.inp.z;
+    let dx = c.inp.x, dz = c.inp.z;
     if (Math.hypot(dx, dz) < 0.2) { dx = this.ball.pos.x - f.pos.x; dz = this.ball.pos.z - f.pos.z; }
     const L = Math.hypot(dx, dz) || 1;
     f.dive = { t0: this.t, dx: dx / L, dz: dz / L, tried: false };
     f.yaw = Math.atan2(dx, dz); f.anim('dive'); f.downUntil = this.t + 1.1;
-    this.ufManual = true; this.lastInput = this.t;
+    c.manual = true; c.lastInput = this.t;
   }
-  userThrow(base) {
+  userThrow(base, c = this.c0) {
     if (!this.hf || this.done) return;
-    this.queuedThrow = base;
+    c.queuedThrow = base;
   }
   // kind: 'go' | 'back'; which: one runner's player id, or null for every runner.
   // Each 'go' sends the runner one base further than he's committed to; each 'back'
   // takes a base away (stop at the next bag, then turn around and go back).
-  runCmd(kind, which = null) {
+  // only: in an online squad, the player id of the person giving the order (he runs only himself)
+  runCmd(kind, which = null, only = null) {
     if (!this.hrun || this.done || this.hr || this.awarded) return;
     for (const r of this.R) {
       if (r.state !== 'run' && r.state !== 'base') continue;
       if (this.hrun.lock && r.pl.id !== this.hrun.lock) continue;
+      if (this.hrun.multi && r.pl.id !== only) continue;
       if (which != null && r.pl.id !== which) continue;
       if (kind === 'go') this.runnerGo(r); else this.runnerBack(r);
     }
@@ -355,7 +389,7 @@ class Play {
     }
     return out;
   }
-  humanHolder(f) { return this.hf && (this.hf.lock ? f.pl.id === this.hf.lock : true); }
+  humanHolder(f) { return !!this.hf && this.ctl.some((c) => (c.lock ? f.pl.id === c.lock : true)); }
   // ------------------------------------------------------------ update ----
   update(dt) {
     this.t += dt;
@@ -365,6 +399,7 @@ class Play {
       if (P) { P.decideAt = 0; this.execThrow(P, base); }
     }
     this.updateBall();
+    if (this.ball.mode !== 'held') for (const c of this.ctl) c.prompt = false;   // nobody's waiting to throw it
     this.ensureCoverage();
     this.updateFielders(dt);
     this.trackBallBase();
@@ -429,11 +464,12 @@ class Play {
       if (f.throwing) { this.throwRelease(f); f.sync(); continue; }
       if (f === b.holder) { this.holderLogic(f, dt); f.sync(); continue; }
       if (t < f.animHold) { f.sync(); continue; }
-      if (f === this.uf && this.ufManual && !this.hr && !this.dead) {
-        this.manualMove(f, dt); this.tryHumanCatch(f); f.sync();
+      const c = this.ctlOf(f);
+      if (c && c.manual && !this.hr && !this.dead) {
+        this.manualMove(f, dt, false, c); this.tryHumanCatch(f); f.sync();
         // the ball got past you: hand control to the fielder now playing it
-        if (b.mode === 'flight' && !this.hf.lock && this.chaser && this.chaser !== f && this.chaser.plan && Math.hypot(this.chaser.pos.x - b.pos.x, this.chaser.pos.z - b.pos.z) < Math.hypot(f.pos.x - b.pos.x, f.pos.z - b.pos.z) - 15) {
-          this.uf = this.chaser; this.ufManual = false; this.replan();
+        if (b.mode === 'flight' && !c.lock && this.chaser && this.chaser !== f && this.chaser.plan && Math.hypot(this.chaser.pos.x - b.pos.x, this.chaser.pos.z - b.pos.z) < Math.hypot(f.pos.x - b.pos.x, f.pos.z - b.pos.z) - 15) {
+          c.f = this.chaser; c.manual = false; this.replan();
         }
         continue;
       }
@@ -462,7 +498,7 @@ class Play {
         tx = f.home.x + (b.pos.x - f.home.x) * 0.08; tz = f.home.z + (b.pos.z - f.home.z) * 0.08; hurry = false;
       }
       this.moveF(f, tx, tz, dt, hurry);
-      if (f === this.uf && b.mode === 'flight') this.tryHumanCatch(f);
+      if (c && b.mode === 'flight') this.tryHumanCatch(f);
       f.sync();
     }
   }
@@ -487,12 +523,12 @@ class Play {
     }
   }
   // human-steered movement: the stick sets direction and effort, the field edges hold you in
-  manualMove(f, dt, withBall = false) {
-    const rp = this.remotePos;
+  manualMove(f, dt, withBall = false, c = this.c0) {
+    const rp = c.remotePos;
     if (rp && f.m.key === rp.key) { this.followRemote(f, rp); return; }
-    const mag = Math.min(1, Math.hypot(this.inp.x, this.inp.z));
+    const mag = Math.min(1, Math.hypot(c.inp.x, c.inp.z));
     if (mag > 0.15) {
-      const dx = this.inp.x / mag, dz = this.inp.z / mag;
+      const dx = c.inp.x / mag, dz = c.inp.z / mag;
       f.v = Math.min(f.speed * mag, f.v + f.acc * 1.5 * dt);
       const nx = f.pos.x + dx * f.v * dt, nz = f.pos.z + dz * f.v * dt;
       if (inPoly(nx, nz) || Math.hypot(nx, nz) < Math.hypot(f.pos.x, f.pos.z)) { f.pos.x = nx; f.pos.z = nz; } else f.v *= 0.5;
@@ -571,7 +607,7 @@ class Play {
     b.mode = 'held'; b.holder = f; f.holding = false; f.touched = 0; f.readyAt = this.t + bobble + 0.12;
     if (!this.firstFielder) { this.firstFielder = f; this.firstAir = air; }
     if (!dove) { f.anim(air ? 'catchHigh' : 'fieldLow'); f.animHold = this.t + 0.3; }
-    if (this.hf && !this.hf.lock) { if (this.uf !== f) this.ufManual = false; this.uf = f; }
+    for (const c of this.ctl) if (!c.lock) { if (c.f !== f) c.manual = false; c.f = f; }
     if (!this.fairKnown && !air) {
       const r = Math.hypot(b.pos.x, b.pos.z);
       if (r < 95) { this.fairKnown = true; this.foul = !isFairAngle(sprayOf(f.pos.x, f.pos.z)); if (this.foul) { this.deadBall('foul'); return; } }
@@ -618,14 +654,16 @@ class Play {
       const step = Math.min(d, f.speed * dt); f.pos.x += (dx / d) * step; f.pos.z += (dz / d) * step; f.yaw = Math.atan2(dx, dz); f.m.phase += step * 0.42; f.anim('run');
       return;
     }
-    const human = this.humanHolder(f) && f === this.uf;
-    if (human && this.queuedThrow != null && t >= Math.max(f.quickAt, f.readyAt - 0.12)) {
-      const base = this.queuedThrow; this.queuedThrow = null; this.prompt = false; f.holding = false; this.humanThrow(f, base); tutNote('throw'); return;
+    // c: the person steering this fielder; hc: whoever tells him where to throw (c, or a person
+    // who can take over any fielder)
+    const c = this.ctlOf(f), hc = this.hf ? this.ctlFor(f) : null, human = !!c && this.humanHolder(f);
+    if (human && c.queuedThrow != null && t >= Math.max(f.quickAt, f.readyAt - 0.12)) {
+      const base = c.queuedThrow; c.queuedThrow = null; c.prompt = false; f.holding = false; this.humanThrow(f, base); tutNote('throw'); return;
     }
     if (t < f.animHold) return;
     // a human carrying the ball: step on bags and tag runners on the way
-    if (human && this.queuedThrow == null && Math.hypot(this.inp.x, this.inp.z) > 0.15) {
-      this.manualMove(f, dt, true);
+    if (human && c.queuedThrow == null && Math.hypot(c.inp.x, c.inp.z) > 0.15) {
+      this.manualMove(f, dt, true, c);
       for (let b = 1; b <= 4; b++) {
         const bp = BASES[b];
         if (Math.hypot(bp.x - f.pos.x, bp.z - f.pos.z) < 2.2) { if (f.touched !== b) { f.touched = b; this.ballAtBase(b, f); } }
@@ -634,7 +672,7 @@ class Play {
       for (const r of this.R) {
         if (r.state === 'run' && r.delay <= 0 && Math.hypot(r.pos.x - f.pos.x, r.pos.z - f.pos.z) < 3.2) { this.recordOut(r, 'tag', heading(r)); this.umpCall = { base: heading(r), call: 'out' }; }
       }
-      f.promptStart = t; this.prompt = this.userDef; f.holding = false;
+      f.promptStart = t; c.prompt = this.userDef; f.holding = false;
       return;
     }
     if (!f.holding) {
@@ -644,22 +682,22 @@ class Play {
       if (f.aimBase) { const bp = BASES[f.aimBase]; f.yaw += angDiff(f.yaw, Math.atan2(bp.x - f.pos.x, bp.z - f.pos.z)) * Math.min(1, dt * 6); }
     }
     if (t < f.decideAt) return;
-    if (this.hf && this.humanHolder(f)) {
-      if (this.queuedThrow != null) { const base = this.queuedThrow; this.queuedThrow = null; this.prompt = false; f.holding = false; this.humanThrow(f, base); tutNote('throw'); return; }
+    if (hc && this.humanHolder(f)) {
+      if (hc.queuedThrow != null) { const base = hc.queuedThrow; hc.queuedThrow = null; hc.prompt = false; f.holding = false; this.humanThrow(f, base); tutNote('throw'); return; }
       if (this.userDef) {
         const anyRunning = this.R.some((r) => r.state === 'run');
         if (anyRunning || !f.holding) {
           if (f.promptStart == null) f.promptStart = t;
-          this.prompt = true;
+          hc.prompt = true;
           if (t - f.promptStart < (this.firstThrowDone ? 0.9 : 1.4)) return;
         }
       }
     }
-    this.prompt = false;
-    const c = this.chooseThrow(f);
-    if (c.type === 'throw') { f.holding = false; this.execThrow(f, c.base); }
-    else if (c.type === 'run') { f.holding = false; f.runTo = c.base; }
-    else if (c.type === 'wait') { f.holding = false; f.decideAt = t + 0.1; f.anim('fieldLow'); }   // down for the tag
+    if (hc) hc.prompt = false;
+    const ch = this.chooseThrow(f);
+    if (ch.type === 'throw') { f.holding = false; this.execThrow(f, ch.base); }
+    else if (ch.type === 'run') { f.holding = false; f.runTo = ch.base; }
+    else if (ch.type === 'wait') { f.holding = false; f.decideAt = t + 0.1; f.anim('fieldLow'); }   // down for the tag
     else { f.holding = true; f.decideAt = t + 0.2; }
   }
   chooseThrow(f) {
@@ -787,13 +825,14 @@ class Play {
     const recv = th.recv || this.receiverFor(base, th.by);
     this.ball.mode = 'held'; this.ball.holder = recv; recv.holding = false; recv.task = 'hold'; recv.recvAt = null; recv.aimBase = null;
     recv.anim('catchHigh'); recv.animHold = this.t + 0.22; recv.promptStart = null; recv.readyAt = this.t + (th.err ? 1.1 : 0.1); recv.quickAt = this.t + (th.err ? 1.1 : 0.15);
-    if (this.hf && !this.hf.lock) { this.uf = recv; this.ufManual = false; }
+    for (const c of this.ctl) if (!c.lock) { c.f = recv; c.manual = false; }
     SND.pop(0.55);
     if (th.err) { this.error = true; this.events.push('throwError'); recv.decideAt = this.t + 1.1; return; }
     if (th.relay) {
       // the relay man: catch, turn and fire (the AI may cut it off and go somewhere else)
       recv.touched = 0; recv.animHold = this.t + 0.1; recv.readyAt = this.t + 0.08; recv.quickAt = this.t + 0.1; recv.decideAt = this.t + 0.18; recv.aimBase = base;
-      if (this.hf && this.humanHolder(recv) && this.queuedThrow == null) this.queuedThrow = base;
+      const rc = this.hf && this.humanHolder(recv) ? this.ctlFor(recv) : null;
+      if (rc && rc.queuedThrow == null) rc.queuedThrow = base;
       return;
     }
     // caught on the bag: that's the base touched. Caught short of it, he still has to get there.
@@ -988,7 +1027,7 @@ class Play {
     if (this.outs >= 3) { this.finishSoon(0.9); return; }
     if (this.hr || this.awarded) { if (!moving) this.finishSoon(0.8); return; }
     const b = this.ball;
-    if (!moving && b.mode === 'held' && b.holder && b.holder.holding && !b.holder.runTo && !this.prompt) {
+    if (!moving && b.mode === 'held' && b.holder && b.holder.holding && !b.holder.runTo && !this.ctl.some((c) => c.prompt)) {
       const wants = (r) => (r.userTarget != null ? r.userTarget > r.base && this.baseFree(r.base + 1, r) : this.shouldAdvance(r, false));
       if (!this.R.some((r) => r.state === 'base' && !r.wait && wants(r))) { this.finishSoon(this.hrun ? 1.0 : 0.7); this.endSoft = true; }
     }

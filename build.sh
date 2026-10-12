@@ -9,7 +9,7 @@ mkdir -p dist
   cat src/page.html
   printf '<script type="module">\n'
   printf "const BUILD_ID = '%s';\n" "$(cat src/*.js src/page.html | cksum | cut -d' ' -f1)"
-  cat src/10-core.js src/12-mlb.js src/13-classic.js src/14-teams.js src/20-world.js src/30-players.js src/40-physics.js src/50-play.js src/60-game.js src/61-manager.js src/62-records.js src/63-season.js src/65-net.js src/66-roster.js src/67-cloud.js src/68-tutorial.js src/69-options.js src/70-ui.js
+  cat src/10-core.js src/12-mlb.js src/13-classic.js src/14-teams.js src/20-world.js src/30-players.js src/40-physics.js src/50-play.js src/60-game.js src/61-manager.js src/62-records.js src/63-season.js src/64-squad.js src/65-net.js src/65-talk.js src/66-roster.js src/67-cloud.js src/68-tutorial.js src/69-options.js src/70-ui.js
   printf '</script>\n'
 } > dist/artifact.html
 {

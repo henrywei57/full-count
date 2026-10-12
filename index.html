@@ -595,6 +595,83 @@ span.chip{cursor:default}
   .controls-grid{grid-template-columns:1fr}
   #hint{display:none}
 }
+
+/* ---------- online squad: lobby spots, name tags ---------- */
+#squadPanel{display:flex;flex-direction:column;gap:10px}
+.sq-head{font-family:var(--f-display);font-weight:700;letter-spacing:.16em;font-size:14px;color:var(--gold);display:flex;flex-direction:column;gap:2px}
+.sq-head small{font-family:var(--f-body);letter-spacing:0;font-size:12px;font-weight:500;color:var(--dust)}
+.sq-cols{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.sq-col{display:flex;flex-direction:column;gap:3px;min-width:0}
+.sq-team{font-family:var(--f-display);font-weight:800;font-size:14px;letter-spacing:.12em;padding:5px 9px;border-radius:4px;margin-bottom:2px}
+.sq-spot{display:grid;grid-template-columns:14px 30px minmax(0,1fr) auto;align-items:center;gap:6px;padding:5px 8px;border-radius:4px;border:1px solid var(--line);background:transparent;cursor:pointer;text-align:left;min-width:0}
+.sq-spot:hover:not(:disabled){background:var(--panel-hi);border-color:rgba(255,255,255,.3)}
+.sq-spot:disabled{cursor:default;opacity:.9}
+.sq-spot.mine{border-color:var(--gold);background:rgba(255,201,74,.1)}
+.sq-spot b{font-family:var(--f-display);font-weight:800;font-size:14px;color:var(--dust)}
+.sq-ord{font-size:11px;color:var(--dust);font-variant-numeric:tabular-nums}
+.sq-pl{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sq-who{font-family:var(--f-display);font-weight:800;font-size:12px;letter-spacing:.06em;padding:1px 7px;border-radius:10px;background:var(--sc);color:#081020;max-width:90px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sq-free{font-family:var(--f-display);font-weight:700;font-size:11px;letter-spacing:.12em;color:var(--dust)}
+.sq-spot:hover:not(:disabled) .sq-free{color:var(--gold)}
+.sq-room{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.sq-room-h{font-family:var(--f-display);font-weight:700;letter-spacing:.14em;font-size:12px;color:var(--dust);margin-right:4px}
+.sq-person{display:inline-flex;align-items:center;gap:6px;padding:3px 9px 3px 6px;border-radius:14px;background:var(--panel);border:1px solid var(--line);font-size:13px}
+.sq-person.me{border-color:var(--sc)}
+.sq-person>i{width:9px;height:9px;border-radius:50%;background:var(--sc)}
+.sq-person b{font-weight:700}.sq-person b small{font-size:10px;letter-spacing:.1em;color:var(--gold)}
+.sq-person>small{font-size:11px;color:var(--dust)}
+.sq-mic{width:14px;height:14px;background:var(--dust);-webkit-mask:var(--mic) center/contain no-repeat;mask:var(--mic) center/contain no-repeat;cursor:pointer}
+.sq-mic.talk{background:var(--ball)}.sq-mic.blocked{background:var(--strike);opacity:.7}
+:root{--mic:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 14a3 3 0 003-3V5a3 3 0 00-6 0v6a3 3 0 003 3zm5-3a5 5 0 01-10 0H5a7 7 0 006 6.9V21h2v-3.1A7 7 0 0019 11h-2z'/%3E%3C/svg%3E")}
+#squadTags{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.sq-tag{position:absolute;transform:translate(-50%,-100%);display:flex;align-items:center;gap:4px;padding:2px 8px;margin-top:-7px;border-radius:4px;background:rgba(5,10,20,.8);border:2px solid var(--sc);font-family:var(--f-display);font-weight:800;font-size:13px;letter-spacing:.04em;white-space:nowrap;color:var(--chalk)}
+.sq-tag::after{content:'';position:absolute;left:50%;bottom:-8px;transform:translateX(-50%);border:6px solid transparent;border-top-color:var(--sc);border-bottom:0}
+.sq-tag.me{background:var(--sc);color:#081020}
+.sq-tag.cpu{opacity:.6}
+.sq-tag small{font-size:10px;color:var(--dust)}
+.sq-spk{width:12px;height:12px;background:var(--ball);-webkit-mask:var(--mic) center/contain no-repeat;mask:var(--mic) center/contain no-repeat}
+.sq-tag.me .sq-spk{background:#081020}
+.sq-tag.talk{box-shadow:0 0 0 2px rgba(63,211,138,.55)}
+/* ---------- chat ---------- */
+#chat{position:fixed;left:16px;bottom:calc(178px + env(safe-area-inset-bottom,0px));z-index:6;width:min(360px,calc(100vw - 32px));display:flex;flex-direction:column;gap:4px;pointer-events:none}
+#chatLog{display:flex;flex-direction:column;gap:2px;max-height:132px;overflow-y:auto;scrollbar-width:thin;overscroll-behavior:contain}
+.cm{font-size:13px;line-height:1.3;padding:3px 8px;border-radius:4px;background:rgba(5,10,20,.68);text-shadow:0 1px 2px rgba(0,0,0,.6);overflow-wrap:anywhere;transition:opacity .6s;-webkit-user-select:text;user-select:text}
+.cm b{font-weight:700}.cm b small{font-weight:500;color:var(--dust)}
+.cm.sys{color:var(--dust);font-style:italic}
+.cm.team{border-left:3px solid var(--play)}
+.cm-to{font-family:var(--f-display);font-weight:800;font-size:11px;letter-spacing:.1em;color:var(--play);margin-right:5px}
+.cm.old{opacity:0}
+#chatForm{display:none;gap:6px}
+#chat.open{pointer-events:auto}
+#chat.open #chatForm{display:flex}
+#chat.open #chatLog{background:rgba(5,10,20,.45);border-radius:4px}
+#chatTo{flex:none;padding:6px 9px;border-radius:4px;border:1px solid var(--line);background:var(--panel);font-family:var(--f-display);font-weight:800;font-size:12px;letter-spacing:.1em;cursor:pointer}
+#chatTo.team{color:var(--play);border-color:var(--play)}
+#chatTo:disabled{cursor:default;opacity:.7}
+#chatIn{flex:1;min-width:0;font:inherit;font-size:14px;padding:7px 10px;border-radius:4px;border:1px solid var(--line);background:rgba(5,10,20,.92);color:var(--chalk);-webkit-user-select:text;user-select:text}
+#chatIn:focus{outline:none;border-color:var(--gold)}
+#chat.lobby{position:static;width:auto;z-index:auto}
+#chat.lobby #chatLog{max-height:120px;min-height:0}
+#chat.lobby .cm{background:rgba(255,255,255,.04)}
+#hud.replaying ~ #chat,body.skipping #chat:not(.open){visibility:hidden}
+#topbar button[data-st]{position:relative}
+#btnMic svg{fill:var(--dust)}
+#btnMic[data-st="live"]{border-color:var(--ball)}#btnMic[data-st="live"] svg{fill:var(--ball)}
+#btnMic[data-st="muted"]{border-color:var(--strike)}#btnMic[data-st="muted"] svg{fill:var(--strike)}
+#btnMic[data-st="ptt"] svg{fill:var(--gold)}
+#btnMic[data-st="off"]::after,#btnMic[data-st="muted"]::after{content:'';position:absolute;width:20px;height:2px;background:currentColor;transform:rotate(-45deg);color:var(--dust)}
+#btnMic[data-st="muted"]::after{color:var(--strike)}
+.net-name{display:flex;align-items:center;gap:10px;font-family:var(--f-display);font-weight:700;letter-spacing:.16em;font-size:12px;color:var(--dust);flex:1}
+.net-name input{flex:1;min-width:0;font:inherit;font-family:var(--f-body);font-weight:600;font-size:15px;letter-spacing:0;padding:7px 10px;border-radius:4px;border:1px solid var(--line);background:var(--night);color:var(--chalk);text-transform:none}
+#btnVoiceMic.muted{color:var(--strike);border-color:rgba(255,90,95,.5)}
+@media (max-width:560px){
+  .sq-cols{grid-template-columns:1fr}
+  #chat:not(.lobby){bottom:calc(298px + env(safe-area-inset-bottom,0px))}
+  #chatLog{max-height:84px}
+  #lockTag{top:calc(108px + env(safe-area-inset-top,0px));padding:3px 10px}
+  #lockTag em{display:none}
+  #caption{top:calc(146px + env(safe-area-inset-top,0px))}
+}
 @media (prefers-reduced-motion:reduce){#call.show,#banner.show{animation-duration:.01s}}
 </style>
 
@@ -621,6 +698,8 @@ span.chip{cursor:default}
   <div id="pitchInfo"><b id="piMph">0<small>MPH</small></b><span id="piType">Fastball</span></div>
   <div id="topbar">
     <span id="netPing" class="hidden"></span>
+    <button id="btnChat" class="hidden" title="Chat (Y)" aria-label="Chat"><svg viewBox="0 0 24 24"><path d="M4 4h16a1 1 0 011 1v11a1 1 0 01-1 1H9l-5 4v-4H4a1 1 0 01-1-1V5a1 1 0 011-1z"/></svg></button>
+    <button id="btnMic" class="hidden" data-st="off" title="Join voice chat" aria-label="Voice chat"><svg viewBox="0 0 24 24"><path d="M12 14a3 3 0 003-3V5a3 3 0 00-6 0v6a3 3 0 003 3zm5-3a5 5 0 01-10 0H5a7 7 0 006 6.9V21h2v-3.1A7 7 0 0019 11h-2z"/></svg></button>
     <button id="btnTeamHud" class="hidden" title="Team: lineup, bench and bullpen (U)" aria-label="Team"><svg viewBox="0 0 24 24"><path d="M9 11a4 4 0 100-8 4 4 0 000 8zm8 0a3 3 0 100-6 3 3 0 000 6zM9 13c-3.3 0-7 1.6-7 4v2h14v-2c0-2.4-3.7-4-7-4zm8 0c-.5 0-1 0-1.6.1 1.1.9 1.6 2 1.6 3.9v2h5v-2c0-2.2-2.6-4-5-4z"/></svg></button>
     <button id="btnMute" title="Sound (M)" aria-label="Toggle sound"><svg viewBox="0 0 24 24"><path id="muteIcon" d="M3 9v6h4l5 5V4L7 9H3zm13.5 3A4.5 4.5 0 0014 8v8a4.5 4.5 0 002.5-4zM14 3.2v2.1a7 7 0 010 13.4v2.1A9 9 0 0014 3.2z"/></svg></button>
     <button id="btnPause" title="Pause (Esc)" aria-label="Pause"><svg viewBox="0 0 24 24"><path d="M6 5h4v14H6zm8 0h4v14h-4z"/></svg></button>
@@ -664,6 +743,7 @@ span.chip{cursor:default}
   <div id="pracHud" class="hidden"></div>
   <div id="pickHelp" class="hidden"><span class="ph-label">PICKOFF</span><span id="pickList"></span></div>
   <div id="runTags"></div>
+  <div id="squadTags"></div>
   <div id="runHelp" class="hidden">
     <div class="rh-head">BASERUNNING<span id="rhTip">click a runner to pick him, then <kbd>E</kbd>/<kbd>Q</kbd></span></div>
     <div class="rh-all" id="rhAll"></div>
@@ -685,7 +765,7 @@ span.chip{cursor:default}
         <button data-mode="exhibition" class="on">Play Ball <small>Exhibition game</small></button>
         <button data-mode="season">Season <small>A schedule, standings, playoffs</small></button>
         <button data-mode="lock">Player Lock <small>Play as one player</small></button>
-        <button data-mode="online">Online 1v1 <small>Play a friend on another device</small></button>
+        <button data-mode="online">Online <small>1v1, or a squad of up to 10</small></button>
         <button data-mode="derby">Home Run Derby <small>10 outs, swing away</small></button>
         <button data-mode="practice">Practice <small>Batting, pitching, running, fielding</small></button>
         <button data-mode="spectate">CPU vs CPU <small>Sit back and watch</small></button>
@@ -703,19 +783,24 @@ span.chip{cursor:default}
       </div>
       <div class="sea-panel hidden" id="seasonPanel"></div>
       <div id="netPanel" class="hidden">
-        <h3>ONLINE 1V1</h3>
+        <h3 id="netTitle">ONLINE 1V1</h3>
+        <div class="net-row"><label class="net-name">YOUR NAME<input id="netName" maxlength="16" placeholder="Player" autocomplete="off" spellcheck="false"></label></div>
         <div class="net-row" id="netHostRow"><button class="cta" id="btnHost">HOST A GAME</button></div>
         <div class="net-or" id="netOr">or join your friend's game with their room code</div>
         <div class="net-row" id="netJoinRow"><input id="joinCode" maxlength="5" placeholder="CODE" autocomplete="off" spellcheck="false" aria-label="Room code"><button class="ghost" id="btnJoin">Join</button><button class="ghost" id="btnWatch" title="Watch the game as a spectator">Watch</button></div>
         <div id="netShare" class="hidden"><div class="net-or">Send your friend this code</div><div class="net-code" id="netCode"></div><div class="net-row"><button class="ghost" id="btnCopyLink">Copy invite link</button><span class="net-link" id="netLink"></span></div><div id="netFriends"></div></div>
         <div class="net-status" id="netStatus" role="status"></div>
+        <div class="net-row hidden" id="netVoiceRow"><button class="ghost fr-mini" id="btnVoiceJoin">Join voice chat</button><button class="ghost fr-mini hidden" id="btnVoiceMic">Mic on</button><span class="net-or" id="voiceNote"></span></div>
       </div>
       <div class="matchup" id="matchup">
         <div class="team-pick" id="pickA"></div>
         <div class="vs" id="vsLabel">VS</div>
         <div class="team-pick" id="pickH"></div>
       </div>
+      <div id="squadPanel" class="hidden"></div>
       <div class="opts">
+        <div class="opt hidden" id="optNetMode"><span>PLAY</span><div class="seg" data-key="netMode"><button data-v="0" class="on">1v1: your team vs theirs</button><button data-v="1">Squad: up to 10, one player each</button></div></div>
+        <div class="opt hidden" id="optSquadSkip"><span>NOBODY IN THE PLAY</span><div class="seg" data-key="squadSkip"><button data-v="1" class="on">Skip ahead</button><button data-v="0">Watch (fast)</button><button data-v="2">Real time</button></div></div>
         <div class="opt hidden" id="optLesson"><span>LESSONS</span><div class="seg" data-key="tutLesson"><button data-v="-1" class="on">All, in order</button><button data-v="0">Hitting</button><button data-v="1">Pitching</button><button data-v="2">Fielding</button><button data-v="3">Baserunning</button><button data-v="4">Pickoffs</button></div></div>
         <div class="opt hidden" id="optDrill"><span>DRILL</span><div class="seg" data-key="drill"><button data-v="0" class="on">Batting</button><button data-v="1">Pitching</button><button data-v="2">Baserunning</button><button data-v="3">Fielding</button></div></div>
         <div class="opt" id="optSide"><span>YOU PLAY AS</span><div class="seg" data-key="side"><button data-v="0">Away</button><button data-v="1" class="on">Home</button></div></div>
@@ -760,6 +845,7 @@ span.chip{cursor:default}
   </div>
 </div>
 <div id="toast" class="hidden" role="status"></div>
+<div id="chat" class="hidden"><div id="chatLog" role="log" aria-live="polite"></div><form id="chatForm" autocomplete="off"><button type="button" id="chatTo">ALL</button><input id="chatIn" maxlength="160" placeholder="Say something (Enter to send)" aria-label="Chat message" spellcheck="false"></form></div>
 <div id="tutCard" class="hidden" role="dialog" aria-label="Tutorial"></div>
 
 <div id="teamScreen" class="screen modal hidden">
@@ -832,6 +918,8 @@ span.chip{cursor:default}
         <dt>R</dt><dd>Instant replay after a play</dd>
         <dt>Enter</dt><dd>Skip ahead</dd>
         <dt>F</dt><dd>Fast-forward (CPU vs CPU)</dd>
+        <dt>Y</dt><dd>Online: chat (Enter sends; Tab switches between everyone and your team)</dd>
+        <dt>G</dt><dd>Online voice chat: mute / unmute, or hold to talk with push to talk on (Options)</dd>
         <dt>Gamepad</dt><dd>Stick aims, A swing, X power, B contact</dd>
       </dl></div>
     </div>
@@ -890,7 +978,7 @@ span.chip{cursor:default}
 <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"}}</script>
 <script type="module">
-const BUILD_ID = '3716312132';
+const BUILD_ID = '203051141';
 import * as THREE from 'three';
 
 // ============================================================================
@@ -1097,7 +1185,7 @@ const DIFFS = [
 ];
 const PBYID = {};   // player id -> player, filled in by 14-teams.js and each game's teams
 
-const settings = { sound: true, voice: true, zone: true, manual: true, guide: true, batCam: 0 };
+const settings = { sound: true, voice: true, zone: true, manual: true, guide: true, batCam: 0, vcVol: 1, vcPTT: false, vcNear: true, netName: '' };
 try { const s = JSON.parse(localStorage.getItem('fullcount.settings') || '{}'); Object.assign(settings, s); } catch (e) { /* storage unavailable */ }
 function saveSettings() { try { localStorage.setItem('fullcount.settings', JSON.stringify(settings)); } catch (e) { /* ignore */ } }
 
@@ -7864,9 +7952,14 @@ class Runner {
   }
 }
 
+// one person steering a fielder: any fielder (lock null) or only his own Player Lock man
+const newCtl = (sid, lock) => ({ sid, lock: lock || null, f: null, manual: false, inp: { x: 0, z: 0 }, lastInput: -9, queuedThrow: null, prompt: false, remotePos: null });
+
 class Play {
-  // o.field: null for a CPU defense, else { lock: playerId|null, manual: bool } for a human defense
+  // o.field: null for a CPU defense, else { lock: playerId|null, manual: bool } for a human defense,
+  //          or { multi: [{ sid, lock }], manual } for an online squad: one person per fielder they play
   // o.run:   null for CPU baserunning, else { lock: playerId|null } (AI still assists unless told otherwise)
+  //          or { multi: true } (each person runs only his own player)
   // o.kind:  'hit' (a batted ball, o.bb), 'steal' (the catcher has the pitch), 'pick' (pickoff to o.pickBase)
   //          or 'wild' (a pitch got by the catcher: o.bb is the loose ball)
   constructor(o) {
@@ -7875,14 +7968,16 @@ class Play {
     this.outs = o.outs; this.startOuts = o.outs;
     this.hf = o.field || null; this.hrun = o.run || null;
     this.userDef = !!(this.hf && this.hf.manual);
+    // the people steering fielders (uf, ufManual, inp... are the first one's, for a single human defense)
+    this.ctl = this.hf ? (this.hf.multi || [{ sid: null, lock: this.hf.lock }]).map((c) => newCtl(c.sid, c.lock)) : [];
+    this.c0 = this.ctl[0] || newCtl(null, null);
     this.t = 0; this.done = false; this.endAt = null;
     this.ball = { mode: 'flight', pos: new V3(), holder: null, thr: null, si: 0 };
     this.runs = []; this.outEvents = []; this.error = false; this.caught = false; this.firstFielder = null; this.firstAir = false;
     this.fairKnown = false; this.foul = false; this.hr = !!(o.bb && o.bb.hr); this.awarded = false; this.thirdOutForce = false;
-    this.queuedThrow = null; this.prompt = false; this.events = []; this.chaser = null; this.dove = false; this.wallCatch = false;
-    this.uf = null; this.ufManual = false; this.lastInput = -9; this.inp = { x: 0, z: 0 };
+    this.events = []; this.chaser = null; this.dove = false; this.wallCatch = false;
     // ballBase: a fielder standing on a bag with the ball, ready to tag whoever arrives
-    this.ballBase = null; this.remotePos = null;
+    this.ballBase = null;
     // close plays at the bags (for replay review); a human umpire misses a few of the closest
     this.calls = []; this.umpErr = !G.drill && G.mode !== 'tutorial' && G.mode !== 'derby';
     for (const f of this.F) f.reset();
@@ -7895,7 +7990,7 @@ class Play {
       let f = true; for (let b = 1; b < r.base; b++) if (!occ[b]) f = false;
       r.forced = f;
     }
-    if (this.hf && this.hf.lock) this.uf = this.F.find((f) => f.pl.id === this.hf.lock) || null;
+    this.lockCtl();
     if (this.hr) { this.setupTrot(); this.planFielders(0); return; }
     this.planFielders(0);
     const fly = this.chaser && this.chaser.plan && this.chaser.plan.air;
@@ -7922,7 +8017,7 @@ class Play {
         if (bat) { let f = true; for (let b = 1; b < r.base; b++) if (!occ[b]) f = false; r.forced = f; }
         if (r.state === 'base') { r.lead = Math.max(r.lead, 15); r.leadVis = r.lead; }   // the secondary lead
       }
-      if (this.hf && this.hf.lock) this.uf = this.F.find((f) => f.pl.id === this.hf.lock) || null;
+      this.lockCtl();
       this.planFielders(0);
       return;
     }
@@ -7931,7 +8026,7 @@ class Play {
     const holder = this.kind === 'steal' ? C : P;
     this.ball.mode = 'held'; this.ball.holder = holder;
     holder.m.root.updateMatrixWorld(true); handWorld(holder.m, holder.m.lefty ? 'R' : 'L', this.ball.pos);
-    if (this.hf) this.uf = this.hf.lock ? this.F.find((f) => f.pl.id === this.hf.lock) || null : holder;
+    this.lockCtl(holder);
     if (this.kind === 'steal') {
       // pop time: the transfer is quicker for a strong arm
       holder.readyAt = 0.1; holder.decideAt = clamp(0.68 - ((holder.pl.arm ?? 60) - 50) * 0.004 + rand(-0.06, 0.06), 0.4, 0.85);
@@ -7956,6 +8051,30 @@ class Play {
   setupTrot() {
     for (const r of this.R) { r.target = 4; r.state = 'run'; r.next = r.base + 1; r.d = r.isBatter ? 0 : r.lead; r.lead = 0; r.leadVis = 0; r.v = 4; r.delay = r.isBatter ? 0.9 : 0.25; }
   }
+  // ------------------------------------------------- who steers what ----
+  // each locked person gets his own player; anyone free starts on `free` (or whoever chases it)
+  lockCtl(free = null) {
+    for (const c of this.ctl) c.f = c.lock ? this.F.find((f) => f.pl.id === c.lock) || null : free || c.f;
+  }
+  // the person steering this fielder, if anyone is
+  ctlOf(f) { for (const c of this.ctl) if (c.f === f) return c; return null; }
+  steered(f) { const c = this.ctlOf(f); return !!c && c.manual; }
+  // whoever gets to tell this ball-holder where to throw: the one steering him, else a person
+  // who can take over any fielder
+  ctlFor(f) { return this.ctlOf(f) || this.ctl.find((c) => !c.lock) || null; }
+  // the whole defense back to the CPU (Player Lock skipping a play you're not in)
+  cpuDefense() { this.hf = null; this.userDef = false; this.ctl = []; this.c0 = newCtl(null, null); }
+  get uf() { return this.c0.f; }
+  set uf(f) { this.c0.f = f; }
+  get ufManual() { return this.c0.manual; }
+  set ufManual(v) { this.c0.manual = v; }
+  get inp() { return this.c0.inp; }
+  get queuedThrow() { return this.c0.queuedThrow; }
+  set queuedThrow(v) { this.c0.queuedThrow = v; }
+  get prompt() { return this.c0.prompt; }
+  set prompt(v) { this.c0.prompt = v; }
+  get remotePos() { return this.c0.remotePos; }
+  set remotePos(v) { this.c0.remotePos = v; }
   // ---------------------------------------------------------- planning ----
   planFielders(fromT) {
     const S = this.bb.S;
@@ -7964,7 +8083,7 @@ class Play {
     for (const f of this.F) {
       f.plan = null;
       // a fielder the human is steering isn't counted on; the AI plays the ball behind him
-      if (f.excluded || (f.downUntil && f.downUntil > fromT + 0.4) || (f === this.uf && this.ufManual)) continue;
+      if (f.excluded || (f.downUntil && f.downUntil > fromT + 0.4) || this.steered(f)) continue;
       const react = fromT === 0 ? f.react : 0.08;
       const start = f.downUntil > fromT ? f.downUntil : fromT;
       let plan = null, divePlan = null;
@@ -8003,7 +8122,7 @@ class Play {
     }
     this.chaser = best ? best.f : null;
     this.assignTasks();
-    if (this.hf && !this.hf.lock && !this.ufManual && this.chaser) this.uf = this.chaser;
+    if (this.chaser) for (const c of this.ctl) if (!c.lock && !c.manual) c.f = this.chaser;
   }
   assignTasks() {
     const ch = this.chaser, by = (r) => this.F.find((f) => f.role === r);
@@ -8032,7 +8151,7 @@ class Play {
   ensureCoverage() {
     if (!this.cover || this.done || this.hr || this.dead || this.awarded || this.outs >= 3) return;
     const b = this.ball;
-    const busy = (f) => (f === this.chaser && b.mode === 'flight') || f === b.holder || f.throwing || f.task === 'receive' || (f === this.uf && this.ufManual) || (f.downUntil && this.t < f.downUntil);
+    const busy = (f) => (f === this.chaser && b.mode === 'flight') || f === b.holder || f.throwing || f.task === 'receive' || this.steered(f) || (f.downUntil && this.t < f.downUntil);
     const onBag = (f, k) => Math.hypot(BASES[k].x - f.pos.x, BASES[k].z - f.pos.z) < 6;
     for (const f of this.F) if (f.task === 'cover' && this.cover[f.coverBase] !== f) f.task = 'hold';
     for (let k = 1; k <= 4; k++) {
@@ -8053,43 +8172,46 @@ class Play {
     }
   }
   // ------------------------------------------------------- human input ----
-  setInput(x, z) {
-    this.inp.x = x; this.inp.z = z;
-    if (!this.hf || !this.uf) return;
-    const was = this.ufManual;
-    if (Math.hypot(x, z) > 0.2) { this.ufManual = true; this.lastInput = this.t; }
-    else if (this.ufManual && this.t - this.lastInput > 0.9 && this.ball.holder !== this.uf) this.ufManual = false;
-    if (was !== this.ufManual && this.ball.mode === 'flight' && !this.hr && !this.dead) this.replan();
+  // c: which person (the only one unless it's an online squad)
+  setInput(x, z, c = this.c0) {
+    c.inp.x = x; c.inp.z = z;
+    if (!this.hf || !c.f) return;
+    const was = c.manual;
+    if (Math.hypot(x, z) > 0.2) { c.manual = true; c.lastInput = this.t; }
+    else if (c.manual && this.t - c.lastInput > 0.9 && this.ball.holder !== c.f) c.manual = false;
+    if (was !== c.manual && this.ball.mode === 'flight' && !this.hr && !this.dead) this.replan();
   }
-  userSwitch() {
-    if (!this.hf || this.hf.lock || this.done) return;
+  userSwitch(c = this.c0) {
+    if (!this.hf || c.lock || this.done) return;
     const bp = this.ball.mode === 'flight' && this.chaser && this.chaser.plan ? new V3(this.chaser.plan.x, 0, this.chaser.plan.z) : this.ball.pos;
     let best = null, bd = 1e9;
-    for (const f of this.F) { if (f === this.uf) continue; const d = Math.hypot(f.pos.x - bp.x, f.pos.z - bp.z); if (d < bd) { bd = d; best = f; } }
-    if (best) { this.uf = best; this.ufManual = false; }
+    for (const f of this.F) { if (f === c.f) continue; const d = Math.hypot(f.pos.x - bp.x, f.pos.z - bp.z); if (d < bd) { bd = d; best = f; } }
+    if (best) { c.f = best; c.manual = false; }
   }
-  userDive() {
-    const f = this.uf;
+  userDive(c = this.c0) {
+    const f = c.f;
     if (!f || this.done || f === this.ball.holder || f.throwing || (f.downUntil && this.t < f.downUntil)) return;
-    let dx = this.inp.x, dz = this.inp.z;
+    let dx = c.inp.x, dz = c.inp.z;
     if (Math.hypot(dx, dz) < 0.2) { dx = this.ball.pos.x - f.pos.x; dz = this.ball.pos.z - f.pos.z; }
     const L = Math.hypot(dx, dz) || 1;
     f.dive = { t0: this.t, dx: dx / L, dz: dz / L, tried: false };
     f.yaw = Math.atan2(dx, dz); f.anim('dive'); f.downUntil = this.t + 1.1;
-    this.ufManual = true; this.lastInput = this.t;
+    c.manual = true; c.lastInput = this.t;
   }
-  userThrow(base) {
+  userThrow(base, c = this.c0) {
     if (!this.hf || this.done) return;
-    this.queuedThrow = base;
+    c.queuedThrow = base;
   }
   // kind: 'go' | 'back'; which: one runner's player id, or null for every runner.
   // Each 'go' sends the runner one base further than he's committed to; each 'back'
   // takes a base away (stop at the next bag, then turn around and go back).
-  runCmd(kind, which = null) {
+  // only: in an online squad, the player id of the person giving the order (he runs only himself)
+  runCmd(kind, which = null, only = null) {
     if (!this.hrun || this.done || this.hr || this.awarded) return;
     for (const r of this.R) {
       if (r.state !== 'run' && r.state !== 'base') continue;
       if (this.hrun.lock && r.pl.id !== this.hrun.lock) continue;
+      if (this.hrun.multi && r.pl.id !== only) continue;
       if (which != null && r.pl.id !== which) continue;
       if (kind === 'go') this.runnerGo(r); else this.runnerBack(r);
     }
@@ -8121,7 +8243,7 @@ class Play {
     }
     return out;
   }
-  humanHolder(f) { return this.hf && (this.hf.lock ? f.pl.id === this.hf.lock : true); }
+  humanHolder(f) { return !!this.hf && this.ctl.some((c) => (c.lock ? f.pl.id === c.lock : true)); }
   // ------------------------------------------------------------ update ----
   update(dt) {
     this.t += dt;
@@ -8131,6 +8253,7 @@ class Play {
       if (P) { P.decideAt = 0; this.execThrow(P, base); }
     }
     this.updateBall();
+    if (this.ball.mode !== 'held') for (const c of this.ctl) c.prompt = false;   // nobody's waiting to throw it
     this.ensureCoverage();
     this.updateFielders(dt);
     this.trackBallBase();
@@ -8195,11 +8318,12 @@ class Play {
       if (f.throwing) { this.throwRelease(f); f.sync(); continue; }
       if (f === b.holder) { this.holderLogic(f, dt); f.sync(); continue; }
       if (t < f.animHold) { f.sync(); continue; }
-      if (f === this.uf && this.ufManual && !this.hr && !this.dead) {
-        this.manualMove(f, dt); this.tryHumanCatch(f); f.sync();
+      const c = this.ctlOf(f);
+      if (c && c.manual && !this.hr && !this.dead) {
+        this.manualMove(f, dt, false, c); this.tryHumanCatch(f); f.sync();
         // the ball got past you: hand control to the fielder now playing it
-        if (b.mode === 'flight' && !this.hf.lock && this.chaser && this.chaser !== f && this.chaser.plan && Math.hypot(this.chaser.pos.x - b.pos.x, this.chaser.pos.z - b.pos.z) < Math.hypot(f.pos.x - b.pos.x, f.pos.z - b.pos.z) - 15) {
-          this.uf = this.chaser; this.ufManual = false; this.replan();
+        if (b.mode === 'flight' && !c.lock && this.chaser && this.chaser !== f && this.chaser.plan && Math.hypot(this.chaser.pos.x - b.pos.x, this.chaser.pos.z - b.pos.z) < Math.hypot(f.pos.x - b.pos.x, f.pos.z - b.pos.z) - 15) {
+          c.f = this.chaser; c.manual = false; this.replan();
         }
         continue;
       }
@@ -8228,7 +8352,7 @@ class Play {
         tx = f.home.x + (b.pos.x - f.home.x) * 0.08; tz = f.home.z + (b.pos.z - f.home.z) * 0.08; hurry = false;
       }
       this.moveF(f, tx, tz, dt, hurry);
-      if (f === this.uf && b.mode === 'flight') this.tryHumanCatch(f);
+      if (c && b.mode === 'flight') this.tryHumanCatch(f);
       f.sync();
     }
   }
@@ -8253,12 +8377,12 @@ class Play {
     }
   }
   // human-steered movement: the stick sets direction and effort, the field edges hold you in
-  manualMove(f, dt, withBall = false) {
-    const rp = this.remotePos;
+  manualMove(f, dt, withBall = false, c = this.c0) {
+    const rp = c.remotePos;
     if (rp && f.m.key === rp.key) { this.followRemote(f, rp); return; }
-    const mag = Math.min(1, Math.hypot(this.inp.x, this.inp.z));
+    const mag = Math.min(1, Math.hypot(c.inp.x, c.inp.z));
     if (mag > 0.15) {
-      const dx = this.inp.x / mag, dz = this.inp.z / mag;
+      const dx = c.inp.x / mag, dz = c.inp.z / mag;
       f.v = Math.min(f.speed * mag, f.v + f.acc * 1.5 * dt);
       const nx = f.pos.x + dx * f.v * dt, nz = f.pos.z + dz * f.v * dt;
       if (inPoly(nx, nz) || Math.hypot(nx, nz) < Math.hypot(f.pos.x, f.pos.z)) { f.pos.x = nx; f.pos.z = nz; } else f.v *= 0.5;
@@ -8337,7 +8461,7 @@ class Play {
     b.mode = 'held'; b.holder = f; f.holding = false; f.touched = 0; f.readyAt = this.t + bobble + 0.12;
     if (!this.firstFielder) { this.firstFielder = f; this.firstAir = air; }
     if (!dove) { f.anim(air ? 'catchHigh' : 'fieldLow'); f.animHold = this.t + 0.3; }
-    if (this.hf && !this.hf.lock) { if (this.uf !== f) this.ufManual = false; this.uf = f; }
+    for (const c of this.ctl) if (!c.lock) { if (c.f !== f) c.manual = false; c.f = f; }
     if (!this.fairKnown && !air) {
       const r = Math.hypot(b.pos.x, b.pos.z);
       if (r < 95) { this.fairKnown = true; this.foul = !isFairAngle(sprayOf(f.pos.x, f.pos.z)); if (this.foul) { this.deadBall('foul'); return; } }
@@ -8384,14 +8508,16 @@ class Play {
       const step = Math.min(d, f.speed * dt); f.pos.x += (dx / d) * step; f.pos.z += (dz / d) * step; f.yaw = Math.atan2(dx, dz); f.m.phase += step * 0.42; f.anim('run');
       return;
     }
-    const human = this.humanHolder(f) && f === this.uf;
-    if (human && this.queuedThrow != null && t >= Math.max(f.quickAt, f.readyAt - 0.12)) {
-      const base = this.queuedThrow; this.queuedThrow = null; this.prompt = false; f.holding = false; this.humanThrow(f, base); tutNote('throw'); return;
+    // c: the person steering this fielder; hc: whoever tells him where to throw (c, or a person
+    // who can take over any fielder)
+    const c = this.ctlOf(f), hc = this.hf ? this.ctlFor(f) : null, human = !!c && this.humanHolder(f);
+    if (human && c.queuedThrow != null && t >= Math.max(f.quickAt, f.readyAt - 0.12)) {
+      const base = c.queuedThrow; c.queuedThrow = null; c.prompt = false; f.holding = false; this.humanThrow(f, base); tutNote('throw'); return;
     }
     if (t < f.animHold) return;
     // a human carrying the ball: step on bags and tag runners on the way
-    if (human && this.queuedThrow == null && Math.hypot(this.inp.x, this.inp.z) > 0.15) {
-      this.manualMove(f, dt, true);
+    if (human && c.queuedThrow == null && Math.hypot(c.inp.x, c.inp.z) > 0.15) {
+      this.manualMove(f, dt, true, c);
       for (let b = 1; b <= 4; b++) {
         const bp = BASES[b];
         if (Math.hypot(bp.x - f.pos.x, bp.z - f.pos.z) < 2.2) { if (f.touched !== b) { f.touched = b; this.ballAtBase(b, f); } }
@@ -8400,7 +8526,7 @@ class Play {
       for (const r of this.R) {
         if (r.state === 'run' && r.delay <= 0 && Math.hypot(r.pos.x - f.pos.x, r.pos.z - f.pos.z) < 3.2) { this.recordOut(r, 'tag', heading(r)); this.umpCall = { base: heading(r), call: 'out' }; }
       }
-      f.promptStart = t; this.prompt = this.userDef; f.holding = false;
+      f.promptStart = t; c.prompt = this.userDef; f.holding = false;
       return;
     }
     if (!f.holding) {
@@ -8410,22 +8536,22 @@ class Play {
       if (f.aimBase) { const bp = BASES[f.aimBase]; f.yaw += angDiff(f.yaw, Math.atan2(bp.x - f.pos.x, bp.z - f.pos.z)) * Math.min(1, dt * 6); }
     }
     if (t < f.decideAt) return;
-    if (this.hf && this.humanHolder(f)) {
-      if (this.queuedThrow != null) { const base = this.queuedThrow; this.queuedThrow = null; this.prompt = false; f.holding = false; this.humanThrow(f, base); tutNote('throw'); return; }
+    if (hc && this.humanHolder(f)) {
+      if (hc.queuedThrow != null) { const base = hc.queuedThrow; hc.queuedThrow = null; hc.prompt = false; f.holding = false; this.humanThrow(f, base); tutNote('throw'); return; }
       if (this.userDef) {
         const anyRunning = this.R.some((r) => r.state === 'run');
         if (anyRunning || !f.holding) {
           if (f.promptStart == null) f.promptStart = t;
-          this.prompt = true;
+          hc.prompt = true;
           if (t - f.promptStart < (this.firstThrowDone ? 0.9 : 1.4)) return;
         }
       }
     }
-    this.prompt = false;
-    const c = this.chooseThrow(f);
-    if (c.type === 'throw') { f.holding = false; this.execThrow(f, c.base); }
-    else if (c.type === 'run') { f.holding = false; f.runTo = c.base; }
-    else if (c.type === 'wait') { f.holding = false; f.decideAt = t + 0.1; f.anim('fieldLow'); }   // down for the tag
+    if (hc) hc.prompt = false;
+    const ch = this.chooseThrow(f);
+    if (ch.type === 'throw') { f.holding = false; this.execThrow(f, ch.base); }
+    else if (ch.type === 'run') { f.holding = false; f.runTo = ch.base; }
+    else if (ch.type === 'wait') { f.holding = false; f.decideAt = t + 0.1; f.anim('fieldLow'); }   // down for the tag
     else { f.holding = true; f.decideAt = t + 0.2; }
   }
   chooseThrow(f) {
@@ -8553,13 +8679,14 @@ class Play {
     const recv = th.recv || this.receiverFor(base, th.by);
     this.ball.mode = 'held'; this.ball.holder = recv; recv.holding = false; recv.task = 'hold'; recv.recvAt = null; recv.aimBase = null;
     recv.anim('catchHigh'); recv.animHold = this.t + 0.22; recv.promptStart = null; recv.readyAt = this.t + (th.err ? 1.1 : 0.1); recv.quickAt = this.t + (th.err ? 1.1 : 0.15);
-    if (this.hf && !this.hf.lock) { this.uf = recv; this.ufManual = false; }
+    for (const c of this.ctl) if (!c.lock) { c.f = recv; c.manual = false; }
     SND.pop(0.55);
     if (th.err) { this.error = true; this.events.push('throwError'); recv.decideAt = this.t + 1.1; return; }
     if (th.relay) {
       // the relay man: catch, turn and fire (the AI may cut it off and go somewhere else)
       recv.touched = 0; recv.animHold = this.t + 0.1; recv.readyAt = this.t + 0.08; recv.quickAt = this.t + 0.1; recv.decideAt = this.t + 0.18; recv.aimBase = base;
-      if (this.hf && this.humanHolder(recv) && this.queuedThrow == null) this.queuedThrow = base;
+      const rc = this.hf && this.humanHolder(recv) ? this.ctlFor(recv) : null;
+      if (rc && rc.queuedThrow == null) rc.queuedThrow = base;
       return;
     }
     // caught on the bag: that's the base touched. Caught short of it, he still has to get there.
@@ -8754,7 +8881,7 @@ class Play {
     if (this.outs >= 3) { this.finishSoon(0.9); return; }
     if (this.hr || this.awarded) { if (!moving) this.finishSoon(0.8); return; }
     const b = this.ball;
-    if (!moving && b.mode === 'held' && b.holder && b.holder.holding && !b.holder.runTo && !this.prompt) {
+    if (!moving && b.mode === 'held' && b.holder && b.holder.holding && !b.holder.runTo && !this.ctl.some((c) => c.prompt)) {
       const wants = (r) => (r.userTarget != null ? r.userTarget > r.base && this.baseFree(r.base + 1, r) : this.shouldAdvance(r, false));
       if (!this.R.some((r) => r.state === 'base' && !r.wait && wants(r))) { this.finishSoon(this.hrun ? 1.0 : 0.7); this.endSoft = true; }
     }
@@ -8822,34 +8949,42 @@ const battingTeam = () => G.teams[G.half];
 const fieldingTeam = () => G.teams[1 - G.half];
 const curPitcher = () => G.pitcher[1 - G.half];
 // Who controls what: each side is 'local' (this device), 'remote' (online opponent) or 'cpu'.
-// Player Lock narrows a side's control to one player.
+// Player Lock narrows a side's control to one player. In an online squad (64-squad.js) both
+// sides are the CPU's except the players people are playing, each one on his own device.
 // Player Lock "skip": the CPU plays your part until the next batter
 const sideCtrl = (s) => (!G.ctrl ? 'cpu' : G.simAB && s === G.lockSide ? 'cpu' : G.ctrl[s]);
 // Practice drills (G.drill) hand one job to you and give the rest to the CPU.
 function batCtrl() {
   if (!G.teams || !G.batter || G.drill === 'run' || G.drill === 'field') return 'cpu';
+  if (G.squad) return squadCtrl(G.batter.id);
   const c = sideCtrl(G.half);
   if (c === 'cpu' || (G.lock && G.batter.id !== G.lock)) return 'cpu';
   return c;
 }
 function pitchCtrl() {
   if (!G.teams || G.mode === 'derby' || G.drill === 'field' || G.drill === 'run' || G.drill === 'bat') return 'cpu';
+  if (G.squad) { const p = curPitcher(); return p ? squadCtrl(p.id) : 'cpu'; }
   const c = sideCtrl(1 - G.half), p = curPitcher();
   if (c === 'cpu' || (G.lock && (!p || p.id !== G.lock))) return 'cpu';
   return c;
 }
 function fieldCtrl() {
   if (!G.teams || G.mode === 'derby' || G.drill === 'pitch' || G.drill === 'run' || G.drill === 'bat') return 'cpu';
+  if (G.squad) { const fs = squadFielders(); return fs.some((s) => s.sid === G.me) ? 'local' : fs.length ? 'remote' : 'cpu'; }
   const c = sideCtrl(1 - G.half);
   if (c === 'cpu' || (G.lock && (G.lockFieldSim || !(G.fielders || []).some((f) => f.pl.id === G.lock)))) return 'cpu';
   return c;
 }
-function runCtrl() { if (!G.teams || G.mode === 'derby' || G.drill === 'pitch' || G.drill === 'field') return 'cpu'; return sideCtrl(G.half); }
+function runCtrl() {
+  if (!G.teams || G.mode === 'derby' || G.drill === 'pitch' || G.drill === 'field') return 'cpu';
+  if (G.squad) { const me = mySeat(); return me && !me.cpu && me.side === G.half ? 'local' : squadBatting() ? 'remote' : 'cpu'; }
+  return sideCtrl(G.half);
+}
 const userBats = () => batCtrl() === 'local';
 const userPitches = () => pitchCtrl() === 'local';
 const userFields = () => fieldCtrl() === 'local';
 const userRuns = () => runCtrl() === 'local';
-const localSide = () => (G.ctrl ? G.ctrl.indexOf('local') : -1);
+const localSide = () => (G.squad ? (mySeat() ? G.lockSide : -1) : G.ctrl ? G.ctrl.indexOf('local') : -1);
 function setPhase(name, dur = 0) { G.phase = name; G.pt = 0; G.dur = dur; }
 function bstat(pl) { if (!G.stats.has(pl.id)) G.stats.set(pl.id, { pa: 0, ab: 0, h: 0, d: 0, t: 0, hr: 0, rbi: 0, bb: 0, k: 0, r: 0, sb: 0, cs: 0 }); return G.stats.get(pl.id); }
 function pstat(pl) { if (!G.pstats.has(pl.id)) G.pstats.set(pl.id, { outs: 0, h: 0, r: 0, er: 0, bb: 0, k: 0, pc: 0, hr: 0, wp: 0 }); return G.pstats.get(pl.id); }
@@ -8969,10 +9104,11 @@ function startGame(cfg) {
   if (G.drill) G.innings = 99;
   // look players up by id (lock, online, HUD); a custom team's players are only registered for the game they play in
   for (const t of G.teams) for (const p of teamPlayers(t)) PBYID[p.id] = p;
-  G.lock = null;
+  G.lock = null; G.squad = null; G.me = -1;
   G.season = cfg.season || null;   // which season game this is (63-season.js)
   if (cfg.mode === 'exhibition' || cfg.mode === 'lock' || cfg.mode === 'season') { G.ctrl = ['cpu', 'cpu']; G.ctrl[cfg.side] = 'local'; }
   else if (cfg.mode === 'derby') G.ctrl = ['local', 'cpu'];
+  else if (cfg.mode === 'online' && cfg.squad) G.ctrl = ['cpu', 'cpu'];   // a squad: the CPU manages, each person plays his own man
   else if (cfg.mode === 'online') { G.ctrl = ['remote', 'remote']; if (!cfg.spec) G.ctrl[cfg.guest ? 1 - cfg.side : cfg.side] = 'local'; }   // a spectator controls nothing
   else if (G.drill) G.ctrl = youBat ? ['local', 'cpu'] : ['cpu', 'local'];
   else G.ctrl = ['cpu', 'cpu'];
@@ -8992,6 +9128,7 @@ function startGame(cfg) {
   G.lu = []; G.pos = []; G.bench = []; G.bullpen = []; G.gone = []; G.played = []; G.pitched = [];
   G.pitcher = [];
   for (let ti = 0; ti < 2; ti++) { const st = cfg.starters && cfg.starters[ti]; initGameRoster(ti, typeof st === 'string' ? PBYID[st] : st); }
+  if (cfg.mode === 'online' && Array.isArray(cfg.squad)) squadInit(cfg);
   G.gameId = 'g' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
   G.dec = null; G.decIds = null; G.enterLead = {};
   const resumed = !!cfg.resume && restoreSave(cfg.resume);
@@ -9003,11 +9140,12 @@ function startGame(cfg) {
   $('bug').classList.toggle('hidden', G.mode === 'derby');
   $('derbyHud').classList.toggle('hidden', G.mode !== 'derby');
   $('tracker').classList.toggle('hidden', G.mode === 'derby' || G.mode === 'tutorial');
-  $('lockTag').classList.toggle('hidden', G.mode !== 'lock');
+  $('lockTag').classList.toggle('hidden', !(G.mode === 'lock' || (G.squad && G.lock)));
+  $('lockTag').querySelector('span').textContent = G.squad ? 'SQUAD' : 'PLAYER LOCK';
   $('pracHud').classList.toggle('hidden', !G.drill || G.mode === 'tutorial'); $('hud').classList.toggle('prac', !!G.drill && G.mode !== 'tutorial'); $('hud').classList.toggle('tut', G.mode === 'tutorial');
   hudPrac();
   SND.init();
-  if (G.mode === 'online' && cfg.guest) { guestStart(); return; }
+  if (G.mode === 'online' && cfg.guest) { guestStart(); hudLock(); return; }
   if (G.mode === 'derby') {
     const team = G.teams[0];
     G.derby = { hr: 0, outs: 10, longest: 0, swings: 0, batter: team.lineup[cfg.batter] || team.lineup[3] };
@@ -9055,7 +9193,7 @@ function maybePitchingChange() {
   if (G.mode === 'derby') return false;
   const ti = 1 - G.half, p = curPitcher();
   if (fatigue(p) < 0.6 || !G.bullpen[ti].length) return false;
-  if (G.lock === p.id && fatigue(p) < 0.97) return false;
+  if ((G.squad ? seatOf(p.id) : G.lock === p.id) && fatigue(p) < 0.97) return false;   // you stay in until you're out of gas
   // a human manager makes his own pitching changes (the bullpen is in the Team panel)
   if (sideCtrl(ti) !== 'cpu' && G.lock !== p.id && fatigue(p) < 0.95) return false;
   bringReliever(ti);
@@ -9068,8 +9206,10 @@ function bringReliever(ti, pick) {
   const np = pick && pen.includes(pick) ? pick : pickReliever(ti);
   G.bullpen[ti] = pen.filter((x) => x !== np);
   G.pen[ti]++;
-  G.gone[ti].add(G.pitcher[ti].id);
+  const old = G.pitcher[ti];
+  G.gone[ti].add(old.id);
   G.pitcher[ti] = np; G.pitched[ti].push(np);
+  if (G.squad) squadTakeOver(old.id, np);
   G.enterLead[np.id] = G.score[ti] - G.score[1 - ti];   // for the save
   if (ti === 1 - G.half) {
     const f = new Fielder(np, 'P', getModel(np)); f.setHome(...ROLE_POS.P);
@@ -9121,6 +9261,7 @@ function enterPrePitch() {
 // per-device presentation for a new pitch (also used by an online guest)
 function prePitchUI() {
   const up = userPitches(), ub = userBats();
+  const onBase = G.squad ? G.bases.some((p) => p && p.id === G.lock) : G.bases.some(Boolean);   // runners you run
   FL.mode = 'track';
   zoneGroup.visible = settings.zone && (ub || up);
   zoneGroup.getObjectByName('grid').visible = up;
@@ -9136,9 +9277,10 @@ function prePitchUI() {
     meterDraw();
     const on = G.bases.some(Boolean) && G.mode !== 'derby';
     setHint('<kbd>1</kbd>–<kbd>' + n + '</kbd> pitch &middot; aim with the mouse &middot; <kbd>Click</kbd> to start the meter' + (on ? ' &middot; <kbd>Shift</kbd>+<kbd>1</kbd>–<kbd>3</kbd> pickoff' : ''));
-  } else if (ub) setHint('Aim the PCI &middot; <kbd>Click</kbd> swing &middot; <kbd>Right-click</kbd> power &middot; <kbd>J</kbd> contact &middot; <kbd>B</kbd> bunt' + (G.bases.some(Boolean) && userRuns() && G.mode !== 'derby' ? ' &middot; <kbd>E</kbd> steal' : ''));
-  else if (userRuns() && G.bases.some(Boolean)) setHint('You run the bases &middot; <kbd>E</kbd> steal &middot; <kbd>Q</kbd> call it off &middot; click a runner\'s tag to pick just him');
+  } else if (ub) setHint('Aim the PCI &middot; <kbd>Click</kbd> swing &middot; <kbd>Right-click</kbd> power &middot; <kbd>J</kbd> contact &middot; <kbd>B</kbd> bunt' + (onBase && userRuns() && G.mode !== 'derby' ? ' &middot; <kbd>E</kbd> steal' : ''));
+  else if (userRuns() && onBase) setHint('You run the bases &middot; <kbd>E</kbd> steal &middot; <kbd>Q</kbd> call it off &middot; click a runner\'s tag to pick just him');
   else if (G.drill === 'field') setHint('Fielding practice &middot; <kbd>WASD</kbd> move &middot; <kbd>1</kbd>&ndash;<kbd>4</kbd> throw');
+  else if (G.squad) setHint(squadHint());
   else if (G.mode === 'online') setHint('Waiting for your opponent&hellip;');
   else if (G.mode === 'lock' && G.half === 1 - G.lockSide && G.fielders.some((f) => f.pl.id === G.lock)) setHint('You are in the field &middot; get within the gold ring of the ball to field it');
   else setHint(G.mode === 'lock' ? (G.simAB ? 'Skipping to the next batter&hellip;' : 'Simulating until you are up&hellip;') : '');
@@ -9415,7 +9557,7 @@ function contactUser(c, at) {
   launch(c.ev, c.la, c.spray, origin, c.Q, true);
 }
 // hitting feedback goes to whoever is batting: this screen or the online opponent's
-function fbShow(c) { const bc = batCtrl(); if (bc === 'local') showFeedback(c); else if (bc === 'remote') netEvTo('showFeedback', [c]); }
+function fbShow(c) { const bc = batCtrl(); if (bc === 'local') showFeedback(c); else if (bc === 'remote') netEvTo('showFeedback', [c], G.squad ? seatOf(G.batter.id).sid : null); }
 function fbData() { const bb = G.bb; return bb ? { ev: bb.ev, la: bb.la, dist: bb.dist, showDist: !!(bb.hr || (bb.la > 8 && bb.landPos)) } : null; }
 
 // ------------------------------------------------------------ outcomes ----
@@ -9447,7 +9589,7 @@ function catchPitch() {
 // If it is put in play, the runner already has his jump (hit-and-run).
 const STEAL_PHASES = ['prePitch', 'windup', 'pitch'];
 const BASE_WORD = ['home', 'first', 'second', 'third', 'home'];
-function runnerIsHuman(r) { return runCtrl() !== 'cpu' && (!G.lock || r.pl.id === G.lock); }
+function runnerIsHuman(r) { return G.squad ? !!seatOf(r.pl.id) : runCtrl() !== 'cpu' && (!G.lock || r.pl.id === G.lock); }
 // he can go only if the bag ahead is empty, or its runner is going too
 function canSteal(r) {
   if (r.state !== 'base' || r.base >= 4) return false;
@@ -9512,9 +9654,8 @@ function stealAfterPitch() {
   if (k === 'walk' || k === 'hbp') { cancelSteals(); return false; }   // the walk moves them; no throw
   if (k === 'kLook' || k === 'kSwing') { settleAB(k); G.abEnd = 'settled'; }   // strike 'em out...
   if (G.outs >= 3) { cancelSteals(); return false; }
-  const fc = fieldCtrl(), rc = runCtrl();
   G.recOn = true;   // for a replay review of the tag
-  const pl = (G.play = new Play({ kind: 'steal', fielders: G.fielders, runners: G.baseRunners, outs: G.outs, field: fc === 'cpu' ? null : { lock: G.lock, manual: settings.manual }, run: rc === 'cpu' ? null : { lock: G.lock } }));
+  const pl = (G.play = new Play({ kind: 'steal', fielders: G.fielders, runners: G.baseRunners, outs: G.outs, ...playCtl() }));
   lockPlayFor(pl);
   netPlayOut();
   setPhase('live');
@@ -9523,9 +9664,15 @@ function stealAfterPitch() {
 }
 // Player Lock: are you in this steal or pickoff? If not, it sims like any other play.
 function lockPlayFor(pl) {
+  if (G.squad) {
+    const ids = squadIds();
+    G.lockInv = pl.R.some((r) => ids.has(r.pl.id)) || pl.F.some((f) => ids.has(f.pl.id) && (f.role === 'C' || f.role === 'P' || f.task === 'cover'));
+    if (G.squadSkip === 1 && pl.hf && !G.lockInv) pl.cpuDefense();
+    return;
+  }
   if (G.mode !== 'lock') return;
   G.lockInv = pl.R.some((r) => r.pl.id === G.lock) || pl.F.some((f) => f.pl.id === G.lock && (f.role === 'C' || f.role === 'P' || f.task === 'cover'));
-  if (G.lockSkip && pl.hf && !G.lockInv) { pl.hf = null; pl.userDef = false; pl.uf = null; }
+  if (G.lockSkip && pl.hf && !G.lockInv) pl.cpuDefense();
 }
 function finishStealPlay() {
   const pl = G.play, res = pl.summary(), ps = pstat(curPitcher());
@@ -9575,8 +9722,7 @@ function startPickoff(base) {
   if (!canPickoff(base)) return;
   G.abPicks++; G.cpuPick = null; G.recOn = true;
   pci.visible = false; reticle.visible = false; zoneGroup.visible = false; $('meter').classList.add('hidden');
-  const fc = fieldCtrl(), rc = runCtrl();
-  const pl = (G.play = new Play({ kind: 'pick', pickBase: base, fielders: G.fielders, runners: G.baseRunners, outs: G.outs, field: fc === 'cpu' ? null : { lock: G.lock, manual: settings.manual }, run: rc === 'cpu' ? null : { lock: G.lock } }));
+  const pl = (G.play = new Play({ kind: 'pick', pickBase: base, fielders: G.fielders, runners: G.baseRunners, outs: G.outs, ...playCtl() }));
   lockPlayFor(pl);
   netPlayOut();
   ballMesh.visible = true;
@@ -9654,8 +9800,7 @@ function wildPitch() {
   const runners = [...G.baseRunners];
   if (d3) { const br = new Runner(G.batter, G.batterModel, 0); br.from0 = G.batterModel.root.position.clone(); runners.unshift(br); }
   const side = Math.abs(c.x) > 0.4 ? Math.sign(c.x) : Math.random() < 0.5 ? -1 : 1;
-  const fc = fieldCtrl(), rc = runCtrl();
-  const pl = (G.play = new Play({ kind: 'wild', bb: looseBall(G.glove, side), fielders: G.fielders, runners, outs: G.outs, field: fc === 'cpu' ? null : { lock: G.lock, manual: settings.manual }, run: rc === 'cpu' ? null : { lock: G.lock } }));
+  const pl = (G.play = new Play({ kind: 'wild', bb: looseBall(G.glove, side), fielders: G.fielders, runners, outs: G.outs, ...playCtl() }));
   pl.wildKind = kind; pl.d3 = d3;
   lockPlayFor(pl);
   netPlayOut();
@@ -9750,7 +9895,7 @@ function setupReview(pl) {
   const c = cand.find((x) => x.call !== x.truth) || cand.reduce((a, b) => (b.margin < a.margin ? b : a));
   const side = c.call === 'out' ? G.half : 1 - G.half;
   if (G.reviews[side] <= 0) return false;
-  const who = G.lock ? 'cpu' : sideCtrl(side), wrong = c.call !== c.truth;
+  const who = G.lock || G.squad ? 'cpu' : sideCtrl(side), wrong = c.call !== c.truth;
   if (who === 'cpu') { if (Math.random() >= (wrong ? 0.85 : 0.05)) return false; G.cpuChallengeAt = G.now + 1.0; }
   else if (c.margin >= 0.12) return false;   // not close enough to ask
   G.review = { c, side, who, pl };
@@ -9832,8 +9977,7 @@ function fungo() {
 
 // ------------------------------------------------------------ lock skip ----
 // is this ball hit to the outfield or your way?
-function lockFieldInvolved(pl) {
-  const me = pl.uf;
+function lockFieldInvolved(pl, me = pl.uf) {
   if (!me || pl.hr) return false;
   if (pl.chaser === me) return true;
   if (pl.bb.foul) return false;
@@ -9851,7 +9995,7 @@ function startSim() {
   if (G.phase === 'prePitch' && !G.spec) { G.spec = cpuChoosePitch(); G.cpuPitchAt = G.pt + 0.3; }
   const pl = G.play;
   if (pl && G.phase === 'live') {
-    pl.hf = null; pl.hrun = null; pl.userDef = false; pl.ufManual = false; pl.prompt = false; pl.queuedThrow = null; pl.uf = null;
+    pl.cpuDefense(); pl.hrun = null;
     if (pl.ball.mode === 'flight' && !pl.hr && !pl.dead) pl.replan();
   }
   pci.visible = false; reticle.visible = false; zoneGroup.visible = false; pitchGuide.visible = false;
@@ -9887,7 +10031,12 @@ function setupChallenge(call) {
   G.challengeable = { side, call, truth: G.isStrike ? 'called' : 'ball', x: G.cross.x, y: G.cross.y, pre: { ...G.preCall } };
   let c = sideCtrl(side);
   // like MLB, only the batter, pitcher or catcher may challenge; in Player Lock that has to be you
-  if (G.lock && side === G.lockSide) {
+  if (G.squad) {
+    // a squad: any of you who's the batter (a called strike) or the pitcher or catcher (a called ball)
+    const catcher = G.fByRole.C && G.fByRole.C.pl, ids = call === 'called' ? [G.batter.id] : [curPitcher().id, catcher && catcher.id];
+    G.challengeable.sids = G.squad.filter((s) => !s.cpu && ids.includes(s.pid)).map((s) => s.sid);
+    c = G.challengeable.sids.length ? 'squad' : 'cpu';
+  } else if (G.lock && side === G.lockSide) {
     const catcher = G.fByRole.C && G.fByRole.C.pl;
     const mine = call === 'called' ? G.batter.id === G.lock : curPitcher().id === G.lock || (catcher && catcher.id === G.lock);
     if (!mine) c = 'cpu';
@@ -9899,7 +10048,7 @@ function setupChallenge(call) {
     if (Math.random() < (wrong ? (big ? 0.8 : 0.3) : 0.015)) G.cpuChallengeAt = G.now + 0.7; else G.challengeable = null;
   } else {
     G.dur = Math.max(G.dur, 2.8);
-    if (c === 'local') setHint(`<kbd>C</kbd> challenge the call &middot; ${G.challenges[side]} left`);
+    if (c === 'local' || (c === 'squad' && G.challengeable.sids.includes(G.me))) setHint(`<kbd>C</kbd> challenge the call &middot; ${G.challenges[side]} left`);
   }
   hudScore();
 }
@@ -10036,18 +10185,19 @@ function launch(ev, la, spray, origin, q, byUser) {
   const br = new Runner(G.batter, G.batterModel, 0);
   br.from0 = G.batterModel.root.position.clone();
   const runners = [br, ...G.baseRunners];
-  const fc = fieldCtrl(), rc = runCtrl();
-  G.play = new Play({
-    bb, fielders: G.fielders, runners, outs: G.outs,
-    field: fc === 'cpu' ? null : { lock: G.lock, manual: settings.manual },
-    run: rc === 'cpu' ? null : { lock: G.lock },
-  });
+  G.play = new Play({ bb, fielders: G.fielders, runners, outs: G.outs, ...playCtl() });
   // Player Lock: you field balls hit to the outfield or your way; the CPU plays the rest
   if (G.mode === 'lock' && G.lockSkip && G.play.hf) {
     const pl = G.play;
     G.lockInv = lockFieldInvolved(pl);
-    if (!G.lockInv) { pl.hf = null; pl.userDef = false; pl.uf = null; pl.planFielders(0); }
+    if (!G.lockInv) { pl.cpuDefense(); pl.planFielders(0); }
     else if (G.skipping) { G.beat = 0.6; hudCall('YOUR PLAY', 'play'); }
+  } else if (G.squad && G.play.hf) {
+    // a squad: same idea, for anyone in the field (skipping ahead, a play none of you is in is the CPU's)
+    const pl = G.play;
+    G.lockInv = pl.ctl.some((c) => lockFieldInvolved(pl, c.f));
+    if (!G.lockInv && G.squadSkip === 1) { pl.cpuDefense(); pl.planFielders(0); }
+    else if (G.lockInv && G.skipping) G.beat = 0.6;   // a skip just landed you in it: a beat to find the ball
   }
   if (bb.hr) { excite(1, 6); SND.roar(0.55, 2.5, 4); }
   else if (ev > 95 && la > 15 && la < 45) { SND.roar(0.3, 1.2, 2.5); }
@@ -10311,7 +10461,7 @@ function subIn(ti, outPl, inPl, pos = outPl.pos) {
 }
 // is this side yours to manage right now, and what can you do?
 function canManage(ti) {
-  return G.teams && !G.drill && G.mode !== 'derby' && G.mode !== 'lock' && !G.replay && (G.phase === 'prePitch' || G.phase === 'halfIntro') && !(G.phase === 'prePitch' && G.pitchUI.state !== 'aim' && pitchCtrl() === 'local');
+  return G.teams && !G.drill && G.mode !== 'derby' && G.mode !== 'lock' && !G.squad && !G.replay && (G.phase === 'prePitch' || G.phase === 'halfIntro') && !(G.phase === 'prePitch' && G.pitchUI.state !== 'aim' && pitchCtrl() === 'local');
 }
 function subRules(ti) {
   const ok = canManage(ti), bat = ti === G.half, pre = G.phase === 'prePitch';
@@ -10373,7 +10523,7 @@ const POS_NAME = { C: 'catcher', '1B': 'first', '2B': 'second', '3B': 'third', S
 function cpuManager() {
   if (G.drill || G.mode === 'derby') return;
   const ti = G.half;
-  if (sideCtrl(ti) !== 'cpu' || G.lock) return;
+  if (sideCtrl(ti) !== 'cpu' || (G.lock && !G.squad)) return;   // a squad: the CPU manages, but never subs out one of you
   const lateClose = G.inning >= G.innings - 1 && Math.abs(G.score[0] - G.score[1]) <= 2;
   if (!lateClose || !G.bench[ti].length) return;
   const next = G.lu[ti][G.order[ti] % 9];
@@ -10381,13 +10531,13 @@ function cpuManager() {
   // keep the only catcher in the game
   const playsC = (p) => (p.def ? !!p.def.C : !!(p.mlbId && POOL_H.get(p.mlbId) && POOL_H.get(p.mlbId).def.C));
   const lastC = next.pos === 'C' && !G.bench[ti].some(playsC);
-  if (best && !lastC && batScore(best) - batScore(next) >= 18 && Math.random() < 0.7) {
+  if (best && !lastC && !seatOf(next.id) && batScore(best) - batScore(next) >= 18 && Math.random() < 0.7) {
     const np = subIn(ti, next, best);
     if (np) { hudBanner('PINCH HITTER', `${np.name} bats for ${lastName(next.name)}`, ''); Caster.line(`${np.name} will pinch-hit for ${lastName(next.name)}.`, true, { queue: true }); }
   }
   for (const b of [3, 2]) {
     const r = G.bases[b];
-    if (!r || r.spd >= 60) continue;
+    if (!r || r.spd >= 60 || seatOf(r.id)) continue;
     const fast = G.bench[ti].slice().sort((a, c) => c.spd - a.spd)[0];
     if (fast && fast.spd - r.spd >= 22 && Math.random() < 0.6) {
       const np = subIn(ti, r, fast);
@@ -10402,7 +10552,7 @@ const TM = { pending: null };   // { kind: 'ph' | 'pr' | 'def', target }
 function mySide() { return G.mode === 'online' ? localSide() : G.ctrl ? G.ctrl.indexOf('local') : -1; }
 function openTeam() {
   const ti = mySide();
-  if (ti < 0 || !G.teams || G.mode === 'lock' || G.drill || G.mode === 'derby') return;
+  if (ti < 0 || !G.teams || G.mode === 'lock' || G.squad || G.drill || G.mode === 'derby') return;
   TM.pending = null;
   $('teamScreen').classList.remove('hidden');
   // the game waits while you think (online it keeps going: your friend is waiting too)
@@ -10459,7 +10609,7 @@ function teamMove(kind, target, inId) {
   renderTeam();
 }
 // I: put the batter on intentionally (your team in the field, before a pitch)
-function requestIBB() { const ti = mySide(); if (ti >= 0 && subRules(ti).ibb) teamMove('ibb', null, ''); }
+function requestIBB() { const ti = mySide(); if (ti >= 0 && !G.squad && subRules(ti).ibb) teamMove('ibb', null, ''); }
 function buildTeamUI() {
   $('tmClose').addEventListener('click', closeTeam);
   $('btnTeam').addEventListener('click', () => { togglePause(false); openTeam(); });
@@ -10521,8 +10671,9 @@ function gameRecord() {
     score: G.score.slice(), line: G.line.map((l) => l.slice()), hits: G.hits.slice(), errs: G.errs.slice(), bat, pit, you: mySide(),
     season: G.season ? G.season.id : null,
     lock: lockPl ? statKey(lockPl) : null,   // Player Lock: your numbers are his
-    opp: G.mode === 'online' && !G.coop && NET.role !== 'spec' ? (NET.opp ? { uid: NET.opp.uid, name: NET.opp.name } : { uid: '', name: '' }) : null,
+    opp: G.mode === 'online' && !G.coop && !G.squad && NET.role !== 'spec' ? (NET.opp ? { uid: NET.opp.uid, name: NET.opp.name } : { uid: '', name: '' }) : null,
     coop: G.coop ? { with: NET.opp ? NET.opp.name : '' } : null,
+    squad: G.squad ? { with: G.squad.filter((s) => s.sid !== G.me).map((s) => s.name) } : null,
   };
 }
 const RECORD_MODES = ['exhibition', 'lock', 'online', 'season'];
@@ -10705,7 +10856,7 @@ function h2hGet(uid) {
 }
 function h2hResult() {
   const opp = NET.opp, me = mySide();
-  if (!opp || me < 0 || G.h2hDone === G.gameId || typeof Cloud === 'undefined' || !Cloud.profile) return;
+  if (!opp || me < 0 || G.squad || G.h2hDone === G.gameId || typeof Cloud === 'undefined' || !Cloud.profile) return;
   G.h2hDone = G.gameId;
   const won = G.score[me] > G.score[1 - me], cur = h2hGet(opp.uid) || { w: 0, l: 0 }, rec = { w: cur.w + (won ? 1 : 0), l: cur.l + (won ? 0 : 1) };
   const all = h2hLocal(); all[opp.uid] = { name: opp.name, ...rec, at: Date.now() };
@@ -10740,10 +10891,10 @@ const avgS = (b) => (b.ab ? rate3(b.h / b.ab) : '.000');
 const obpOf = (b) => (b.pa ? (b.h + b.bb) / b.pa : 0), slgOf = (b) => (b.ab ? (b.h + b.d + 2 * b.t + 3 * b.hr) / b.ab : 0);
 const eraS = (p) => (p.outs ? ((p.er * 27) / p.outs).toFixed(2) : '&ndash;');
 const whipS = (p) => (p.outs ? (((p.h + p.bb) * 3) / p.outs).toFixed(2) : '&ndash;');
-const MODE_NAME = { exhibition: 'Play Ball', lock: 'Player Lock', online: 'Online', season: 'Season' };
-const modeOf = (g) => (g.coop ? 'coop' : g.mode);
+const MODE_NAME = { exhibition: 'Play Ball', lock: 'Player Lock', online: 'Online', squad: 'Online Squad', season: 'Season' };
+const modeOf = (g) => (g.coop ? 'coop' : g.squad ? 'squad' : g.mode);
 // an online opponent (players who weren't signed in are grouped together)
-function oppOf(g) { if (g.coop || !g.opp) return null; return g.opp.uid ? g.opp : { uid: 'anon', name: 'Opponents who weren’t signed in' }; }
+function oppOf(g) { if (g.coop || g.squad || !g.opp) return null; return g.opp.uid ? g.opp : { uid: 'anon', name: 'Opponents who weren’t signed in' }; }
 function careerTotals(filter) {
   const H = new Map(), P = new Map();
   for (const g of gamesList()) {
@@ -10799,7 +10950,7 @@ function totalsOf(list) {
 }
 function renderYou() {
   const list = myGames(), t = totalsOf(list);
-  const modes = ['all', 'exhibition', 'season', 'online', 'lock'].filter((m) => m === 'all' || gamesList().some((g) => g.you >= 0 && modeOf(g) === m));
+  const modes = ['all', 'exhibition', 'season', 'online', 'squad', 'lock'].filter((m) => m === 'all' || gamesList().some((g) => g.you >= 0 && modeOf(g) === m));
   const seg = `<div class="st-filter seg">${modes.map((m) => `<button data-mode="${m}" class="${ST.mode === m ? 'on' : ''}">${m === 'all' ? 'All your games' : MODE_NAME[m]}</button>`).join('')}</div>`;
   if (!list.length) return `${seg}<p class="fr-note">No games here yet.</p>`;
   return `${seg}${statCards(t.rec, t.b, t.p)}${lineTables(t.b, t.p)}
@@ -11436,8 +11587,182 @@ function buildSeasonUI() {
   $('seaBody').addEventListener('click', (e) => { const b = e.target.closest('[data-g]'); if (!b) return; const g = gamesList().find((x) => x.id === b.dataset.g); if (g) openBox(g); });
 }
 // ============================================================================
-// Online 1v1 over WebRTC (PeerJS). The host runs the whole simulation and the
-// guest renders it. What keeps the guest's side feeling local:
+// Online squad: you and up to nine friends in one game, each playing one player
+// (any spot in either batting order, or a starting pitcher), on the same team or
+// against each other. The CPU plays everyone else and manages both clubs. Every
+// device runs the Player Lock cameras (third person by default) on its own player.
+//   G.squad: [{ sid, name, side, pid, col, cpu }]   cpu: he dropped; the CPU plays him until he's back
+//   G.me:    your seat id (the host is 0, a spectator -1)
+// The lobby (who's in the room, who plays whom) lives in NET.room, kept by the host.
+// ============================================================================
+
+const SQUAD_MAX = 10;
+const SEAT_COLS = ['#ffc94a', '#5aa8ff', '#ff5a5f', '#3fd38a', '#c77dff', '#ff9f43', '#2ee6d6', '#ff6fb5', '#a3e635', '#e8edf5'];
+const seatCol = (sid) => SEAT_COLS[Math.abs(sid | 0) % SEAT_COLS.length];
+// a name someone typed: plain text, short
+function cleanName(s, def = 'Player') { const t = String(s ?? '').replace(/[\u0000-\u001f\u007f<>]/g, '').replace(/\s+/g, ' ').trim().slice(0, 16); return t || def; }
+const PICK_RE = /^(h[0-8]|p0)$/;
+// the player a pick stands for: 'h0'..'h8' a spot in the batting order, 'p0' the starting pitcher
+function pickPlayer(team, pick, starter) {
+  if (!team || !PICK_RE.test(pick || '')) return null;
+  return pick === 'p0' ? starter || (team.rotation ? team.rotation[0] : team.pitchers[0]) : team.lineup[+pick.slice(1)] || null;
+}
+function squadInit(cfg) {
+  G.me = cfg.spec ? -1 : cfg.guest ? cfg.me | 0 : 0;
+  G.squad = cfg.squad.map((s) => {
+    const side = s.side ? 1 : 0, pl = pickPlayer(G.teams[side], s.pick, G.pitcher[side]);
+    return pl ? { sid: s.sid | 0, name: cleanName(s.name), side, pid: pl.id, col: seatCol(s.sid), cpu: !!s.cpu } : null;
+  }).filter(Boolean);
+  const me = mySeat();
+  G.lock = me ? me.pid : null; G.lockSide = me ? me.side : 1;
+  G.view = menu.view ?? 2;   // each device picks its own camera
+  G.squadSkip = cfg.skip ?? 1;   // nobody's in the play: 1 skip ahead, 0 watch it fast, 2 real time
+}
+const mySeat = () => (G.squad ? G.squad.find((s) => s.sid === G.me) || null : null);
+const seatBySid = (sid) => (G.squad ? G.squad.find((s) => s.sid === sid) || null : null);
+// the person playing this player right now (nobody if he dropped: the CPU has him)
+function seatOf(pid) { if (!G.squad || !pid) return null; for (const s of G.squad) if (s.pid === pid && !s.cpu) return s; return null; }
+const squadIds = () => new Set(G.squad ? G.squad.filter((s) => !s.cpu).map((s) => s.pid) : []);
+function squadCtrl(pid) { const s = seatOf(pid); return !s ? 'cpu' : s.sid === G.me ? 'local' : 'remote'; }
+// is this player out in the field right now? (the guest goes by the game roster the host sends)
+function fieldingNow(pid) {
+  if (!pid || !G.teams) return false;
+  if (!isGuest()) return (G.fielders || []).some((f) => f.pl.id === pid);
+  const ti = 1 - G.half;
+  return (!!G.pitcher[ti] && G.pitcher[ti].id === pid) || (G.lu[ti] || []).some((p) => p.id === pid && p.pos !== 'DH');
+}
+const squadFielders = () => (G.squad ? G.squad.filter((s) => !s.cpu && s.side === 1 - G.half && fieldingNow(s.pid)) : []);
+const squadBatting = () => !!G.squad && G.squad.some((s) => !s.cpu && s.side === G.half);
+// who steers whom in a new Play: everyone in the field locked to his own man, and each runner
+// run by the person playing him
+function playCtl() {
+  if (G.squad) {
+    const fs = squadFielders();
+    return { field: fs.length ? { multi: fs.map((s) => ({ sid: s.sid, lock: s.pid })), manual: settings.manual } : null, run: squadBatting() ? { multi: true } : null };
+  }
+  const fc = fieldCtrl(), rc = runCtrl();
+  return { field: fc === 'cpu' ? null : { lock: G.lock, manual: settings.manual }, run: rc === 'cpu' ? null : { lock: G.lock } };
+}
+// a reliever came in for someone's pitcher: he takes the mound with the new man
+function squadTakeOver(oldId, np) {
+  const s = G.squad && G.squad.find((x) => x.pid === oldId);
+  if (!s) return;
+  s.pid = np.id;
+  if (s.sid === G.me) G.lock = np.id;
+  NET.dirty = true;
+  chatSys(`${s.name} takes over as ${np.name}.`);
+}
+// a Play involves one of you: on base, at bat, on the mound, or a ball hit your way
+function squadInvolved() {
+  const ph = G.phase, pl = G.play, live = (ph === 'live' || ph === 'postPlay') && !!pl, ids = squadIds();
+  if (!ids.size) return false;
+  if (!live) return batCtrl() !== 'cpu' || pitchCtrl() !== 'cpu' || (LOCK_PHASES.includes(ph) && (G.baseRunners || []).some((r) => ids.has(r.pl.id)));
+  if (pl.R.some((r) => ids.has(r.pl.id) && (r.state === 'run' || r.state === 'base'))) return true;
+  return !!G.lockInv;
+}
+// game steps per frame: nobody's in it, so skip ahead (or watch it fast)
+function squadFF() {
+  if (G.squadSkip === 2 || G.replay || G.phase === 'final' || squadInvolved()) return 1;
+  if (G.squadSkip === 1) { G.skipping = true; return SKIP_SPEED; }
+  return 4;
+}
+// what you see before a pitch when you're not batting, pitching or on base
+function squadHint() {
+  const me = mySeat();
+  if (!me) return '';
+  if (G.half !== me.side) return fieldingNow(me.pid) ? 'You are in the field &middot; get within the gold ring of the ball to field it' : 'Your team is in the field';
+  const idx = (G.lu[me.side] || []).findIndex((p) => p.id === me.pid);
+  if (idx < 0) return 'Your team is batting';
+  const k = (idx - G.order[me.side] + 9) % 9;
+  return k === 1 ? 'Your team is batting &middot; you are on deck' : `Your team is batting &middot; you're up ${k} batters from now`;
+}
+function squadSimText() {
+  const me = mySeat();
+  if (!me) return 'Skipping to the next play with one of you in it';
+  return `${G.half === me.side ? 'Your team is batting' : 'Your team is in the field'} &middot; skipping to the next play with one of you in it`;
+}
+
+// ------------------------------------------------------------- name tags ----
+// The Show style: a colored tag over every player a person is playing, with his name
+// (YOU over your own) and a speaker when he's talking on voice chat.
+const sqTagEls = new Map(), _sqV = new V3();
+function squadTags() {
+  const box = $('squadTags');
+  const on = !!G.squad && G.mode === 'online' && !G.replay && !G.skipping && !G.paused && LOCK_PHASES.concat(['halfIntro']).includes(G.phase);
+  const seen = new Set();
+  if (on) {
+    const W = window.innerWidth, H = window.innerHeight;
+    for (const s of G.squad) {
+      let m = null;
+      for (const x of MODELS) if (x.root.visible && x.pl && x.pl.id === s.pid && x !== fpvHidden) { m = x; break; }
+      if (!m || (s.sid === G.me && fpvOn)) continue;   // the camera's already on you
+      _sqV.copy(m.root.position); _sqV.y += 8.6; _sqV.project(camera);
+      if (_sqV.z > 1 || Math.abs(_sqV.x) > 1.05 || Math.abs(_sqV.y) > 1.05) continue;
+      let el = sqTagEls.get(s.sid);
+      if (!el) { el = document.createElement('div'); box.appendChild(el); sqTagEls.set(s.sid, el); }
+      const me = s.sid === G.me, talk = voiceTalking(s.sid), sig = `${s.name}|${me}|${talk}|${s.cpu}|${s.col}`;
+      if (el.dataset.sig !== sig) {
+        el.dataset.sig = sig;
+        el.className = `sq-tag${me ? ' me' : ''}${talk ? ' talk' : ''}${s.cpu ? ' cpu' : ''}`;
+        el.style.setProperty('--sc', s.col);
+        el.innerHTML = `${talk ? '<i class="sq-spk"></i>' : ''}<b>${me ? 'YOU' : esc(s.name)}</b>${s.cpu ? '<small>CPU</small>' : ''}`;
+      }
+      el.style.left = ((_sqV.x + 1) / 2) * W + 'px'; el.style.top = ((1 - _sqV.y) / 2) * H + 'px';
+      seen.add(s.sid);
+    }
+  }
+  for (const [sid, el] of sqTagEls) if (!seen.has(sid)) { el.remove(); sqTagEls.delete(sid); }
+}
+
+// ----------------------------------------------------------------- lobby ----
+// Each person in the room picks a player by clicking his spot (click it again to give it up).
+// The host picks both teams. NET.room: [{ sid, name, side, pick, peer, voice, on }]
+const squadMode = () => (NET.role === 'guest' || NET.role === 'spec' ? !!(NET.lobby && NET.lobby.squad) : menu.netMode === 1);
+const mySid = () => (NET.role === 'host' ? 0 : NET.sid);
+function claimSpot(side, pick) {
+  const me = (NET.room || []).find((r) => r.sid === mySid());
+  const off = me && me.side === side && me.pick === pick;   // your own spot again: give it up
+  if (NET.role === 'host') hostClaim(0, side, off ? '' : pick);
+  else if (NET.role === 'guest' && NET.open) netSend({ t: 'claim', side, pick: off ? '' : pick });
+  SND.init(); if (SND.ctx) SND.tick();
+}
+// the host takes (or refuses) a claim: one spot each, nobody else's
+function hostClaim(sid, side, pick) {
+  const r = NET.room.find((x) => x.sid === sid);
+  if (!r || G.mode === 'online') return;
+  side = side ? 1 : 0; pick = String(pick || '');
+  if (pick && (!PICK_RE.test(pick) || NET.room.some((x) => x !== r && x.side === side && x.pick === pick))) return;
+  r.side = side; r.pick = pick;
+  netSendRoom();
+}
+function renderSquad() {
+  const el = $('squadPanel'), show = menu.mode === 'online' && squadMode() && ((NET.role === 'host' && NET.peerOpen) || (NET.role === 'guest' && NET.open && NET.lobby));
+  el.classList.toggle('hidden', !show);
+  if (!show) return;
+  const P = onlinePicks(), room = NET.room || [], me = mySid();
+  const col = (side) => {
+    const t = P.teams[side];
+    if (!t) return '<div class="sq-col"></div>';
+    const spots = t.lineup.map((h, i) => [`h${i}`, h.pos, h.name, `${i + 1}`]).concat([['p0', 'SP', pickPlayer(t, 'p0').name, '']]);
+    return `<div class="sq-col"><div class="sq-team" style="background:${t.c1};color:${t.c2}">${side ? 'HOME' : 'AWAY'} &middot; ${esc(t.id)}</div>` + spots.map(([pick, pos, name, ord]) => {
+      const who = room.find((r) => r.side === side && r.pick === pick), mine = who && who.sid === me;
+      return `<button class="sq-spot${who ? ' taken' : ''}${mine ? ' mine' : ''}" data-side="${side}" data-pick="${pick}" ${who && !mine ? 'disabled' : ''} title="${who ? (mine ? 'Click to give up this spot' : esc(who.name) + ' plays him') : 'Click to play him'}">`
+        + `<span class="sq-ord">${ord}</span><b>${pos}</b><span class="sq-pl">${esc(name)}</span>${who ? `<span class="sq-who" style="--sc:${seatCol(who.sid)}">${mine ? 'YOU' : esc(who.name)}</span>` : '<span class="sq-free">PLAY</span>'}</button>`;
+    }).join('') + '</div>';
+  };
+  const people = room.map((r) => {
+    const pl = r.pick && P.teams[r.side] ? pickPlayer(P.teams[r.side], r.pick) : null;
+    return `<span class="sq-person${r.sid === me ? ' me' : ''}" style="--sc:${seatCol(r.sid)}"><i></i><b>${esc(r.name)}${r.sid === 0 ? ' <small>HOST</small>' : ''}</b>`
+      + `<small>${pl ? `${r.side ? 'HOME' : 'AWAY'} ${esc(pl.pos === 'SP' || r.pick === 'p0' ? 'SP' : pl.pos)} &middot; ${esc(lastName(pl.name))}` : 'picking&hellip;'}</small>${voicePersonHTML(r)}</span>`;
+  }).join('');
+  el.innerHTML = `<div class="sq-head">PICK YOUR PLAYER<small>Click a spot to play him: the same team as your friends or the other one. The CPU plays everyone nobody picks.</small></div>
+    <div class="sq-cols">${col(0)}${col(1)}</div>
+    <div class="sq-room"><span class="sq-room-h">IN THE ROOM ${room.length}/${SQUAD_MAX}</span>${people}</div>`;
+}
+// ============================================================================
+// Online over WebRTC (PeerJS): a 1v1, or a squad of up to ten people who each play
+// one player (64-squad.js). The host runs the whole simulation and every guest
+// renders it. What keeps a guest's side feeling local:
 //  - snapshots go 60 times a second over a second, unreliable and unordered
 //    data channel, so a lost packet never holds up the ones behind it
 //  - the guest syncs its clock to the host's and pushes every player forward
@@ -11447,9 +11772,10 @@ function buildSeasonUI() {
 //  - the fielder the guest steers moves on the guest's screen right away; the
 //    host takes the guest's position for him
 //  - swings and pitches are timed on the guest's own clock, so lag never costs a hitter
-// A dropped connection isn't the end: the host pauses and keeps the room open, and the
-// guest reconnects on its own (proving it's the same player with the game's token).
-// Up to six spectators can join a room with its code and watch everything live.
+// A dropped connection isn't the end: the guest reconnects on its own (proving it's the
+// same player with its game token). In a 1v1 the host pauses and waits; in a squad the
+// CPU plays his man until he's back. Up to six spectators can join a room with its code
+// and watch everything live. The host keeps one link per guest (NET.links).
 // ============================================================================
 
 const NET = {
@@ -11459,8 +11785,12 @@ const NET = {
   pid: 0, bb: null, ball: null, pclock: { pid: -1, t: 0 }, pred: { m: null, key: null, on: false, v: 0, lastIn: -9, hold: 0 },
   invited: null, pendingInvite: null,
   specs: [], specSnapT: 0, tok: null, waiting: 0, waitHint: 0, pausedForDrop: false, rejoin: null, bye: false, opp: null,
+  // host: one link per friend in the room { conn, fast, fastOK, hiT, sid, opp, name, tok, q, inp, pos, inAt, pings, rtt, gone, bye, chatT }
+  links: [],
+  // who's in the room, kept by the host and sent to everyone: [{ sid, name, side, pick, peer, voice, on }]
+  room: [], sid: 0, lastPl: null,
 };
-const SPEC_MSGS = new Set(['start', 'gs', 'ev', 'screen', 'pitch', 'bb', 'pause', 'bye']);
+const SPEC_MSGS = new Set(['start', 'gs', 'ev', 'screen', 'pitch', 'bb', 'pause', 'bye', 'chat']);
 const PEER_PREFIX = 'fullcount26-';
 // how two devices find a way to each other: several public STUN servers, and PeerJS's TURN
 // relays for networks that won't allow a direct connection
@@ -11473,7 +11803,7 @@ const CODE_CHARS = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 const FAST_CHANNEL_ID = 77;
 const r2 = (x) => Math.round(x * 100) / 100;
 const r3 = (x) => Math.round(x * 1000) / 1000;
-const isHost = () => NET.role === 'host' && NET.open && G.mode === 'online';
+const isHost = () => NET.role === 'host' && G.mode === 'online';
 const isGuest = () => (NET.role === 'guest' || NET.role === 'spec') && G.mode === 'online';   // a spectator renders like a guest
 // the host's performance.now(), as best the guest can tell
 const hostNow = () => performance.now() + NET.off;
@@ -11498,6 +11828,8 @@ function netHost() {
   NET.code = code;
   netStatus('Opening a room…');
   const peer = (NET.peer = new Peer(PEER_PREFIX + code, PEER_OPTS));
+  NET.room = [{ sid: 0, name: myName(), side: menu.side ? 1 : 0, pick: '', peer: PEER_PREFIX + code, voice: VOICE.on, on: true }];
+  peerHooks(peer);
   peer.on('open', () => {
     if (NET.peer !== peer) return;
     NET.peerOpen = true;
@@ -11507,8 +11839,12 @@ function netHost() {
   });
   peer.on('connection', hostIncoming);
   peer.on('error', (e) => { if (e.type === 'unavailable-id' && NET.peer === peer) { netHost(); return; } netStatus(netErrText(e), 'bad'); });
-  peer.on('disconnected', () => { if (NET.peer === peer) try { peer.reconnect(); } catch (err) { /* already gone */ } });
   renderMenu();
+}
+// every Peer we make: back to the matchmaking server after a blip, and voice calls from the room
+function peerHooks(peer) {
+  peer.on('disconnected', () => { if (NET.peer === peer && !peer.destroyed) try { peer.reconnect(); } catch (err) { /* already gone */ } });
+  peer.on('call', (call) => { if (NET.peer === peer) voiceIncoming(call); else try { call.close(); } catch (e) { /* gone */ } });
 }
 // watch: join a room as a spectator
 function netJoin(raw, watch = false) {
@@ -11519,6 +11855,7 @@ function netJoin(raw, watch = false) {
   NET.role = watch ? 'spec' : 'guest'; NET.code = code;
   netStatus(watch ? `Joining room ${code} to watch…` : `Joining room ${code}…`);
   const peer = (NET.peer = new Peer(PEER_OPTS));
+  peerHooks(peer);
   peer.on('open', () => {
     const conn = peer.connect(PEER_PREFIX + code, { reliable: true, serialization: 'json' });
     netBind(conn);
@@ -11536,6 +11873,9 @@ function netJoin(raw, watch = false) {
 }
 // who you are, for the head-to-head record (only when you're signed in)
 function meId() { return typeof Cloud !== 'undefined' && Cloud.profile ? { uid: Cloud.profile.uid, name: Cloud.profile.name } : null; }
+// your name in the room and in chat: the one you typed, or your account's
+// (raw: '' when you haven't got one, so the host can number you)
+function myName(raw = false) { const n = settings.netName || (typeof Cloud !== 'undefined' && Cloud.profile ? Cloud.profile.name : ''); return raw ? cleanName(n, '') : cleanName(n, NET.role === 'host' ? 'Host' : 'Player'); }
 function cleanOpp(x) { return x && typeof x.uid === 'string' && x.uid && x.uid.length <= 128 ? { uid: x.uid, name: String(x.name || 'Player').slice(0, 40) } : null; }
 // the guest (or a spectator) connecting to the host
 function netBind(conn) {
@@ -11543,7 +11883,7 @@ function netBind(conn) {
   conn.on('open', () => {
     if (NET.conn !== conn) return;
     netAttach(conn);
-    conn.send({ t: 'hello', ver: BUILD_ID, me: meId(), tok: NET.tok || undefined, spec: NET.role === 'spec' ? 1 : undefined });
+    conn.send({ t: 'hello', ver: BUILD_ID, me: meId(), name: myName(true), vc: VOICE.on ? 1 : 0, tok: NET.tok || undefined, spec: NET.role === 'spec' ? 1 : undefined });
     if (NET.rejoin) { NET.rejoin = null; setHint(''); hudBanner('RECONNECTED', 'Back to the game', ''); }
     else netStatus(NET.role === 'spec' ? 'Connected. You\'ll see the game as soon as it starts.' : 'Connected! Pick your team. The host starts the game.', 'good');
     renderMenu(); cloudRender();
@@ -11555,46 +11895,81 @@ function netBind(conn) {
 function netAttach(conn) {
   NET.conn = conn; NET.open = true; NET.bye = false;
   NET.lastInSeq = -1; NET.lastSeq = -1; NET.pings = []; NET.rtt = 0; NET.lobbySent = '';
-  if (NET.role !== 'spec') netFastOpen(conn);
+  if (NET.role !== 'spec') netFastOpen(conn, NET);
 }
-// Someone connected to our room. Their first message says who: the friend we're waiting for,
-// the same friend coming back after a dropped connection (with the game's token), or a spectator.
+// Someone connected to our room. Their first message says who: a friend joining the room,
+// a friend coming back after a dropped connection (with his game token), or a spectator.
 function hostIncoming(conn) {
-  let role = null;
+  let role = null, L = null;
   const drop = () => setTimeout(() => { try { conn.close(); } catch (e) { /* gone */ } }, 400);
   conn.on('open', () => setTimeout(() => { if (!role) try { conn.close(); } catch (e) { /* gone */ } }, 20000));
   conn.on('data', (m) => {
     if (!m || typeof m !== 'object') return;
-    if (role === 'guest') { if (NET.conn === conn) netOnMsg(m); return; }
-    if (role === 'spec') { if (m.t === 'ping') try { conn.send({ t: 'pong', c: m.c, h: performance.now() }); } catch (e) { /* closing */ } return; }
+    if (role === 'guest') { if (L && L.conn === conn) netOnMsg(m, L); return; }
+    if (role === 'spec') {
+      if (m.t === 'ping') try { conn.send({ t: 'pong', c: m.c, h: performance.now() }); } catch (e) { /* closing */ }
+      else if (m.t === 'chat') chatIn(m, null, conn);
+      return;
+    }
     if (m.t !== 'hello' || NET.role !== 'host') return;
     if (m.ver !== BUILD_ID) { role = 'old'; conn.send({ t: 'ver' }); drop(); netStatus(VERSION_MSG, 'bad'); return; }
     if (m.spec) {
       if (NET.specs.length >= 6) { conn.send({ t: 'full', spec: 1 }); drop(); return; }
       role = 'spec'; NET.specs.push(conn); NET.dirty = true;
+      conn.fcName = cleanName(m.name, 'Spectator'); conn.fcChat = [];
       conn.on('close', () => { NET.specs = NET.specs.filter((c) => c !== conn); NET.dirty = true; });
-      if (G.mode === 'online') { conn.send({ t: 'start', cfg: { ...G.cfg, tok: undefined } }); conn.send(netGS()); }
+      if (G.mode === 'online') { conn.send({ t: 'start', cfg: { ...G.cfg, tok: undefined, me: -1 } }); conn.send(netGS()); }
       return;
     }
-    const rejoin = G.mode === 'online' && !NET.open && NET.waiting && typeof m.tok === 'string' && m.tok === G.cfg.tok;
-    const lobby = G.mode !== 'online' && !NET.open;
-    if (!rejoin && !lobby) { conn.send({ t: 'full' }); drop(); return; }
+    const squad = G.mode === 'online' ? !!G.squad : menu.netMode === 1;
+    // back after a dropped connection: his token says it's him
+    const back = G.mode === 'online' && typeof m.tok === 'string' && m.tok ? NET.links.find((x) => x.gone && x.tok === m.tok) : null;
+    const lobby = G.mode !== 'online' && (squad ? NET.links.length < SQUAD_MAX - 1 : !NET.links.length);
+    if (!back && !lobby) { conn.send({ t: 'full', squad: squad ? 1 : 0, started: G.mode === 'online' ? 1 : 0 }); drop(); return; }
     role = 'guest';
-    netAttach(conn);
-    NET.opp = cleanOpp(m.me);
-    if (rejoin) { netRejoined(); return; }
-    const rec = NET.opp ? h2hGet(NET.opp.uid) : null;
-    netStatus(`${NET.opp ? NET.opp.name : 'Your friend'} is here!${rec ? ` You're ${rec.w}-${rec.l} against each other.` : ''} Pick your team and press Start.`, 'good');
-    netSendLobby(); renderMenu(); cloudRender();
+    if (back) { L = back; L.conn = conn; linkOpen(L); const r = NET.room.find((x) => x.sid === L.sid); if (r) r.voice = !!m.vc; hostRejoined(L); return; }
+    L = { conn, fast: null, fastOK: false, hiT: 0, sid: freeSid(), opp: cleanOpp(m.me), name: '', tok: null, q: -1, inp: { x: 0, z: 0 }, pos: null, inAt: 0, pings: [], rtt: 0, gone: 0, bye: false, chatT: [] };
+    L.name = cleanName(m.name, `Player ${L.sid + 1}`);
+    NET.links.push(L); linkOpen(L);
+    NET.room.push({ sid: L.sid, name: L.name, side: menu.side ? 0 : 1, pick: '', peer: String(conn.peer || '').slice(0, 64), voice: !!m.vc, on: true });
+    linkSend(L, { t: 'welcome', sid: L.sid });
+    if (squad) netStatus(`${L.name} joined. ${NET.links.length + 1} in the room.`, 'good');
+    else {
+      NET.opp = L.opp;
+      const rec = NET.opp ? h2hGet(NET.opp.uid) : null;
+      netStatus(`${NET.opp ? NET.opp.name : L.name} is here!${rec ? ` You're ${rec.w}-${rec.l} against each other.` : ''} Pick your team and press Start.`, 'good');
+    }
+    chatSys(`${L.name} joined the room.`);
+    NET.lobbySent = ''; netSendRoom(); cloudRender();
   });
-  conn.on('close', () => { if (role === 'guest' && NET.conn === conn) netLost(); });
-  conn.on('error', () => { if (role === 'guest' && NET.conn === conn) netLost(); });
+  conn.on('close', () => { if (role === 'guest' && L && L.conn === conn) linkLost(L); });
+  conn.on('error', () => { if (role === 'guest' && L && L.conn === conn) linkLost(L); });
 }
-// our guest is back: the game as it stands, and play on
-function netRejoined() {
+// the lowest seat id nobody has (the host is 0)
+function freeSid() { for (let i = 1; i < SQUAD_MAX; i++) if (!NET.links.some((L) => L.sid === i)) return i; return SQUAD_MAX; }
+const linkBySid = (sid) => NET.links.find((L) => L.sid === sid && !L.gone) || null;
+function linkOpen(L) {
+  L.gone = 0; L.bye = false; L.q = -1; L.pings = []; L.rtt = 0; L.fast = null; L.fastOK = false;
+  NET.open = true; NET.bye = false;
+  netFastOpen(L.conn, L);
+}
+function linkSend(L, m) { if (L && L.conn && !L.gone) try { L.conn.send(m); } catch (e) { /* channel closing */ } }
+function linkSendFast(L, m, str) {
+  const dc = L.fast;
+  if (L.fastOK && dc && dc.readyState === 'open' && dc.bufferedAmount < 65536) { try { dc.send(str || JSON.stringify(m)); return; } catch (e) { /* fall back */ } }
+  linkSend(L, m);
+}
+// a friend is back: the game as it stands, and play on
+function hostRejoined(L) {
+  const r = NET.room.find((x) => x.sid === L.sid);
+  if (r) { r.on = true; r.peer = String(L.conn.peer || '').slice(0, 64); }
+  const seat = seatBySid(L.sid);
+  if (seat) { seat.cpu = false; NET.dirty = true; }
+  netSendStart(G.cfg, L);
+  linkSend(L, netGS());
+  netSendRoom();
+  if (G.squad) { chatSys(`${L.name} is back.`); return; }
   NET.waiting = 0;
-  netSend({ t: 'start', cfg: G.cfg, rejoin: 1 });
-  netSend(netGS());
   hudBanner('RECONNECTED', 'Back to the game', '');
   setHint('');
   if (NET.pausedForDrop) { NET.pausedForDrop = false; G.paused = false; $('pause').classList.add('hidden'); netSend({ t: 'pause', v: false }); }
@@ -11614,15 +11989,17 @@ function netRejoinTick() {
   R.next = now + 4000;
   try { if (NET.peer) NET.peer.destroy(); } catch (e) { /* gone */ }
   const peer = (NET.peer = new Peer(PEER_OPTS));
+  peerHooks(peer);
   peer.on('open', () => { if (NET.peer === peer && !NET.open) netBind(peer.connect(PEER_PREFIX + NET.code, { reliable: true, serialization: 'json' })); });
   peer.on('error', () => { /* try again on the next tick */ });
 }
-// the host, waiting for a dropped guest: a minute and a half, then it's over
+// the host of a 1v1, waiting for a dropped opponent: a minute and a half, then it's over
 function netWaitTick() {
   if (!NET.waiting || NET.role !== 'host') return;
   const left = Math.ceil(90 - (Date.now() - NET.waiting) / 1000);
   if (left <= 0) {
     NET.waiting = 0; G.paused = false; NET.pausedForDrop = false;
+    NET.links = NET.links.filter((L) => !L.gone);
     hudBanner('DISCONNECTED', 'Your opponent did not come back', ''); setHint('');
     setTimeout(() => { if (G.mode === 'online' && !NET.open) toMenu(); }, 3000);
   } else if (left !== NET.waitHint) { NET.waitHint = left; setHint(`Your opponent lost their connection. Waiting for them to come back&hellip; ${left}s`); }
@@ -11630,31 +12007,28 @@ function netWaitTick() {
 // A second channel for snapshots and inputs: unordered with no retransmits, so it
 // behaves like UDP. Both sides create it with the same id (no renegotiation needed).
 // Until a message arrives on it, everything still goes over the reliable channel.
-function netFastOpen(conn) {
-  NET.fast = null; NET.fastOK = false;
+// at: NET (the guest's line to the host) or the host's link to one guest
+function netFastOpen(conn, at) {
+  at.fast = null; at.fastOK = false;
   try {
     const dc = conn.peerConnection.createDataChannel('fc-fast', { negotiated: true, id: FAST_CHANNEL_ID, ordered: false, maxRetransmits: 0 });
     dc.onmessage = (e) => {
-      if (NET.fast !== dc) return;
-      NET.fastOK = true;
+      if (at.fast !== dc) return;
+      at.fastOK = true;
       let m; try { m = JSON.parse(e.data); } catch (err) { return; }
-      netOnMsg(m);
+      if (at === NET) netOnMsg(m); else if (!at.gone) netOnMsg(m, at);
     };
-    NET.fast = dc;
-  } catch (e) { NET.fast = null; }
+    at.fast = dc;
+  } catch (e) { at.fast = null; }
 }
+// the guest (or a spectator) lost the host
 function netLost() {
   if (!NET.open) return;
   NET.open = false; NET.conn = null; NET.fast = null; NET.fastOK = false;
-  // mid-game and nobody quit on purpose: wait for (or go back to) the other side
+  voiceStop(true);
+  // mid-game and nobody quit on purpose: go back to the host
   const mid = G.mode === 'online' && G.phase !== 'final' && !NET.bye;
   if (mid && (NET.role === 'spec' || (G.cfg && G.cfg.tok))) {
-    if (NET.role === 'host') {
-      NET.waiting = Date.now(); NET.waitHint = 0; NET.pausedForDrop = !G.paused; G.paused = true;
-      hudBanner('CONNECTION LOST', 'Waiting for your opponent to reconnect', '');
-      netWaitTick();
-      return;
-    }
     NET.rejoin = { until: Date.now() + 60000, next: Date.now() + 1500 };
     hudBanner('CONNECTION LOST', 'Reconnecting…', '');
     setHint('Connection lost. Reconnecting to the host&hellip;');
@@ -11662,55 +12036,125 @@ function netLost() {
   }
   if (G.mode === 'online') {
     G.paused = false; $('pause').classList.add('hidden');
-    hudBanner('DISCONNECTED', 'Your opponent left the game', '');
+    hudBanner('DISCONNECTED', G.squad ? 'The host left the game' : 'Your opponent left the game', '');
     setTimeout(() => { if (G.mode === 'online') toMenu(); }, 3500);
   }
   netStatus('The connection closed. Host or join again to play.', 'bad');
+  NET.room = []; NET.lobby = null;
   renderMenu(); cloudRender();
 }
+// the host lost one guest
+function linkLost(L) {
+  if (L.gone || !NET.links.includes(L)) return;
+  const fast = L.fast;
+  L.conn = null; L.fast = null; L.fastOK = false; L.inp.x = 0; L.inp.z = 0; L.pos = null;
+  try { if (fast) fast.close(); } catch (e) { /* gone */ }
+  NET.open = NET.links.some((x) => x !== L && !x.gone);
+  voiceDrop(L.sid);
+  const mid = G.mode === 'online' && G.phase !== 'final' && !L.bye, r = NET.room.find((x) => x.sid === L.sid), seat = seatBySid(L.sid);
+  if (mid) {
+    // keep his spot: he can come back with his token
+    L.gone = Date.now();
+    if (r) r.on = false;
+    if (G.squad) {
+      if (seat) seat.cpu = true;
+      NET.dirty = true; netSendRoom();
+      chatSys(`${L.name} lost the connection. The CPU plays for them until they're back.`);
+      return;
+    }
+    NET.waiting = Date.now(); NET.waitHint = 0; NET.pausedForDrop = !G.paused; G.paused = true;
+    hudBanner('CONNECTION LOST', 'Waiting for your opponent to reconnect', '');
+    netWaitTick();
+    return;
+  }
+  // gone for good: he left the room, quit on purpose, or the game is over
+  NET.links = NET.links.filter((x) => x !== L);
+  NET.room = NET.room.filter((x) => x.sid !== L.sid);
+  if (G.mode === 'online' && G.squad) {
+    if (seat) seat.cpu = true;
+    NET.dirty = true; netSendRoom();
+    if (G.phase !== 'final') chatSys(`${L.name} left the game. The CPU plays for them.`);
+    return;
+  }
+  chatSys(`${L.name} left.`);
+  if (G.mode === 'online') {
+    G.paused = false; $('pause').classList.add('hidden');
+    hudBanner('DISCONNECTED', 'Your opponent left the game', '');
+    setTimeout(() => { if (G.mode === 'online' && NET.role === 'host' && !NET.open) toMenu(); }, 3500);
+  }
+  if (!NET.links.some((x) => !x.gone)) { NET.guestSpec = null; NET.opp = null; }
+  netStatus(NET.links.length ? `${L.name} left. ${NET.links.length + 1} in the room.` : `${L.name} left. Waiting for someone to join…`, NET.links.length ? 'good' : '');
+  NET.lobbySent = ''; netSendRoom(); renderMenu(); cloudRender();
+}
 function netClose() {
-  const { conn, peer, fast, specs, open } = NET;
+  const { conn, peer, fast, specs, open, links } = NET;
+  voiceStop(false); chatClear();
   // say goodbye first, so the other side knows it wasn't a dropped connection
   if (open && conn) try { conn.send({ t: 'bye' }); } catch (e) { /* closing */ }
+  for (const L of links) linkSend(L, { t: 'bye' });
   for (const c of specs) try { c.send({ t: 'bye' }); } catch (e) { /* closing */ }
-  Object.assign(NET, { role: null, peer: null, conn: null, fast: null, fastOK: false, open: false, peerOpen: false, code: null, lobby: null, lobbySent: '', blockShown: '', snap: null, guestSpec: null, bb: null, ball: null, invited: null, pendingInvite: null, specs: [], tok: null, waiting: 0, rejoin: null, bye: false, opp: null, pausedForDrop: false });
+  Object.assign(NET, { role: null, peer: null, conn: null, fast: null, fastOK: false, open: false, peerOpen: false, code: null, lobby: null, lobbySent: '', blockShown: '', snap: null, guestSpec: null, bb: null, ball: null, invited: null, pendingInvite: null, specs: [], tok: null, waiting: 0, rejoin: null, bye: false, opp: null, pausedForDrop: false, links: [], room: [], sid: 0, lastPl: null });
   setTimeout(() => {
     try { if (fast) fast.close(); } catch (e) { /* ignore */ }
     try { if (conn) conn.close(); } catch (e) { /* ignore */ }
+    for (const L of links) { try { if (L.fast) L.fast.close(); } catch (e) { /* ignore */ } try { if (L.conn) L.conn.close(); } catch (e) { /* ignore */ } }
     for (const c of specs) try { c.close(); } catch (e) { /* ignore */ }
     try { if (peer) peer.destroy(); } catch (e) { /* ignore */ }
-  }, open || specs.length ? 300 : 0);
+  }, open || specs.length || links.length ? 300 : 0);
 }
 function netSend(m) {
-  if (NET.role === 'spec' && m.t !== 'hello' && m.t !== 'ping') return;   // spectators only watch
-  if (NET.open && NET.conn) try { NET.conn.send(m); } catch (e) { /* channel closing */ }
-  if (NET.role === 'host' && NET.specs.length && SPEC_MSGS.has(m.t)) {
-    const out = m.t === 'start' ? { ...m, cfg: { ...m.cfg, tok: undefined } } : m;   // the token stays between the players
+  if (NET.role === 'spec' && m.t !== 'hello' && m.t !== 'ping' && m.t !== 'chat') return;   // spectators only watch (and chat)
+  if (NET.role === 'host') { for (const L of NET.links) linkSend(L, m); }
+  else if (NET.open && NET.conn) try { NET.conn.send(m); } catch (e) { /* channel closing */ }
+  if (NET.role === 'host' && NET.specs.length && SPEC_MSGS.has(m.t) && !(m.t === 'chat' && m.team)) {
+    const out = m.t === 'start' ? { ...m, cfg: { ...m.cfg, tok: undefined, me: -1 } } : m;   // tokens stay with the players
     for (const c of NET.specs) try { c.send(out); } catch (e) { /* closing */ }
   }
 }
 // latest-wins traffic (snapshots, stick input, pings): the fast channel when it works
 function netSendFast(m) {
-  // spectators get snapshots over the reliable channel, 20 a second
-  if (NET.role === 'host' && m.t === 's' && NET.specs.length && performance.now() - NET.specSnapT >= 48) {
-    NET.specSnapT = performance.now();
-    for (const c of NET.specs) try { c.send(m); } catch (e) { /* closing */ }
+  if (NET.role === 'host') {
+    // spectators get snapshots over the reliable channel, 20 a second
+    if (m.t === 's' && NET.specs.length && performance.now() - NET.specSnapT >= 48) {
+      NET.specSnapT = performance.now();
+      for (const c of NET.specs) try { c.send(m); } catch (e) { /* closing */ }
+    }
+    let str = null;
+    for (const L of NET.links) if (!L.gone) linkSendFast(L, m, str || (str = JSON.stringify(m)));
+    return;
   }
   if (NET.role === 'spec' && m.t !== 'ping') return;
   const dc = NET.fast;
   if (NET.fastOK && dc && dc.readyState === 'open' && dc.bufferedAmount < 65536) { try { dc.send(JSON.stringify(m)); return; } catch (e) { /* fall back */ } }
   netSend(m);
 }
+// the game's start, to each friend with his own token and seat (and to the spectators)
+function netSendStart(cfg, only = null) {
+  for (const L of NET.links) if (!L.gone && (!only || L === only)) linkSend(L, { t: 'start', cfg: { ...cfg, tok: L.tok || undefined, me: L.sid }, rejoin: only ? 1 : undefined });
+  if (!only) for (const c of NET.specs) try { c.send({ t: 'start', cfg: { ...cfg, tok: undefined, me: -1 } }); } catch (e) { /* closing */ }
+}
+// who's in the room: names, picks, voice (the host keeps it)
+function netSendRoom() { if (NET.role === 'host') { netSend({ t: 'room', room: NET.room }); voiceSync(); renderMenu(); } }
+function roomOK(list) {
+  if (!Array.isArray(list)) return [];
+  return list.slice(0, SQUAD_MAX).filter((r) => r && typeof r === 'object').map((r) => ({
+    sid: clamp(r.sid | 0, 0, SQUAD_MAX - 1), name: cleanName(r.name), side: r.side ? 1 : 0, pick: PICK_RE.test(r.pick || '') ? r.pick : '',
+    peer: typeof r.peer === 'string' ? r.peer.slice(0, 64) : '', voice: !!r.voice, on: r.on !== false,
+  }));
+}
 // ---------------------------------------------------------------- lobby ----
-// Each player picks his own team (built-in or one of his custom rosters).
+// A 1v1: each player picks his own team (built-in or one of his custom rosters). A squad:
+// the host picks both teams and everyone picks a player (64-squad.js).
 // Custom rosters travel as data, so your friend doesn't need them saved.
 function netSendLobby() {
   if (NET.role !== 'host' || !NET.open) return;
-  const m = { t: 'lobby', ver: BUILD_ID, me: meId(), side: menu.side, innings: menu.innings, diff: menu.diff, pdiff: menu.pdiff, ump: menu.ump, park: menu.park || '', hostSpec: teamSpec(menuTeam(menu.side ? 'home' : 'away')) };
+  const sq = menu.netMode === 1;
+  const m = { t: 'lobby', ver: BUILD_ID, me: meId(), squad: sq ? 1 : 0, netMode: sq ? 1 : 0, side: menu.side, innings: menu.innings, diff: menu.diff, pdiff: menu.pdiff, ump: menu.ump, park: menu.park || '', squadSkip: menu.squadSkip ?? 1,
+    hostSpec: sq ? null : teamSpec(menuTeam(menu.side ? 'home' : 'away')), teams: sq ? [teamSpec(menuTeam('away')), teamSpec(menuTeam('home'))] : null };
   const s = JSON.stringify(m);
   if (s !== NET.lobbySent) { NET.lobbySent = s; netSend(m); }
 }
-function netSendPick() { if (NET.role === 'guest' && NET.open) netSend({ t: 'pick', spec: teamSpec(menuTeam('netTeam')) }); }
+function netSendPick() { if (NET.role === 'guest' && NET.open && !squadMode()) netSend({ t: 'pick', spec: teamSpec(menuTeam('netTeam')) }); }
 function specOK(s) {
   if (!s || typeof s !== 'object') return null;
   if (s.c) { const c = cleanRoster(s.c); return c ? { c } : null; }
@@ -11719,40 +12163,53 @@ function specOK(s) {
 function hostStartOnline() {
   if (!(NET.role === 'host' && NET.open) || onlineBlock()) return;
   const P = onlinePicks();
-  const cfg = { mode: 'online', teams: distinctSpecs(teamSpec(P.teams[0]), teamSpec(P.teams[1])), side: menu.side, innings: menu.innings, diff: menu.diff, pdiff: menu.pdiff, manual: 1, ump: menu.ump, park: menu.park || '', tok: Math.random().toString(36).slice(2, 12) };
-  netSend({ t: 'start', cfg });
+  const cfg = { mode: 'online', teams: distinctSpecs(teamSpec(P.teams[0]), teamSpec(P.teams[1])), side: menu.side, innings: menu.innings, diff: menu.diff, pdiff: menu.pdiff, manual: 1, ump: menu.ump, park: menu.park || '' };
+  if (P.squad) { cfg.squad = NET.room.filter((r) => r.pick).map((r) => ({ sid: r.sid, name: r.name, side: r.side, pick: r.pick })); cfg.skip = menu.squadSkip ?? 1; }
+  for (const L of NET.links) L.tok = Math.random().toString(36).slice(2, 12);
+  netSendStart(cfg);
   startGame(cfg);
 }
 
 // ------------------------------------------------------------- messages ----
-function netOnMsg(m) {
+// L: on the host, the link it came in on
+function netOnMsg(m, L = null) {
   if (!m || typeof m !== 'object') return;
   if (m.t === 'hi') return;
-  if (m.t === 'bye') { NET.bye = true; return; }
-  if (m.t === 'ping') { netSendFast({ t: 'pong', c: m.c, h: performance.now() }); return; }
-  if (m.t === 'pong') { netPong(m); return; }
-  if (NET.role === 'host') hostOnMsg(m); else guestOnMsg(m);
+  if (m.t === 'bye') { if (L) L.bye = true; else NET.bye = true; return; }
+  if (m.t === 'ping') { const pong = { t: 'pong', c: m.c, h: performance.now() }; if (L) linkSendFast(L, pong); else netSendFast(pong); return; }
+  if (m.t === 'pong') { netPong(m, L); return; }
+  if (NET.role === 'host') { if (L) hostOnMsg(m, L); } else guestOnMsg(m);
 }
 // round trip time, and (for the guest) the offset from our clock to the host's
-function netPong(m) {
-  const now = performance.now(), rtt = now - m.c;
+function netPong(m, L) {
+  const now = performance.now(), rtt = now - m.c, at = L || NET;
   if (!(rtt >= 0 && rtt < 5000) || !Number.isFinite(+m.h)) return;
-  NET.pings.push({ rtt, off: +m.h + rtt / 2 - now });
-  if (NET.pings.length > 12) NET.pings.shift();
-  NET.off = NET.pings.reduce((a, b) => (b.rtt < a.rtt ? b : a)).off;   // the fastest exchange is the most trustworthy
-  NET.rtt = NET.rtt ? NET.rtt * 0.8 + rtt * 0.2 : rtt;
+  at.pings.push({ rtt, off: +m.h + rtt / 2 - now });
+  if (at.pings.length > 12) at.pings.shift();
+  if (!L) NET.off = NET.pings.reduce((a, b) => (b.rtt < a.rtt ? b : a)).off;   // the fastest exchange is the most trustworthy
+  at.rtt = at.rtt ? at.rtt * 0.8 + rtt * 0.2 : rtt;
 }
-function hostOnMsg(m) {
-  if (m.t === 'hello') { NET.lobbySent = ''; netSendLobby(); return; }
-  if (m.t === 'pick') { NET.guestSpec = specOK(m.spec); renderMenu(); return; }
+function hostOnMsg(m, L) {
+  if (m.t === 'hello') { NET.lobbySent = ''; netSendLobby(); netSendRoom(); return; }
+  if (m.t === 'pick') { if (menu.netMode !== 1) { NET.guestSpec = specOK(m.spec); renderMenu(); } return; }
+  if (m.t === 'claim') { if (menu.netMode === 1) hostClaim(L.sid, m.side ? 1 : 0, typeof m.pick === 'string' ? m.pick : ''); return; }
+  if (m.t === 'name') {
+    const nm = cleanName(m.name, L.name), r = NET.room.find((x) => x.sid === L.sid);
+    if (nm !== L.name && G.mode !== 'online') { chatSys(`${L.name} is now ${nm}.`); L.name = nm; if (r) r.name = nm; netSendRoom(); }
+    return;
+  }
+  if (m.t === 'chat') { chatIn(m, L); return; }
+  if (m.t === 'vc') { const r = NET.room.find((x) => x.sid === L.sid); if (r && r.voice !== !!m.on) { r.voice = !!m.on; netSendRoom(); } return; }
   if (m.t === 'in') {
-    if (typeof m.q === 'number') { if (m.q <= NET.lastInSeq) return; NET.lastInSeq = m.q; }
-    G.remoteIn.x = clamp(+m.x || 0, -1, 1); G.remoteIn.z = clamp(+m.z || 0, -1, 1); NET.remoteInAt = performance.now();
-    G.remotePos = typeof m.k === 'string' && Number.isFinite(+m.px) && Number.isFinite(+m.pz)
+    if (typeof m.q === 'number') { if (m.q <= L.q) return; L.q = m.q; }
+    L.inp.x = clamp(+m.x || 0, -1, 1); L.inp.z = clamp(+m.z || 0, -1, 1); L.inAt = performance.now();
+    L.pos = typeof m.k === 'string' && Number.isFinite(+m.px) && Number.isFinite(+m.pz)
       ? { key: m.k, x: +m.px, z: +m.pz, ry: +m.ry || 0, v: clamp(+m.v || 0, 0, 40), at: performance.now() } : null;
+    if (!G.squad) { G.remoteIn.x = L.inp.x; G.remoteIn.z = L.inp.z; NET.remoteInAt = L.inAt; G.remotePos = L.pos; }
     return;
   }
   if (m.t !== 'act' || G.mode !== 'online') return;
+  if (G.squad) { squadAct(m, L); return; }
   const pl = G.play;
   switch (m.a) {
     case 'swing': remoteSwing(m); break;
@@ -11774,27 +12231,61 @@ function hostOnMsg(m) {
       break;
   }
 }
-function hostRestart() { netSend({ t: 'start', cfg: G.cfg }); showScreen(null); startGame(G.cfg); }
+// a squad: each person can only do things with his own player
+function squadAct(m, L) {
+  const s = seatBySid(L.sid), pl = G.play;
+  if (!s || s.cpu) return;
+  const mine = (p) => !!p && p.id === s.pid, c = pl ? pl.ctl.find((x) => x.sid === s.sid) : null;
+  switch (m.a) {
+    case 'swing': if (mine(G.batter)) remoteSwing(m); break;
+    case 'take': if (G.phase === 'pitch' && mine(G.batter)) G.remoteTake = true; break;
+    case 'pitch': if (mine(curPitcher())) remotePitch(m); break;
+    case 'throw': if (c) pl.userThrow(clamp(m.base | 0, 1, 4), c); break;
+    case 'dive': if (c) pl.userDive(c); break;
+    case 'run': if (s.side === G.half) { const kind = m.kind === 'go' ? 'go' : 'back'; if (pl) pl.runCmd(kind, s.pid, s.pid); else stealCmd(kind, s.pid); } break;
+    case 'pick': if (mine(curPitcher())) startPickoff(clamp(m.base | 0, 1, 3)); break;
+    case 'skip': skip(true); break;
+    case 'trot': if (pl && (pl.hr || pl.awarded) && pl.t > 2) pl.skipTrot(); break;
+    case 'pause': togglePause(!!m.v, true); break;
+    case 'again': if (G.phase === 'final') hostRestart(); break;
+    case 'challenge': if (G.challengeable && G.challengeable.who === 'squad' && G.challengeable.sids.includes(s.sid)) startChallenge(G.challengeable.side); break;
+  }
+}
+// a rematch: the same teams and spots (anyone who left is out)
+function hostRestart() {
+  const cfg = { ...G.cfg };
+  if (Array.isArray(cfg.squad)) cfg.squad = cfg.squad.filter((s) => s.sid === 0 || NET.links.some((L) => L.sid === s.sid && !L.gone));
+  netSendStart(cfg); showScreen(null); startGame(cfg);
+}
 const NET_SOUNDS = new Set(['crack', 'pop', 'thud', 'roar', 'charge', 'stretch', 'fanfare', 'say']);
 function guestOnMsg(m) {
   switch (m.t) {
     case 'ver': netStatus(VERSION_MSG, 'bad'); netClose(); renderMenu(); break;
+    case 'welcome': NET.sid = clamp(m.sid | 0, 0, SQUAD_MAX - 1); renderMenu(); break;
+    case 'room': NET.room = roomOK(m.room); voiceSync(); renderMenu(); break;
+    case 'chat': chatShow(m); break;
     case 'lobby': {
       if (m.ver !== BUILD_ID) { netStatus(VERSION_MSG, 'bad'); netClose(); renderMenu(); break; }
-      const first = !NET.lobby; NET.lobby = { ...m, hostSpec: specOK(m.hostSpec) }; NET.opp = cleanOpp(m.me);
+      const first = !NET.lobby, wasSquad = !!(NET.lobby && NET.lobby.squad);
+      NET.lobby = { ...m, hostSpec: specOK(m.hostSpec), teams: Array.isArray(m.teams) ? m.teams.slice(0, 2).map(specOK) : null };
+      NET.opp = m.squad ? null : cleanOpp(m.me);
+      if (!first && wasSquad && !m.squad) netSendPick();   // back to a 1v1: your team pick again
       if (first) {
         netSendPick();
-        const rec = NET.opp ? h2hGet(NET.opp.uid) : null;
-        if (NET.opp) netStatus(`Connected to ${NET.opp.name}'s game.${rec ? ` You're ${rec.w}-${rec.l} against each other.` : ''} Pick your team. The host starts the game.`, 'good');
+        const rec = NET.opp ? h2hGet(NET.opp.uid) : null, host = (NET.room.find((r) => r.sid === 0) || {}).name;
+        if (m.squad) netStatus(`Connected to ${host ? host + "'s" : 'the'} squad. Pick your player. The host starts the game.`, 'good');
+        else if (NET.opp) netStatus(`Connected to ${NET.opp.name}'s game.${rec ? ` You're ${rec.w}-${rec.l} against each other.` : ''} Pick your team. The host starts the game.`, 'good');
       }
       renderMenu(); break;
     }
-    case 'full': netStatus(m.spec ? 'That game already has the most spectators it can take.' : 'That game already has two players. Press Watch to spectate it instead.', 'bad'); netClose(); renderMenu(); break;
+    case 'full': netStatus(m.spec ? 'That game already has the most spectators it can take.' : m.squad && m.started ? 'That game has already started. Press Watch to spectate it instead.' : m.squad ? `That room is full (${SQUAD_MAX} players). Press Watch to spectate it instead.` : 'That game already has two players. Press Watch to spectate it instead.', 'bad'); netClose(); renderMenu(); break;
     case 'start':
       if (m.cfg && typeof m.cfg === 'object') {
         if (NET.role === 'guest' && typeof m.cfg.tok === 'string') NET.tok = m.cfg.tok.slice(0, 20);
-        showScreen(null); closeBox();
-        startGame({ ...m.cfg, teams: (m.cfg.teams || []).map((s) => specOK(s) || { b: TEAMS[0].key }), guest: true, spec: NET.role === 'spec' });
+        if (NET.role === 'guest') NET.sid = clamp(m.cfg.me | 0, 0, SQUAD_MAX - 1);
+        showScreen(null); closeBox(); closeChat();
+        const squad = Array.isArray(m.cfg.squad) ? m.cfg.squad.slice(0, SQUAD_MAX) : null;
+        startGame({ ...m.cfg, squad, teams: (m.cfg.teams || []).map((s) => specOK(s) || { b: TEAMS[0].key }), guest: true, spec: NET.role === 'spec', me: NET.role === 'spec' ? -1 : NET.sid });
       }
       break;
     case 'gs': if (G.mode === 'online') netApplyGS(m); break;
@@ -11808,8 +12299,10 @@ function guestOnMsg(m) {
 }
 
 // ---------------------------------------------- host -> guest broadcasting ----
-function netEv(f, a) { if (isHost()) netSend({ t: 'ev', f, a }); }
-function netEvTo(f, a) { netEv(f, a); }
+// skipping ahead (a play none of a squad is in) the sounds and the commentary stay quiet
+function netEv(f, a) { if (isHost() && !(G.skipping && (f === 'snd' || f === 'cast'))) netSend({ t: 'ev', f, a }); }
+// just to the person it's for (a squad), or to everyone
+function netEvTo(f, a, sid = null) { if (sid == null || !G.squad) netEv(f, a); else if (isHost()) linkSend(linkBySid(sid), { t: 'ev', f, a }); }
 function netInstallHooks() {
   { const o = hudCall; hudCall = (...a) => { o(...a); netEv('call', a); }; }
   { const o = hudBanner; hudBanner = (...a) => { o(...a); netEv('banner', a); }; }
@@ -11848,8 +12341,11 @@ function netGS() {
       pl: G.played[ti].map((x) => [x.pl.id, x.pos, x.for ? 1 : 0]), pi: G.pitched[ti].map((p) => p.id) })),
     dec: G.phase === 'final' ? decisions() : null,
     chal: G.challenges, ump: G.ump, specs: NET.specs.length,
-    chk: G.challengeable && G.challengeable.who === 'remote' ? G.challengeable.side : G.phase === 'reviewWait' && G.review && G.review.who === 'remote' ? G.review.side : -1,
+    chk: G.challengeable && (G.challengeable.who === 'remote' || G.challengeable.who === 'squad') ? G.challengeable.side : G.phase === 'reviewWait' && G.review && G.review.who === 'remote' ? G.review.side : -1,
     rv: G.phase === 'reviewWait' && G.review && G.review.who === 'remote' ? G.review.c.base : 0,
+    // a squad: who's playing whom (a reliever takes over for his pitcher), who dropped, who can challenge
+    sq: G.squad ? G.squad.map((x) => [x.sid, x.pid, x.cpu ? 1 : 0]) : null,
+    chs: G.challengeable && G.challengeable.who === 'squad' ? G.challengeable.sids : null,
   };
 }
 function netSnapshot() {
@@ -11861,12 +12357,13 @@ function netSnapshot() {
     if (prm && prm.glove) prm = { glove: [r2(prm.glove.x), r2(prm.glove.y), r2(prm.glove.z)] };
     m.push([md.key, r2(p.x), r2(p.y), r2(p.z), r3(md.root.rotation.y), md.anim, r3(G.now - md.t0), prm, md.fielding ? 1 : 0, md.j.helmet.visible ? 1 : 0, md.batsL ? 1 : 0]);
   }
-  const b = ballMesh.position, pl = G.play, remoteField = fieldCtrl() === 'remote';
-  const s = { t: 's', q: ++NET.seq, ts: r2(performance.now()), ph: G.phase, dur: G.dur, b: [r2(b.x), r2(b.y), r2(b.z), ballMesh.visible ? 1 : 0], m, f: G.camFocus ? G.camFocus.map(r2) : null };
+  const b = ballMesh.position, pl = G.play, remoteField = G.squad ? squadFielders().length > 0 : fieldCtrl() === 'remote';
+  const s = { t: 's', q: ++NET.seq, ts: r2(performance.now()), ph: G.phase, dur: G.dur, b: [r2(b.x), r2(b.y), r2(b.z), ballMesh.visible ? 1 : 0], m, f: G.camFocus ? G.camFocus.map(r2) : null, sk: G.skipping ? 1 : 0 };
   if (pl && G.phase === 'live') {
     const B = pl.ball, th = B.thr;
     s.pl = {
       pid: NET.pid, pt: r3(pl.t), prompt: pl.prompt && pl.userDef && remoteField ? 1 : 0, uf: remoteField && pl.uf ? pl.uf.m.key : null,
+      pr: G.squad && pl.userDef ? pl.ctl.filter((c) => c.prompt).map((c) => c.sid) : null,   // a squad: who's being asked to throw
       land: remoteField ? pl.landingSpot() : null, hr: pl.hr || pl.awarded ? 1 : 0,
       // where the ball is, as something the guest can compute for itself every frame
       bm: B.mode === 'flight' ? (pl.kind === 'hit' ? 'f' : null) : B.mode === 'held' && B.holder ? ['h', B.holder.m.key]
@@ -11874,8 +12371,8 @@ function netSnapshot() {
     };
   }
   // the guest's runners, during a play or before the pitch (for steals)
-  const ri = runCtrl() !== 'remote' ? null : pl && G.phase === 'live' ? pl.runnerInfo() : STEAL_PHASES.includes(G.phase) ? stealInfo() : null;
-  s.run = ri ? ri.map((r) => [r.id, r.key, r.to, r.from, r.run ? 1 : 0, r.rev ? 1 : 0, r.user ? 1 : 0, r.m.key, r.steal ? 1 : 0]) : null;
+  const ri = !(G.squad ? squadBatting() : runCtrl() === 'remote') ? null : pl && G.phase === 'live' ? pl.runnerInfo() : STEAL_PHASES.includes(G.phase) ? stealInfo() : null;
+  s.run = ri ? ri.map((r) => [r.id, r.key, r.to, r.from, r.run ? 1 : 0, r.rev ? 1 : 0, r.user ? 1 : 0, r.m.key, r.steal ? 1 : 0, r.bat ? 1 : 0]) : null;
   return s;
 }
 function netPitchOut() {
@@ -11893,17 +12390,31 @@ function netBBOut(origin, ev, la, spray) {
 }
 function netTick() {
   netRejoinTick(); netWaitTick();
-  if (!NET.open) return;
   const now = performance.now();
+  if (NET.role === 'host') {
+    const live = NET.links.filter((L) => !L.gone);
+    for (const L of live) {
+      // say hi on the fast channel until the other side hears us
+      if (L.fast && !L.fastOK && L.fast.readyState === 'open' && now - L.hiT > 250) { L.hiT = now; try { L.fast.send('{"t":"hi"}'); } catch (e) { /* not ready */ } }
+      if (now - L.inAt > 500) { L.inp.x = 0; L.inp.z = 0; L.pos = null; }
+    }
+    if (live.length && now - NET.pingT > (live.some((L) => L.pings.length < 6) ? 250 : 2000)) { NET.pingT = now; netSendFast({ t: 'ping', c: now }); }
+    NET.rtt = live.reduce((a, L) => Math.max(a, L.rtt), 0);   // the slowest friend
+    pingHUD();
+    if (G.mode !== 'online') return;
+    if (NET.dirty) { NET.dirty = false; netSend(netGS()); }
+    // the more friends, the fewer snapshots each (the guests fill in the frames in between)
+    const busy = G.phase === 'live' || G.phase === 'pitch' || G.phase === 'windup' || G.phase === 'postPlay';
+    const every = !busy ? 50 : live.length <= 1 ? 14 : live.length <= 3 ? 22 : 32;
+    if (now - NET.lastSnap >= every) { NET.lastSnap = now; netSendFast(netSnapshot()); }
+    if (now - NET.remoteInAt > 500) { G.remoteIn.x = 0; G.remoteIn.z = 0; G.remotePos = null; }
+    return;
+  }
+  if (!NET.open) return;
   // say hi on the fast channel until the other side hears us
   if (NET.fast && !NET.fastOK && NET.fast.readyState === 'open' && now - NET.hiT > 250) { NET.hiT = now; try { NET.fast.send('{"t":"hi"}'); } catch (e) { /* not ready */ } }
   if (now - NET.pingT > (NET.pings.length < 6 ? 250 : 2000)) { NET.pingT = now; netSendFast({ t: 'ping', c: now }); }
   pingHUD();
-  if (!isHost()) return;
-  if (NET.dirty) { NET.dirty = false; netSend(netGS()); }
-  const busy = G.phase === 'live' || G.phase === 'pitch' || G.phase === 'windup' || G.phase === 'postPlay';
-  if (now - NET.lastSnap >= (busy ? 14 : 50)) { NET.lastSnap = now; netSendFast(netSnapshot()); }
-  if (now - NET.remoteInAt > 500) { G.remoteIn.x = 0; G.remoteIn.z = 0; G.remotePos = null; }
 }
 function pingHUD() {
   const el = $('netPing'), show = G.mode === 'online' && NET.open && NET.rtt > 0;
@@ -11913,15 +12424,15 @@ function pingHUD() {
   const ms = Math.round(NET.rtt), n = NET.role === 'host' ? NET.specs.length : NET.specCount | 0;
   el.textContent = `${ms} ms` + (NET.role === 'spec' ? ' · watching' : n ? ` · ${n} watching` : '');
   el.className = ms < 80 ? 'good' : ms < 160 ? 'ok' : 'bad';
-  el.title = `Round trip to your opponent${NET.fastOK ? '' : ' (fast channel not available, using the reliable one)'}`;
+  el.title = NET.role === 'host' && NET.links.length > 1 ? 'Round trip to your slowest friend' : `Round trip to ${G.squad ? 'the host' : 'your opponent'}${NET.role === 'host' || NET.fastOK ? '' : ' (fast channel not available, using the reliable one)'}`;
 }
 
 // ------------------------------------------------------------ guest side ----
 function guestStart() {
   setPhase('wait');
   G.lu = [[], []]; G.pos = [{}, {}]; G.bench = [[], []]; G.bullpen = [[], []]; G.played = [[], []]; G.pitched = [[], []];
-  G.fielders = []; G.fByRole = {}; G.swing = null; G.P = null; G.localPitch = false; G.lastP = null; G.batter = null;
-  Object.assign(NET, { lastAbLen: 0, snap: null, lastSeq: -1, bb: null, ball: null, pclock: { pid: -1, t: 0 } });
+  G.fielders = []; G.fByRole = {}; G.swing = null; G.P = null; G.localPitch = false; G.lastP = null; G.batter = null; G.chkMine = false; G.skipping = false;
+  Object.assign(NET, { lastAbLen: 0, snap: null, lastSeq: -1, bb: null, ball: null, pclock: { pid: -1, t: 0 }, lastPl: null });
   NET.pred = { m: null, key: null, on: false, v: 0, lastIn: -9, hold: 0 };
   NET.mcache.clear();
   for (const m of MODELS) { m.root.visible = false; m.net = null; }
@@ -11961,10 +12472,14 @@ function netApplyGS(s) {
   if (s.dec && typeof s.dec === 'object') G.decIds = Object.fromEntries(Object.entries(s.dec).filter(([, v]) => ['W', 'L', 'S'].includes(v)));
   renderTeam();
   G.challenges = s.chal || [0, 0]; G.ump = s.ump ?? G.ump; NET.specCount = s.specs | 0;
-  const canChallenge = s.chk >= 0 && s.chk === localSide();
-  if (canChallenge && G.chkSide !== s.chk) setHint(s.rv >= 1 && s.rv <= 4 ? `Close play at ${BASE_WORD[s.rv]} &middot; <kbd>C</kbd> challenge it` : `<kbd>C</kbd> challenge the call &middot; ${G.challenges[s.chk]} left`);
-  else if (!canChallenge && G.chkSide >= 0 && G.chkSide === localSide()) setHint('');
-  G.chkSide = s.chk;
+  if (G.squad && Array.isArray(s.sq)) {
+    for (const [sid, pid, cpu] of s.sq) { const x = seatBySid(sid); if (x) { if (PBYID[pid]) x.pid = pid; x.cpu = !!cpu; } }
+    const me = mySeat(); if (me && G.lock !== me.pid) { G.lock = me.pid; hudLock(); }
+  }
+  const canChallenge = G.squad ? Array.isArray(s.chs) && s.chs.includes(G.me) : s.chk >= 0 && s.chk === localSide();
+  if (canChallenge && !G.chkMine) setHint(s.rv >= 1 && s.rv <= 4 ? `Close play at ${BASE_WORD[s.rv]} &middot; <kbd>C</kbd> challenge it` : `<kbd>C</kbd> challenge the call &middot; ${G.challenges[s.chk]} left`);
+  else if (!canChallenge && G.chkMine) setHint('');
+  G.chkSide = s.chk; G.chkMine = canChallenge;
   hudScore(); hudCount(); if (G.batter) hudBatter(); hudPitcher(); drawTracker(); drawBoards();
   const n = G.abPitches.length, last = G.abPitches[n - 1];
   if (n !== NET.lastAbLen) {
@@ -11980,6 +12495,8 @@ function netApplySnap(s) {
   if (typeof s.q === 'number') { if (s.q <= NET.lastSeq) return; NET.lastSeq = s.q; }   // late and out of order: a newer one already arrived
   const ts = +s.ts || hostNow(), age = clamp((hostNow() - ts) / 1000, 0, 0.25);
   NET.snap = s;
+  if (s.pl) NET.lastPl = s.pl; else if (s.ph !== 'postPlay') NET.lastPl = null;
+  G.skipping = !!s.sk;
   if (s.ph !== G.phase) guestPhase(s.ph);
   G.dur = s.dur; G.camFocus = s.f;
   const seen = new Set(), P = NET.pred;
@@ -12108,8 +12625,8 @@ function guestScreen(m) {
 // host uses); the host takes this position for him
 const fieldRole = (pl) => (pl.pos === 'SP' || pl.pos === 'RP' ? 'P' : pl.pos);
 function guestPredict(dt) {
-  const P = NET.pred, pl = NET.snap && NET.snap.pl;
-  const key = G.phase === 'live' && pl && pl.uf && userFields() && !pl.hr && !trotOn() ? pl.uf : null;
+  const P = NET.pred, pl = NET.snap && NET.snap.pl, uf = guestUF(pl);
+  const key = G.phase === 'live' && pl && uf && userFields() && !pl.hr && !trotOn() ? uf : null;
   const m = key ? modelByKey(key) : null;
   if (m !== P.m) Object.assign(P, { m, key, on: false, v: 0 });
   if (!m || !m.net) return null;
@@ -12132,6 +12649,14 @@ function guestPredict(dt) {
   p.y = groundY(p.x, p.z);
   return m;
 }
+// the fielder you steer (a squad: your own man, when he's in the field)
+function guestUF(pl) {
+  if (!G.squad) return pl ? pl.uf : null;
+  const m = myModel();
+  return pl && m && m.fielding && userFields() ? m.key : null;
+}
+// your player's model, wherever he is on the field (a squad, or Player Lock)
+function myModel() { if (!G.lock) return null; for (const m of MODELS) if (m.root.visible && m.pl && m.pl.id === G.lock && m.kind !== 'ump') return m; return fpvHidden && fpvHidden.pl && fpvHidden.pl.id === G.lock ? fpvHidden : null; }
 // ball on the guest: computed here every frame whenever we can, so it never stutters
 function guestBall() {
   if (G.localPitch) return;
@@ -12170,7 +12695,7 @@ function guestUpdate(dt) {
     m.root.rotation.y += angDiff(m.root.rotation.y, n.ry) * kr;
     m.phase += Math.hypot(p.x - ox, p.z - oz) * 0.42;   // legs cycle with how far he moved on screen
   }
-  if (G.phase === 'live' || G.phase === 'postPlay') playCam();
+  if ((G.phase === 'live' || G.phase === 'postPlay') && !fpvOn) playCam();
   else if (G.phase === 'final') menuCam(dt * 0.6);
   if (G.phase === 'live' && userFields()) {
     const v = fieldVec(), now = performance.now(), msg = { t: 'in', q: ++NET.inSeq, x: r3(v.x), z: r3(v.z) };
@@ -12180,18 +12705,342 @@ function guestUpdate(dt) {
     else NET.inSeq--;
   }
   const pl = G.phase === 'live' && NET.snap && NET.role !== 'spec' ? NET.snap.pl : null;   // a spectator doesn't steer anyone
-  const ufm = pl && pl.uf ? modelByKey(pl.uf) : null;
+  const uf = guestUF(pl), ufm = uf && !pl.hr ? modelByKey(uf) : null;
   ctrlRing.visible = !!ufm;
   if (ufm) ctrlRing.position.set(ufm.root.position.x, groundY(ufm.root.position.x, ufm.root.position.z) + 0.12, ufm.root.position.z);
-  landMark.visible = !!(pl && pl.land && landingAssist());
+  landMark.visible = !!(pl && pl.land && landingAssist() && (!G.squad || userFields()));
   if (landMark.visible) landMark.position.set(pl.land[0], 0.1, pl.land[1]);
-  $('throwPrompt').classList.toggle('hidden', !(pl && pl.prompt));
+  $('throwPrompt').classList.toggle('hidden', !(pl && (G.squad ? Array.isArray(pl.pr) && pl.pr.includes(G.me) : pl.prompt)));
   runnerHUD(userRuns() && ((!!pl && !pl.hr) || (STEAL_PHASES.includes(G.phase) && !!(NET.snap && NET.snap.run && NET.snap.run.length))));
   pickoffHUD();
   for (const m of MODELS) updateModel(m, G.now);
   guestBall();
   dressFrame();
   if (G.recOn) recFrame();
+  if (G.squad) fpvCam(dt);
+}
+// ============================================================================
+// Talking online: text chat (to everyone, or just your team) and voice chat.
+// Chat goes through the host, who passes it on. Voice is a direct WebRTC call
+// between every two people who joined it. In a squad game it's proximity voice:
+// you hear a friend louder the closer his player is to yours on the field, and
+// teammates sitting in the dugout together hear each other fine.
+// ============================================================================
+
+// ------------------------------------------------------------------- chat ----
+const CHAT = { open: false, team: false, log: [], chatT: [], fadeT: 0 };
+const CHAT_LEN = 160, CHAT_FADE = 12000;
+function cleanText(s) { return String(s ?? '').replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, CHAT_LEN); }
+// in the online lobby, or in an online game (spectators too)
+const chatHere = () => (G.mode === 'online' && G.phase !== 'boot') || (G.mode === 'menu' && menu.mode === 'online' && (NET.open || (NET.role === 'host' && NET.peerOpen)));
+// a team channel: a squad game with a teammate in it
+function teamChatOK() { const me = mySeat(); return G.mode === 'online' && !!me && G.squad.some((s) => s.sid !== me.sid && s.side === me.side); }
+// the side someone plays for in this game (-1: none, or nobody's playing yet)
+function sideOfSid(sid) {
+  if (G.mode !== 'online' || sid < 0) return -1;
+  if (G.squad) { const s = seatBySid(sid); return s ? s.side : -1; }
+  const host = G.cfg ? G.cfg.side | 0 : 1;
+  return sid === 0 ? host : 1 - host;
+}
+function chatSend(text) {
+  text = cleanText(text);
+  if (!text) return;
+  const m = { t: 'chat', text, team: CHAT.team && teamChatOK() ? 1 : 0 };
+  if (NET.role === 'host') chatIn(m, null, null, true); else netSend(m);
+}
+// the host gets a message: from a friend (L), a spectator (spec), or himself
+function chatIn(m, L, spec = null, self = false) {
+  const text = cleanText(m.text), who = self ? CHAT : L || spec;
+  if (!text || !who) return;
+  const now = Date.now();
+  who.chatT = (who.chatT || []).filter((t) => now - t < 5000);
+  if (who.chatT.length >= 5) return;   // five messages in five seconds is plenty
+  who.chatT.push(now);
+  const sid = self ? 0 : L ? L.sid : -1, side = sideOfSid(sid), team = !!m.team && side >= 0 && !!G.squad;
+  const out = { t: 'chat', sid, name: self ? myName() : L ? L.name : spec.fcName || 'Spectator', text, team: team ? 1 : 0, side };
+  if (team) {
+    for (const x of NET.links) if (!x.gone && sideOfSid(x.sid) === side) linkSend(x, out);
+    if (sideOfSid(0) === side) chatShow(out);
+  } else { netSend(out); chatShow(out); }
+}
+// a line from the room itself (joins, drops, takeovers): the host tells everyone
+function chatSys(text) {
+  const out = { t: 'chat', sys: 1, text: cleanText(text) };
+  if (NET.role === 'host') netSend(out);
+  chatShow(out);
+}
+function chatShow(m) {
+  if (!m || typeof m !== 'object') return;
+  const e = { sys: !!m.sys, sid: m.sys ? -1 : clamp(m.sid | 0, -1, SQUAD_MAX - 1), name: cleanName(m.name, 'Player'), text: cleanText(m.text), team: !!m.team, at: Date.now() };
+  if (!e.text) return;
+  CHAT.log.push(e);
+  if (CHAT.log.length > 60) CHAT.log.shift();
+  const el = document.createElement('div');
+  el.className = `cm${e.sys ? ' sys' : ''}${e.team ? ' team' : ''}`;
+  el.dataset.at = e.at;
+  el.innerHTML = e.sys ? esc(e.text) : `${e.team ? '<span class="cm-to">TEAM</span>' : ''}<b style="color:${e.sid >= 0 ? seatCol(e.sid) : 'var(--dust)'}">${esc(e.name)}${e.sid < 0 ? ' <small>(watching)</small>' : ''}</b> ${esc(e.text)}`;
+  const log = $('chatLog');
+  log.appendChild(el);
+  while (log.children.length > 60) log.firstChild.remove();
+  log.scrollTop = log.scrollHeight;
+  chatRender();
+  if (!e.sys && SND.ctx && e.sid !== mySid()) SND.tick();
+}
+function chatRender() {
+  const here = chatHere(), menuSide = G.mode === 'menu', box = menuSide ? $('netPanel') : document.body, el = $('chat');
+  if (el.parentElement !== box) box.appendChild(el);   // in the lobby it sits in the online panel
+  $('chat').classList.toggle('hidden', !here);
+  $('chat').classList.toggle('lobby', menuSide);
+  $('chat').classList.toggle('open', here && (CHAT.open || menuSide));
+  $('btnChat').classList.toggle('hidden', !(G.mode === 'online'));
+  const team = CHAT.team && teamChatOK();
+  $('chatTo').textContent = team ? 'TEAM' : 'ALL';
+  $('chatTo').classList.toggle('team', team);
+  $('chatTo').disabled = !teamChatOK();
+  $('chatTo').title = teamChatOK() ? 'Tab: everyone or just your team' : 'Everyone in the room';
+  if (!here && CHAT.open) closeChat();
+}
+function openChat() {
+  if (!chatHere()) return;
+  CHAT.open = true; keys.clear(); exitPointerLock();
+  chatRender();
+  const i = $('chatIn'); i.focus();
+  $('chatLog').scrollTop = $('chatLog').scrollHeight;
+}
+function chatClear() { CHAT.log = []; CHAT.open = false; CHAT.team = false; $('chatLog').innerHTML = ''; }
+function closeChat() { CHAT.open = false; const i = $('chatIn'); if (document.activeElement === i) i.blur(); chatRender(); }
+// old lines fade out of the way when the chat isn't open
+function chatFade() {
+  const now = Date.now(), all = CHAT.open || G.mode === 'menu';
+  for (const el of $('chatLog').children) el.classList.toggle('old', !all && now - +el.dataset.at > CHAT_FADE);
+}
+
+// ------------------------------------------------------------------ voice ----
+const VOICE = { on: false, joining: false, stream: null, mic: false, muted: false, ptt: false, calls: new Map(), retry: new Map(), block: new Set(), myLvl: 0, an: null, buf: null, syncT: 0, lvlT: 0, note: '' };
+// where a player's voice comes from: his man on the field, or his team's dugout
+const DUGOUT = [new V3(-115, 0, -41), new V3(115, 0, -41)];   // away (third-base side), home
+const VOICE_NEAR = 35, VOICE_FAR = 250;
+async function voiceJoin() {
+  if (VOICE.on || VOICE.joining || !(NET.role === 'host' || NET.role === 'guest')) return;
+  VOICE.joining = true; VOICE.note = 'Asking for your microphone…'; voiceRender();
+  SND.init();
+  let stream = null;
+  try { stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } }); } catch (e) { stream = null; }
+  VOICE.joining = false;
+  if (!(NET.role === 'host' || NET.role === 'guest')) { if (stream) for (const t of stream.getTracks()) t.stop(); voiceRender(); return; }
+  VOICE.mic = !!stream;
+  // no microphone (or no permission): you can still listen, on a silent line
+  if (!stream && SND.ctx) stream = SND.ctx.createMediaStreamDestination().stream;
+  if (!stream) { VOICE.note = 'Voice chat is not available in this browser.'; voiceRender(); return; }
+  VOICE.stream = stream; VOICE.on = true; VOICE.muted = false;
+  VOICE.note = VOICE.mic ? '' : 'No microphone: you can listen, but nobody can hear you.';
+  if (VOICE.mic && SND.ctx) {
+    try { const src = SND.ctx.createMediaStreamSource(stream); VOICE.an = SND.ctx.createAnalyser(); VOICE.an.fftSize = 512; VOICE.buf = new Float32Array(VOICE.an.fftSize); src.connect(VOICE.an); } catch (e) { VOICE.an = null; }
+  }
+  voiceMicApply();
+  voiceAnnounce();
+}
+function voiceLeave() {
+  if (!VOICE.on) return;
+  voiceStop(false);
+  voiceAnnounce();
+}
+// everyone needs to know who's on voice (the host keeps it in the room list)
+function voiceAnnounce() {
+  if (NET.role === 'host') { const r = NET.room.find((x) => x.sid === 0); if (r) r.voice = VOICE.on; netSendRoom(); }
+  else if (NET.role === 'guest') netSend({ t: 'vc', on: VOICE.on ? 1 : 0 });
+  voiceSync(); voiceRender();
+}
+// hang up everything; keep: still on voice (a dropped connection we'll get back), just no calls for now
+function voiceStop(keep) {
+  for (const sid of [...VOICE.calls.keys()]) voiceDrop(sid);
+  if (keep && VOICE.on) return;
+  if (VOICE.stream) for (const t of VOICE.stream.getTracks()) t.stop();
+  Object.assign(VOICE, { on: false, joining: false, stream: null, mic: false, muted: false, ptt: false, an: null, buf: null, myLvl: 0, note: '' });
+  VOICE.retry.clear(); VOICE.block.clear();
+  voiceRender();
+}
+// your microphone on or off: muted, or (push to talk) only while you hold the key
+function voiceMicApply() {
+  const live = VOICE.on && VOICE.mic && !VOICE.muted && (!settings.vcPTT || VOICE.ptt);
+  if (VOICE.stream) for (const t of VOICE.stream.getAudioTracks()) t.enabled = live;
+  voiceRender();
+}
+function voiceKey(down) {
+  if (!VOICE.on) return;
+  if (settings.vcPTT) { if (VOICE.ptt !== down) { VOICE.ptt = down; voiceMicApply(); } }
+  else if (down) { VOICE.muted = !VOICE.muted; voiceMicApply(); }
+}
+const voiceLive = () => VOICE.on && VOICE.mic && !VOICE.muted && (!settings.vcPTT || VOICE.ptt);
+// call everyone on voice we aren't talking to yet (the lower seat calls, the other answers)
+function voiceSync() {
+  const me = mySid(), want = new Map(), now = Date.now();
+  if (VOICE.on && NET.peer && (NET.role === 'host' || (NET.role === 'guest' && NET.open))) {
+    for (const r of NET.room || []) if (r.sid !== me && r.voice && r.on && r.peer) want.set(r.sid, r.peer);
+  }
+  for (const [sid, v] of VOICE.calls) if (want.get(sid) !== v.peer) voiceDrop(sid);
+  for (const [sid, peer] of want) {
+    if (VOICE.calls.has(sid) || me > sid || (VOICE.retry.get(sid) || 0) > now) continue;
+    try { voiceAttach(sid, peer, NET.peer.call(peer, VOICE.stream, { metadata: { sid: me } })); } catch (e) { VOICE.retry.set(sid, now + 5000); }
+  }
+}
+function voiceIncoming(call) {
+  const sid = call.metadata && Number.isInteger(call.metadata.sid) ? call.metadata.sid : -1;
+  const r = (NET.room || []).find((x) => x.sid === sid && x.peer === call.peer);
+  if (!VOICE.on || !r || sid === mySid()) { try { call.close(); } catch (e) { /* gone */ } return; }
+  if (VOICE.calls.has(sid)) voiceDrop(sid);
+  try { call.answer(VOICE.stream); } catch (e) { return; }
+  voiceAttach(sid, call.peer, call);
+}
+function voiceAttach(sid, peer, call) {
+  if (!call) return;
+  const v = { call, peer, el: null, lvl: 0, vol: 0 };
+  VOICE.calls.set(sid, v);
+  call.on('stream', (st) => {
+    if (VOICE.calls.get(sid) !== v || v.el) return;
+    // a plain audio element keeps the browser's echo cancelling working; its volume is the proximity
+    const el = new Audio(); el.autoplay = true; el.srcObject = st; el.volume = 0;
+    el.play().catch(() => {});
+    v.el = el;
+  });
+  const end = () => { if (VOICE.calls.get(sid) === v) { voiceDrop(sid); VOICE.retry.set(sid, Date.now() + 4000); } };
+  call.on('close', end); call.on('error', end);
+}
+function voiceDrop(sid) {
+  const v = VOICE.calls.get(sid);
+  if (!v) return;
+  VOICE.calls.delete(sid);
+  try { v.call.close(); } catch (e) { /* gone */ }
+  if (v.el) { try { v.el.pause(); } catch (e) { /* gone */ } v.el.srcObject = null; }
+}
+// where his voice comes from in the ballpark (null: no place, e.g. a spectator)
+function voicePos(sid) {
+  const s = seatBySid(sid);
+  if (!s) return null;
+  for (const m of MODELS) if (m.root.visible && m.pl && m.pl.id === s.pid && m.kind !== 'ump') return m.root.position;
+  if (fpvHidden && fpvHidden.pl && fpvHidden.pl.id === s.pid) return fpvHidden.root.position;
+  return DUGOUT[s.side];
+}
+// how loud he is to you: full up close, fading out across the field (the whole room when it's off)
+function voiceGain(sid) {
+  if (VOICE.block.has(sid)) return 0;
+  if (!settings.vcNear || G.mode !== 'online' || !G.squad || ['final', 'wait'].includes(G.phase)) return 1;
+  const a = voicePos(G.me), b = voicePos(sid);
+  if (!a || !b) return 1;
+  const d = Math.hypot(a.x - b.x, a.z - b.z);
+  return d <= VOICE_NEAR ? 1 : Math.pow(Math.max(0, 1 - (d - VOICE_NEAR) / (VOICE_FAR - VOICE_NEAR)), 1.6);
+}
+function voiceTalking(sid) {
+  if (!VOICE.on) return false;
+  if (sid === mySid()) return voiceLive() && VOICE.myLvl > 0.025;
+  const v = VOICE.calls.get(sid);
+  return !!v && v.lvl > 0.03 && v.vol > 0.02;
+}
+// how loud each of them is talking right now (for the speaker icons)
+function voiceLevels() {
+  if (VOICE.an && VOICE.buf) {
+    VOICE.an.getFloatTimeDomainData(VOICE.buf);
+    let s = 0; for (const x of VOICE.buf) s += x * x;
+    VOICE.myLvl = voiceLive() ? Math.sqrt(s / VOICE.buf.length) : 0;
+  }
+  for (const v of VOICE.calls.values()) {
+    try {
+      const rc = v.call.peerConnection && v.call.peerConnection.getReceivers().find((x) => x.track && x.track.kind === 'audio');
+      const src = rc && rc.getSynchronizationSources ? rc.getSynchronizationSources()[0] : null;
+      v.lvl = src && performance.now() - src.timestamp < 500 ? src.audioLevel || 0 : 0;
+    } catch (e) { v.lvl = 0; }
+  }
+}
+function voiceRender() {
+  const online = menu.mode === 'online' && (NET.role === 'host' || NET.role === 'guest'), ingame = G.mode === 'online' && NET.role !== 'spec';
+  $('netVoiceRow').classList.toggle('hidden', !online || G.mode === 'online');
+  $('btnVoiceJoin').textContent = VOICE.on ? 'Leave voice chat' : VOICE.joining ? 'Joining…' : 'Join voice chat';
+  $('btnVoiceMic').classList.toggle('hidden', !VOICE.on || !VOICE.mic);
+  $('btnVoiceMic').textContent = settings.vcPTT ? `Push to talk: hold ${voiceKeyName()}` : VOICE.muted ? 'Mic muted' : 'Mic on';
+  $('btnVoiceMic').classList.toggle('muted', VOICE.muted);
+  $('voiceNote').textContent = VOICE.note || (VOICE.on ? `${VOICE.calls.size} connected${settings.vcNear ? ' · proximity in squad games' : ''}` : 'Talk to everyone in the room');
+  const b = $('btnMic');
+  b.classList.toggle('hidden', !ingame);
+  const st = !VOICE.on ? 'off' : !VOICE.mic ? 'listen' : VOICE.muted ? 'muted' : settings.vcPTT && !VOICE.ptt ? 'ptt' : 'live';
+  b.dataset.st = st;
+  b.title = { off: 'Join voice chat', listen: 'Voice chat: listening (no microphone)', muted: `Mic muted (${voiceKeyName()} or click to unmute)`, ptt: `Push to talk: hold ${voiceKeyName()} (click to mute)`, live: `Mic on (${voiceKeyName()} or click to mute)` }[st];
+}
+function voiceKeyName() { const p = boundKey('g'); return p ? keyLabel(p) : 'G'; }
+// a person in the room list: on voice or not, talking, and a button to mute him for yourself
+function voicePersonHTML(r) {
+  if (!r.voice) return '';
+  const me = r.sid === mySid(), blocked = VOICE.block.has(r.sid);
+  return `<span class="sq-mic${voiceTalking(r.sid) ? ' talk' : ''}${blocked ? ' blocked' : ''}" ${me ? 'title="You are on voice chat"' : `data-vblock="${r.sid}" title="${blocked ? 'Unmute' : 'Mute'} ${esc(r.name)} for you"`}></span>`;
+}
+
+// ------------------------------------------------------------- every frame ----
+function talkTick(dt) {
+  const now = performance.now();
+  if (VOICE.on) {
+    for (const [sid, v] of VOICE.calls) {
+      if (!v.el) continue;
+      const want = voiceGain(sid) * (settings.vcVol ?? 1);
+      v.vol += (want - v.vol) * (1 - Math.exp(-dt * 6));
+      const vol = clamp(v.vol, 0, 1);
+      if (Math.abs(v.el.volume - vol) > 0.005) v.el.volume = vol;
+    }
+    if (now - VOICE.lvlT > 120) { VOICE.lvlT = now; voiceLevels(); }
+    if (now - VOICE.syncT > 2500) { VOICE.syncT = now; voiceSync(); }
+  }
+  if (now - CHAT.fadeT > 500) {
+    CHAT.fadeT = now;
+    chatFade();
+    if (chatHere() !== !$('chat').classList.contains('hidden')) chatRender();
+    if ((G.mode === 'online' && NET.role !== 'spec') === $('btnMic').classList.contains('hidden')) voiceRender();
+    if (VOICE.on && G.mode === 'menu' && !$('squadPanel').classList.contains('hidden')) renderSquadMics();
+  }
+}
+// just the speaker icons in the lobby (no need to rebuild the whole panel)
+function renderSquadMics() { for (const el of document.querySelectorAll('#squadPanel .sq-mic')) { const sid = el.dataset.vblock != null ? +el.dataset.vblock : mySid(); el.classList.toggle('talk', voiceTalking(sid)); } }
+
+// ------------------------------------------------------------------ input ----
+// Y opens the chat, G is push to talk (or mutes); typing in the box never moves your player
+window.addEventListener('keydown', (e) => {
+  if (e.target && ['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName)) return;
+  if (e.ctrlKey || e.metaKey || e.altKey || e.repeat) return;
+  const k = keyAlias(e.key.toLowerCase());
+  if (k === 'y' && chatHere()) { e.preventDefault(); e.stopImmediatePropagation(); openChat(); return; }
+  if (k === 'g' && VOICE.on) { e.preventDefault(); voiceKey(true); }
+});
+window.addEventListener('keyup', (e) => { if (keyAlias(e.key.toLowerCase()) === 'g') voiceKey(false); });
+window.addEventListener('blur', () => { if (VOICE.ptt) voiceKey(false); });
+function buildTalkUI() {
+  $('chatForm').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const i = $('chatIn');
+    chatSend(i.value); i.value = '';
+    if (G.mode !== 'menu') closeChat();
+  });
+  $('chatIn').addEventListener('keydown', (e) => {
+    e.stopPropagation();
+    if (e.key === 'Escape') { e.preventDefault(); $('chatIn').value = ''; if (G.mode === 'menu') $('chatIn').blur(); else closeChat(); }
+    else if (e.key === 'Tab') { e.preventDefault(); if (teamChatOK()) { CHAT.team = !CHAT.team; chatRender(); } }
+  });
+  $('chatIn').addEventListener('focus', () => { keys.clear(); if (G.mode !== 'menu' && !CHAT.open) { CHAT.open = true; chatRender(); } });
+  $('chatIn').addEventListener('blur', () => { if (CHAT.open && G.mode !== 'menu') setTimeout(() => { if (document.activeElement !== $('chatIn')) closeChat(); }, 120); });
+  $('chatTo').addEventListener('pointerdown', (e) => { e.preventDefault(); if (teamChatOK()) { CHAT.team = !CHAT.team; chatRender(); } });
+  $('chat').addEventListener('pointerdown', (e) => e.stopPropagation());
+  $('btnChat').addEventListener('click', () => (CHAT.open ? closeChat() : openChat()));
+  $('btnMic').addEventListener('click', () => { if (!VOICE.on) voiceJoin(); else if (VOICE.mic) { VOICE.muted = !VOICE.muted; voiceMicApply(); } });
+  $('btnVoiceJoin').addEventListener('click', () => (VOICE.on ? voiceLeave() : voiceJoin()));
+  $('btnVoiceMic').addEventListener('click', () => { if (settings.vcPTT) return; VOICE.muted = !VOICE.muted; voiceMicApply(); });
+  $('squadPanel').addEventListener('click', (e) => {
+    const vb = e.target.closest('[data-vblock]');
+    if (vb) { const sid = +vb.dataset.vblock; if (VOICE.block.has(sid)) VOICE.block.delete(sid); else VOICE.block.add(sid); renderMenu(); return; }
+    const b = e.target.closest('.sq-spot'); if (b && !b.disabled) claimSpot(+b.dataset.side, b.dataset.pick);
+  });
+  $('netName').value = settings.netName || '';
+  $('netName').addEventListener('change', () => {
+    settings.netName = cleanName($('netName').value, ''); $('netName').value = settings.netName; saveSettings();
+    if (NET.role === 'guest' && NET.open && settings.netName) netSend({ t: 'name', name: myName() });
+    else if (NET.role === 'host') { const r = NET.room.find((x) => x.sid === 0); if (r && G.mode !== 'online') { r.name = myName(); netSendRoom(); } }
+  });
+  voiceRender(); chatRender();
 }
 // ============================================================================
 // Custom rosters: build your own team out of real MLB players, under a point cap.
@@ -12893,11 +13742,11 @@ function renderFriends() {
     return;
   }
   if (C.state !== 'ready') { body.innerHTML = `<p class="fr-note">${C.state === 'loading' ? 'Loading…' : esc(C.err || 'Sign-in is unavailable right now.')}</p>`; return; }
-  if (!C.user) { body.innerHTML = `${err}<p class="fr-note">Sign in with Google to save your rosters to your account, add friends, and invite them to a 1v1.</p><div>${signInBtn()}</div>`; return; }
+  if (!C.user) { body.innerHTML = `${err}<p class="fr-note">Sign in with Google to save your rosters to your account, add friends, and invite them to play online.</p><div>${signInBtn()}</div>`; return; }
   if (!C.profile) { body.innerHTML = `${err}<p class="fr-note">Setting up your account…</p>`; return; }
   const inbox = C.inbox.filter((m) => m.type !== 'invite' || inviteFresh(m));
   const isFriend = (uid) => C.friends.some((f) => f.uid === uid);
-  const reqs = inbox.map((m) => `<div class="fr-row">${avatar(m.photo)}<span class="nm">${esc(m.name || 'A player')}<small>${m.type === 'invite' ? 'invited you to a 1v1' : 'added you as a friend'}</small></span>`
+  const reqs = inbox.map((m) => `<div class="fr-row">${avatar(m.photo)}<span class="nm">${esc(m.name || 'A player')}<small>${m.type === 'invite' ? 'invited you to play online' : 'added you as a friend'}</small></span>`
     + (m.type === 'invite' ? `<button class="cta fr-mini" data-act="join" data-id="${esc(m.id)}">JOIN</button>` : isFriend(m.from) ? '' : `<button class="ghost fr-mini" data-act="accept" data-id="${esc(m.id)}">Add back</button>`)
     + `<button class="ghost fr-mini" data-act="dismiss" data-id="${esc(m.id)}">Dismiss</button></div>`).join('');
   const sorted = [...C.friends].sort((a, b) => friendOnline(b.uid) - friendOnline(a.uid) || String(a.name).localeCompare(String(b.name)));
@@ -12905,7 +13754,7 @@ function renderFriends() {
     const p = C.fprof.get(f.uid) || f, live = friendOnline(f.uid), hh = h2hGet(f.uid);
     return `<div class="fr-row"><i class="fr-on ${live ? 'live' : ''}"></i>${avatar(p.photo)}<span class="nm">${esc(p.name || 'Player')}<small>${live ? 'Online now' : ago(tsMs(p.lastSeen))}</small></span>`
       + (hh ? `<span class="fr-h2h" title="Your record against ${esc(p.name || 'them')} online"><b>${hh.w}-${hh.l}</b><small>vs you</small></span>` : '')
-      + `<button class="cta fr-mini" data-act="invite" data-uid="${esc(f.uid)}">INVITE TO 1V1</button><button class="ghost fr-mini" data-act="remove" data-uid="${esc(f.uid)}" title="Remove friend">&times;</button></div>`;
+      + `<button class="cta fr-mini" data-act="invite" data-uid="${esc(f.uid)}">INVITE TO PLAY</button><button class="ghost fr-mini" data-act="remove" data-uid="${esc(f.uid)}" title="Remove friend">&times;</button></div>`;
   }).join('');
   const add = $('frAddCode') ? $('frAddCode').value : '';
   body.innerHTML = `${err}
@@ -12917,7 +13766,7 @@ function renderFriends() {
 // invite list in the online lobby while you're hosting
 function renderNetFriends() {
   const el = $('netFriends'); if (!el) return;
-  const C = Cloud, show = NET.role === 'host' && !NET.open && NET.code && C.user && C.friends.length;
+  const C = Cloud, show = NET.role === 'host' && (squadMode() ? NET.links.length < SQUAD_MAX - 1 : !NET.open) && NET.code && C.user && C.friends.length;
   if (!show) { el.innerHTML = ''; return; }
   const list = [...C.friends].sort((a, b) => friendOnline(b.uid) - friendOnline(a.uid)).slice(0, 8);
   el.innerHTML = '<div class="net-or">or invite a friend</div>' + list.map((f) => {
@@ -12959,7 +13808,7 @@ function joinInvite(m) {
 let toastT = 0;
 function inviteToast(m) {
   const el = $('toast');
-  el.innerHTML = `${avatar(m.photo)}<span class="t-msg"><b>${esc(m.name || 'A friend')}</b> invited you to a 1v1</span><button class="cta fr-mini" data-act="join" data-id="${esc(m.id)}">JOIN</button><button class="ghost fr-mini" data-act="later">Later</button>`;
+  el.innerHTML = `${avatar(m.photo)}<span class="t-msg"><b>${esc(m.name || 'A friend')}</b> invited you to play online</span><button class="cta fr-mini" data-act="join" data-id="${esc(m.id)}">JOIN</button><button class="ghost fr-mini" data-act="later">Later</button>`;
   el.classList.remove('hidden');
   SND.init(); if (SND.ctx) SND.tick();
   clearTimeout(toastT); toastT = setTimeout(hideToast, 30000);
@@ -13143,6 +13992,7 @@ const CONTROLS = [
   ['c', 'C', 'Challenge a call'], ['u', 'U', 'Team panel'], ['i', 'I', 'Intentional walk'], ['r', 'R', 'Replay'], ['enter', 'Enter', 'Skip ahead'],
   ['z', 'Z', 'Strike zone on/off'], ['m', 'M', 'Sound on/off'], ['p', 'P', 'Pause'],
   ['t', 'T', 'Re-center the camera (Player Lock)'], ['v', 'V', 'Camera view (Player Lock)'], ['tab', 'Tab', 'Skip the at-bat (Player Lock)'], ['f', 'F', 'Fast-forward (CPU vs CPU)'],
+  ['y', 'Y', 'Chat (online)'], ['g', 'G', 'Voice chat: mute, or hold to talk (online)'],
 ];
 const NO_BIND = new Set(['escape', 'shift', 'control', 'alt', 'meta', 'capslock', 'contextmenu', 'os']);
 let KEYMAP = new Map(), KEYTAKEN = new Set();
@@ -13199,6 +14049,10 @@ function renderOptions() {
     <div class="op-row"><label for="opVol">Game sound</label><input type="range" id="opVol" min="0" max="100" step="5" value="${pct(gameVolume())}"><span>${settings.sound ? pct(gameVolume()) + '%' : 'Muted (M)'}</span></div>
     <div class="op-row"><label for="opVoice">Commentary voice</label><input type="range" id="opVoice" min="0" max="100" step="5" value="${pct(settings.voiceVol ?? 1)}"><span>${settings.voice ? pct(settings.voiceVol ?? 1) + '%' : 'Off'}</span></div>
     <div class="op-row"><label><input type="checkbox" id="opVoiceOn" ${settings.voice ? 'checked' : ''}> Play-by-play voice</label></div>
+    <h3>ONLINE VOICE CHAT</h3>
+    <div class="op-row"><label for="opVc">Voice volume</label><input type="range" id="opVc" min="0" max="100" step="5" value="${pct(settings.vcVol ?? 1)}"><span>${pct(settings.vcVol ?? 1)}%</span></div>
+    <div class="op-row"><label><input type="checkbox" id="opPtt" ${settings.vcPTT ? 'checked' : ''}> Push to talk: your mic is on only while you hold ${esc(voiceKeyName())}</label></div>
+    <div class="op-row"><label><input type="checkbox" id="opNear" ${settings.vcNear ? 'checked' : ''}> Proximity voice in squad games: you hear a friend louder the closer his player is to yours</label></div>
     <h3>DISPLAY</h3>
     <div class="op-row"><label><input type="checkbox" id="opCb" ${settings.cb ? 'checked' : ''}> Colorblind-friendly colors</label><span class="op-chips">${chips}</span></div>
     <p class="fr-note">Pitch types, and balls and strikes on the pitch tracker, use colors that stay distinct with red-green colorblindness.</p>
@@ -13218,6 +14072,7 @@ function buildOptionsUI() {
     const t = e.target;
     if (t.id === 'opVol') { settings.volume = +t.value / 100; if (!settings.sound && settings.volume > 0) SND.setOn(true); applyVolume(); }
     else if (t.id === 'opVoice') settings.voiceVol = +t.value / 100;
+    else if (t.id === 'opVc') settings.vcVol = +t.value / 100;
     else return;
     saveSettings();
     const span = t.parentElement.querySelector('span');
@@ -13229,6 +14084,8 @@ function buildOptionsUI() {
     else if (t.id === 'opCb') { settings.cb = t.checked; applyPalette(); if (G.teams) { hudPitcher(); drawTracker(); } }
     else if (t.id === 'opZone') { if (!!settings.zone !== t.checked) toggleZone(); }
     else if (t.id === 'opGuide') settings.guide = t.checked;
+    else if (t.id === 'opPtt') { settings.vcPTT = t.checked; VOICE.ptt = false; voiceMicApply(); }
+    else if (t.id === 'opNear') settings.vcNear = t.checked;
     else return;
     saveSettings(); renderOptions();
   });
@@ -13319,20 +14176,39 @@ function lookDelta(dx, dy) {
 }
 function lookRecenter() { FL.mode = 'track'; }
 function exitPointerLock() { if (document.pointerLockElement) try { document.exitPointerLock(); } catch (e) { /* not locked */ } }
-function fpvActive() { return G.mode === 'lock' && G.view > 0 && !G.replay && LOCK_PHASES.includes(G.phase); }
+function fpvActive() { return (G.mode === 'lock' || (!!G.squad && !!G.lock)) && G.view > 0 && !G.replay && LOCK_PHASES.includes(G.phase); }
+// Where your player is and what he's doing, for the Player Lock cameras (an online squad too):
+// role 'field', 'run', 'bat' or 'dugout', his model, and what the third-person camera needs:
+// frole (his position in the field), hasBall / holding (he has it / and it's yours to throw),
+// running, to, base and batter (on the bases), live, hr and t (the play and its clock)
 function lockRole() {
+  if (isGuest()) return guestLockRole();
+  const pl = G.play, live = (G.phase === 'live' || G.phase === 'postPlay') && !!pl;
+  const V = { live, hr: live && !!pl.hr, t: live ? pl.t : 0 };
   if (G.half === 1 - G.lockSide) {
     const f = G.fielders.find((x) => x.pl.id === G.lock);
-    return f ? { role: 'field', m: f.m, f } : { role: 'dugout' };
+    if (!f) return { ...V, role: 'dugout' };
+    const hasBall = live && pl.ball.holder === f;
+    return { ...V, role: 'field', m: f.m, frole: f.role, hasBall, holding: hasBall && !!pl.ctlOf(f) && pl.humanHolder(f) };
   }
-  const pl = G.play;
-  if (pl && (G.phase === 'live' || G.phase === 'postPlay')) {
-    const r = pl.R.find((x) => x.pl.id === G.lock && (x.state === 'run' || x.state === 'base'));
-    return r ? { role: 'run', m: r.m, r } : { role: 'dugout' };
+  const runner = (r) => (r ? { ...V, role: 'run', m: r.m, running: r.state === 'run', to: heading(r), base: r.base, batter: r.isBatter } : { ...V, role: 'dugout' });
+  if (live) return runner(pl.R.find((x) => x.pl.id === G.lock && (x.state === 'run' || x.state === 'base')));
+  if (G.batter && G.batter.id === G.lock) return { ...V, role: 'bat' };
+  return runner((G.baseRunners || []).find((x) => x.pl.id === G.lock));
+}
+// the same, on an online guest: from the host's snapshots
+function guestLockRole() {
+  const live = G.phase === 'live' || G.phase === 'postPlay', sp = NET.lastPl, m = myModel();
+  const V = { live, hr: live && !!(sp && sp.hr), t: NET.pclock.t };
+  if (G.batter && G.batter.id === G.lock && !live) return { ...V, role: 'bat' };
+  if (!m) return { ...V, role: 'dugout' };
+  if (m.fielding) {
+    const ti = 1 - G.half, me = (G.lu[ti] || []).find((p) => p.id === G.lock);
+    const hasBall = live && !!sp && Array.isArray(sp.bm) && sp.bm[0] === 'h' && sp.bm[1] === m.key;
+    return { ...V, role: 'field', m, frole: G.pitcher[ti] && G.pitcher[ti].id === G.lock ? 'P' : me ? me.pos : 'P', hasBall, holding: hasBall && userFields() };
   }
-  if (G.batter && G.batter.id === G.lock && G.phase !== 'live' && G.phase !== 'postPlay') return { role: 'bat' };
-  const r = (G.baseRunners || []).find((x) => x.pl.id === G.lock);
-  return r ? { role: 'run', m: r.m, r } : { role: 'dugout' };
+  const r = ((NET.snap && NET.snap.run) || []).find((x) => x[0] === G.lock);
+  return { ...V, role: 'run', m, running: !!(r && r[4]), to: r ? clamp(r[1] | 0, 1, 4) : 1, base: r ? clamp(r[3] | 0, 0, 3) : 0, batter: !!(r && r[9]) };
 }
 function setModelLayer(m, layer) { m.root.traverse((o) => { if (o.isMesh) o.layers.set(layer); }); }
 function fpvHide(m) {
@@ -13369,14 +14245,14 @@ function fpvCam(dt = 1 / 60) {
     m.root.updateMatrixWorld(true);
     m.j.neck.getWorldPosition(_eye); _eye.y += 0.5;
     const yaw = m.root.rotation.y; _eye.x += Math.sin(yaw) * 0.35; _eye.z += Math.cos(yaw) * 0.35;
-    const pl = G.play, b = ballMesh.position;
-    if ((G.phase === 'live' || G.phase === 'postPlay') && pl) {
-      if (pl.ball.holder && pl.ball.holder.m === m) _look.set(0, 3, -64);
+    const b = ballMesh.position;
+    if (L.live) {
+      if (L.hasBall) _look.set(0, 3, -64);
       else _look.copy(b);
       if (_look.distanceTo(_eye) < 2.5) _look.set(_eye.x + Math.sin(yaw) * 10, _eye.y - 2, _eye.z + Math.cos(yaw) * 10);
       fov = 68;
-    } else if (L.role === 'field' && L.f.role === 'P') { _look.set(0, 2.6, 0); fov = userPitches() ? 21 : 45; }
-    else if (L.role === 'field' && L.f.role === 'C') { _look.set(0, 5.5, -58); fov = 48; }
+    } else if (L.role === 'field' && L.frole === 'P') { _look.set(0, 2.6, 0); fov = userPitches() ? 21 : 45; }
+    else if (L.role === 'field' && L.frole === 'C') { _look.set(0, 5.5, -58); fov = 48; }
     else if (L.role === 'field') { _look.set(0, 3.2, 0); fov = 44; if (G.phase === 'pitch') _look.lerp(b, 0.25); }
     else _look.set(0, 3, 0);
   }
@@ -13401,12 +14277,12 @@ const TP = { yaw: 0, pitch: 0, half: 0.45, blend: 0, holding: false, aimYaw: nul
 const _tpT = new V3();
 let tpUmpGhost = false;
 function tpCam(L, dt) {
-  const pl = G.play, live = (G.phase === 'live' || G.phase === 'postPlay') && !!pl;
+  const live = L.live;
   if (L.role === 'dugout' || G.simAB) return false;
   if (L.role === 'field' && G.lockFieldSim) return false;
-  if (live && pl.hr) return false;                                   // watch the home run on TV
-  if (L.role === 'field' && L.f.role === 'P' && !live && userPitches()) return false;   // behind-the-mound pitching view
-  if (L.role === 'run' && L.r && L.r.isBatter && live && pl.t < 1.3) return false;     // see the ball off the bat first
+  if (live && L.hr) return false;                                    // watch the home run on TV
+  if (L.role === 'field' && L.frole === 'P' && !live && userPitches()) return false;   // behind-the-mound pitching view
+  if (L.role === 'run' && L.batter && live && L.t < 1.3) return false;                 // see the ball off the bat first
   fpvHide(null);
   const P = L.m.root.position, b = ballMesh.position;
   // what the camera turns toward
@@ -13414,21 +14290,21 @@ function tpCam(L, dt) {
   const far = clamp((Math.hypot(P.x, P.z) - 120) / 180, 0, 1), TP_DIST = 18 + 6 * far, TP_HEIGHT = 12.5 - 2 * far;
   let yawT = null, minHalf = 0.48;
   const toward = (x, y, z, near = 0) => { _tpT.set(x, y, z); if (Math.hypot(x - P.x, z - P.z) > near) yawT = Math.atan2(x - P.x, z - P.z); };
-  const holding = live && L.role === 'field' && pl.ball.holder === L.f && pl.uf === L.f && pl.humanHolder(L.f);
+  const holding = live && L.role === 'field' && L.holding;
   // just got the ball: face the base the smart throw goes to
   if (holding && !TP.holding) TP.aimYaw = G.sug ? Math.atan2(BASES[G.sug].x - P.x, BASES[G.sug].z - P.z) : null;
   TP.holding = holding;
   if (L.role === 'field' && !live) {
-    if (L.f.role === 'C') toward(0, 4.5, MOUND_Z); else toward(0, 3, 0);
+    if (L.frole === 'C') toward(0, 4.5, MOUND_Z); else toward(0, 3, 0);
     minHalf = lerp(0.45, 0.38, far);
   } else if (L.role === 'field') {
     if (holding) { _tpT.set(P.x + Math.sin(TP.yaw) * 60, 3, P.z + Math.cos(TP.yaw) * 60); yawT = TP.aimYaw; }
-    else if (pl.ball.holder === L.f) _tpT.set(P.x + Math.sin(TP.yaw) * 60, 3, P.z + Math.cos(TP.yaw) * 60);
+    else if (L.hasBall) _tpT.set(P.x + Math.sin(TP.yaw) * 60, 3, P.z + Math.cos(TP.yaw) * 60);
     else toward(b.x, b.y, b.z, 16);
   } else if (!live) toward(0, 5, MOUND_Z);                            // leading off: watch the pitcher
-  else if (L.r.state === 'run') { const nb = BASES[heading(L.r)]; toward(nb.x, 3, nb.z, 8); }
+  else if (L.running && BASES[L.to]) { const nb = BASES[L.to]; toward(nb.x, 3, nb.z, 8); }
   else if (Math.hypot(b.x - P.x, b.z - P.z) > 25) toward(b.x, b.y, b.z);
-  else { const nb = BASES[Math.min(4, L.r.base + 1)]; toward(nb.x, 3, nb.z, 8); }
+  else { const nb = BASES[Math.min(4, L.base + 1)]; toward(nb.x, 3, nb.z, 8); }
   const free = FL.mode === 'free';
   if (yawT == null) yawT = TP.yaw;
   if (!fpvOn) { TP.yaw = free ? FL.yaw : yawT; TP.blend = 0.9; }
@@ -13452,7 +14328,7 @@ function tpCam(L, dt) {
   _look.set(_eye.x + fx * cp * 60, _eye.y + Math.sin(TP.pitch) * 60, _eye.z + fz * cp * 60);
   camRig.tp.copy(_eye); camRig.tl.copy(_look); camRig.tf = (TP.half * 2) / DEG;
   if (TP.blend > 0) { TP.blend -= dt; camRig.rate = 3.2; } else camRig.rate = 20;
-  tpUmpGhost = L.role === 'field' && L.f.role === 'C' && !live;
+  tpUmpGhost = L.role === 'field' && L.frole === 'C' && !live;
   fpvOn = true;
   return true;
 }
@@ -13530,7 +14406,7 @@ function hudPitcher() {
   hudLock();
 }
 function hudLock() {
-  if (G.mode !== 'lock' || !G.lock) return;
+  if ((G.mode !== 'lock' && !G.squad) || !G.lock || !PBYID[G.lock]) return;
   const p = PBYID[G.lock], s = G.stats.get(p.id), ps = G.pstats.get(p.id);
   $('lockName').textContent = shortName(p.name);
   let line = `${p.pos} · #${p.num}`;
@@ -13713,17 +14589,17 @@ function absReveal(overturned, truth) {
   absTimer = setTimeout(() => $('absCard').classList.add('hidden'), 2300);
 }
 function requestChallenge() {
-  if (isGuest()) { if (G.chkSide === localSide()) netSend({ t: 'act', a: 'challenge' }); return; }
+  if (isGuest()) { if (G.chkMine) netSend({ t: 'act', a: 'challenge' }); return; }
   if (G.phase === 'reviewWait' && G.review && G.review.who === 'local') { startReview(); return; }
   const c = G.challengeable;
-  if (c && c.who === 'local') startChallenge(c.side);
+  if (c && (c.who === 'local' || (c.who === 'squad' && c.sids.includes(G.me)))) startChallenge(c.side);
 }
 
 // while you hold the ball: 1-4 throw to a base, and the smart throw is ringed in green
 const BASE_NAMES = { 1: 'first', 2: 'second', 3: 'third', 4: 'home' };
 function updateThrowGuide() {
-  const pl = G.play, f = pl && G.phase === 'live' && !pl.done ? pl.ball.holder : null;
-  const mine = !!f && f === pl.uf && pl.humanHolder(f) && !f.throwing && fieldCtrl() === 'local';
+  const pl = G.play, f = pl && G.phase === 'live' && !pl.done ? pl.ball.holder : null, me = f ? localCtl(pl) : null;
+  const mine = !!f && !!me && f === me.f && pl.humanHolder(f) && !f.throwing && fieldCtrl() === 'local';
   if (!mine) G.sugFor = null;
   else if (G.sugFor !== f) { G.sugFor = f; G.sug = pl.chooseThrow(f).base || (f.isOF ? 2 : 0); }
   const sb = mine ? G.sug : 0;
@@ -13746,7 +14622,7 @@ function skipText() {
 }
 // the SIMULATING card, with game sound and commentary muted while it's up
 function updateSkipUI() {
-  const on = G.mode === 'lock' && G.skipping && !G.paused;
+  const on = (G.mode === 'lock' || !!G.squad) && G.skipping && !G.paused;
   if (on !== !!updateSkipUI.on) {
     updateSkipUI.on = on;
     $('simVeil').classList.toggle('hidden', !on);
@@ -13755,7 +14631,10 @@ function updateSkipUI() {
     if (on) { try { speechSynthesis.cancel(); } catch (e) { /* none */ } exitPointerLock(); }
     else $('banner').className = '';   // an inning banner the skip raced past
   }
-  if (on) { const t = skipText(); if ($('simNext').textContent !== t) $('simNext').textContent = t; }
+  if (on) {
+    const t = G.squad ? squadSimText() : skipText();
+    if ($('simNext').dataset.t !== t) { $('simNext').dataset.t = t; $('simNext').innerHTML = t; $('simVeil').querySelector('.sim-foot').textContent = G.squad ? 'Plays none of you are part of are skipped' : "Player Lock skips plays you aren't part of"; }
+  }
 }
 function updateLockUI() {
   const show = G.mode === 'lock' && !G.simAB && !G.replay && ['prePitch', 'windup', 'pitch', 'postPitch', 'live', 'postPlay', 'postFoul'].includes(G.phase);
@@ -13890,7 +14769,7 @@ function hudPrac() {
 function drawMiniMap() {
   const el = $('miniMap');
   const show = G.teams && G.mode !== 'derby' && G.mode !== 'menu' && !G.replay && !['menu', 'boot', 'break', 'final', 'wait', 'halfIntro'].includes(G.phase)
-    && (G.mode === 'lock' || G.phase === 'live' || G.phase === 'postPlay' || G.bases.some(Boolean));
+    && (G.mode === 'lock' || !!G.squad || G.phase === 'live' || G.phase === 'postPlay' || G.bases.some(Boolean));
   el.classList.toggle('hidden', !show);
   if (!show) return;
   const runners = userRuns() && !G.lock && (G.phase === 'live' || STEAL_PHASES.includes(G.phase)) ? runnerList() : [];
@@ -13911,9 +14790,10 @@ function drawMiniMap() {
   for (const m of MODELS) {
     if (!m.root.visible && m !== fpvHidden) continue;
     if (m.kind === 'ump' || !m.pl) continue;
-    const p = m.root.position, me = m.pl.id === G.lock;
-    if (m.fielding) dot(p.x, p.z, me ? 9 : 7, m.pl.team.c1, me ? '#ffc94a' : m.key === ufKey ? '#ffc94a' : 'rgba(255,255,255,0.8)', me || m.key === ufKey ? 4 : 2);
-    else if (m.j.helmet.visible) dot(p.x, p.z, me ? 11 : 9, '#ffc94a', me ? '#ffffff' : '#081020', 4);
+    const p = m.root.position, me = m.pl.id === G.lock, seat = G.squad ? seatOf(m.pl.id) : null;
+    const ring = seat ? seat.col : me || m.key === ufKey ? '#ffc94a' : null;   // a squad: everyone's man in his color
+    if (m.fielding) dot(p.x, p.z, me || seat ? 9 : 7, m.pl.team.c1, ring || 'rgba(255,255,255,0.8)', ring ? 4 : 2);
+    else if (m.j.helmet.visible) dot(p.x, p.z, me || seat ? 11 : 9, seat ? seat.col : '#ffc94a', me ? '#ffffff' : '#081020', 4);
   }
   if (ballMesh.visible) { const b = ballMesh.position; dot(b.x, b.z, 4 + Math.min(5, b.y / 25), '#ffffff', '#081020', 2); }
   const sid = runners.length ? selRunner() : null, sr = sid && runners.find((r) => r.id === sid);
@@ -13964,9 +14844,19 @@ function updateFireworks(dt) {
 }
 
 // ------------------------------------------------------------ live play ----
+// the person on this device steering a fielder in this play (if anyone)
+function localCtl(pl) { return !pl ? null : G.squad ? pl.ctl.find((c) => c.sid === G.me) || null : fieldCtrl() === 'local' ? pl.c0 : null; }
 function updateLive(dt) {
   const pl = G.play, fc = fieldCtrl();
-  if (fc === 'local') { const v = fieldVec(); pl.setInput(v.x, v.z); if (!pl.tutMoved && Math.hypot(v.x, v.z) > 0.2 && pl.uf) { pl.tutMoved = true; tutNote('move'); } }
+  if (G.squad) {
+    // everyone in the field steers his own man: you here, your friends from their devices
+    for (const c of pl.ctl) {
+      if (c.sid === G.me) { const v = fieldVec(); pl.setInput(v.x, v.z, c); continue; }
+      const L = linkBySid(c.sid);
+      pl.setInput(L ? L.inp.x : 0, L ? L.inp.z : 0, c);
+      c.remotePos = L && L.pos && performance.now() - L.pos.at < 300 ? L.pos : null;
+    }
+  } else if (fc === 'local') { const v = fieldVec(); pl.setInput(v.x, v.z); if (!pl.tutMoved && Math.hypot(v.x, v.z) > 0.2 && pl.uf) { pl.tutMoved = true; tutNote('move'); } }
   else if (fc === 'remote') {
     pl.setInput(G.remoteIn.x, G.remoteIn.z);
     const rp = G.remotePos;
@@ -13990,10 +14880,10 @@ function updateLive(dt) {
     setAnim(u, 'ump', { callT: 0, call: pl.umpCall.call });
     pl.umpCall = null;
   }
-  const localField = fc === 'local';
-  $('throwPrompt').classList.toggle('hidden', !(localField && pl.prompt && pl.userDef));
-  ctrlRing.visible = localField && !!pl.uf && !pl.done && !pl.hr;
-  if (ctrlRing.visible) ctrlRing.position.set(pl.uf.pos.x, groundY(pl.uf.pos.x, pl.uf.pos.z) + 0.12, pl.uf.pos.z);
+  const localField = fc === 'local', me = localCtl(pl);
+  $('throwPrompt').classList.toggle('hidden', !(localField && me && me.prompt && pl.userDef));
+  ctrlRing.visible = localField && !!me && !!me.f && !pl.done && !pl.hr;
+  if (ctrlRing.visible) ctrlRing.position.set(me.f.pos.x, groundY(me.f.pos.x, me.f.pos.z) + 0.12, me.f.pos.z);
   const land = localField && landingAssist() ? pl.landingSpot() : null;
   landMark.visible = !!land; if (land) landMark.position.set(land[0], 0.1, land[1]);
   runnerHUD(userRuns() && !pl.hr && !pl.awarded && !pl.done);
@@ -14133,12 +15023,13 @@ function fieldVec() {
   const L = Math.hypot(x, z); if (L > 1) { x /= L; z /= L; }
   return { x, z };
 }
-function actThrow(b) { if (isGuest()) { netSend({ t: 'act', a: 'throw', base: b }); NET.pred.hold = G.now + 0.5; } else if (G.play) G.play.userThrow(b); }
-function actDive() { if (isGuest()) { netSend({ t: 'act', a: 'dive' }); NET.pred.hold = G.now + 1.2; } else if (G.play) G.play.userDive(); }
-function actSwitch() { if (isGuest()) netSend({ t: 'act', a: 'switch' }); else if (G.play) G.play.userSwitch(); }
+function actThrow(b) { if (isGuest()) { netSend({ t: 'act', a: 'throw', base: b }); NET.pred.hold = G.now + 0.5; } else if (G.play) { const c = localCtl(G.play); if (c) G.play.userThrow(b, c); } }
+function actDive() { if (isGuest()) { netSend({ t: 'act', a: 'dive' }); NET.pred.hold = G.now + 1.2; } else if (G.play) { const c = localCtl(G.play); if (c) G.play.userDive(c); } }
+function actSwitch() { if (isGuest()) netSend({ t: 'act', a: 'switch' }); else if (G.play && !G.squad) G.play.userSwitch(); }
 function actRun(kind, which = null) {
+  if (G.squad) which = G.lock;   // a squad: you run only yourself
   if (isGuest()) { netSend({ t: 'act', a: 'run', kind, which }); return; }
-  if (G.play) { G.play.runCmd(kind, which); if (G.play.hrun) tutNote('runCmd'); } else stealCmd(kind, which);
+  if (G.play) { G.play.runCmd(kind, which, G.lock); if (G.play.hrun) tutNote('runCmd'); } else stealCmd(kind, which);
 }
 function actPick(base) { if (isGuest()) { netSend({ t: 'act', a: 'pick', base }); return; } if (canPickoff(base)) tutNote('pick'); startPickoff(base); }
 const trotOn = () => (isGuest() ? !!(NET.snap && NET.snap.pl && NET.snap.pl.hr) : !!(G.play && (G.play.hr || G.play.awarded)));
@@ -14193,7 +15084,7 @@ window.addEventListener('keydown', (e) => {
   else if (k === 'c') requestChallenge();
   else if (k === 't') lookRecenter();
   else if (k === 'tab') startSim();
-  else if (k === 'v' && G.mode === 'lock') toggleView();
+  else if (k === 'v' && (G.mode === 'lock' || G.squad)) toggleView();
   else if (k === 'u') openTeam();
   else if (k === 'i') requestIBB();
 });
@@ -14323,13 +15214,13 @@ function togglePause(force, remote) {
   batCamLabel();
   if (isHost()) netSend({ t: 'pause', v });
   const me = localSide();
-  const teamOK = me >= 0 && G.mode !== 'lock' && G.mode !== 'derby' && !G.drill;
+  const teamOK = me >= 0 && G.mode !== 'lock' && !G.squad && G.mode !== 'derby' && !G.drill;
   $('btnTeam').classList.toggle('hidden', !teamOK);
   try { if (G.paused) speechSynthesis.pause(); else speechSynthesis.resume(); } catch (e) { /* none */ }
 }
 
 // ------------------------------------------------------------------ menus ----
-const menu = { mode: 'exhibition', away: 'NYY', home: 'LAD', park: '', seasonLen: 30, side: 1, innings: 3, diff: 1, pdiff: 1, manual: 1, batter: 3, lockPick: 'h3', ump: 1, view: 2, lockField: 1, lockSkip: 1, batCam: settings.batCam || 0, netTeam: 'LAD', drill: 0, tutLesson: -1 };
+const menu = { mode: 'exhibition', away: 'NYY', home: 'LAD', park: '', seasonLen: 30, side: 1, innings: 3, diff: 1, pdiff: 1, manual: 1, batter: 3, lockPick: 'h3', ump: 1, view: 2, lockField: 1, lockSkip: 1, batCam: settings.batCam || 0, netTeam: 'LAD', drill: 0, tutLesson: -1, netMode: 0, squadSkip: 1 };
 try { Object.assign(menu, JSON.parse(localStorage.getItem('fullcount.menu') || '{}')); } catch (e) { /* ignore */ }
 menu.batCam = settings.batCam || 0;   // the pause screen can change it too; settings wins
 // teams used to be saved as an index into the built-in list
@@ -14368,7 +15259,12 @@ function lockOptions(team) {
   return [...team.lineup.map((h, i) => [`h${i}`, `${h.name} · ${h.pos} · ${i + 1}${['st', 'nd', 'rd'][i] || 'th'} in the order`]), ['p0', `${team.pitchers[0].name} · Starting pitcher`]];
 }
 // online: the two picks shown in the matchup, as [away, home] teams plus which one is mine to change
+// (a squad: the host picks both, and nobody's side is the whole team)
 function onlinePicks() {
+  if (squadMode()) {
+    if (NET.role === 'guest') { const t = ((NET.lobby && NET.lobby.teams) || []).map((x) => (x ? teamFromSpec(x) : null)); return { teams: [t[0] || null, t[1] || null], mySide: -1, squad: true }; }
+    return { teams: [menuTeam('away'), menuTeam('home')], mySide: -1, squad: true };
+  }
   if (NET.role === 'guest') {
     const L = NET.lobby, mySide = L ? 1 - L.side : 1, mine = menuTeam('netTeam'), theirs = L && L.hostSpec ? teamFromSpec(L.hostSpec) : null;
     return { teams: mySide ? [theirs, mine] : [mine, theirs], mySide };
@@ -14383,13 +15279,21 @@ function renderMenu() {
   const season = m === 'season', activeSeason = season && !!seasonLoad();
   if (season && (menuTeam('home').custom || menuTeam('home').era)) menu.home = clubOf(menuTeam('home')) || 'LAD';
   const showTeams = (!online || host || (guest && NET.open && NET.lobby)) && !activeSeason;
+  const squad = online && squadMode();
   $('netPanel').classList.toggle('hidden', !online);
+  $('netTitle').textContent = squad ? 'ONLINE SQUAD' : 'ONLINE 1V1';
+  $('optNetMode').classList.toggle('hidden', !online || NET.role === 'spec' || (guest && !(NET.open && NET.lobby)));
+  $('optSquadSkip').classList.toggle('hidden', !squad || !showTeams);
   $('netShare').classList.toggle('hidden', !(host && NET.code));
   $('netHostRow').classList.toggle('hidden', online && NET.open);
   $('netOr').classList.toggle('hidden', online && (NET.open || host));
   $('netJoinRow').classList.toggle('hidden', online && (NET.open || host));
   $('matchup').classList.toggle('hidden', !showTeams);
-  if (online && showTeams) {
+  if (online && showTeams && squad) {
+    const P = onlinePicks();
+    $('pickA').innerHTML = teamPickHTML('AWAY', P.teams[0], 'away', host);
+    $('pickH').innerHTML = teamPickHTML('HOME', P.teams[1], 'home', host);
+  } else if (online && showTeams) {
     const P = onlinePicks();
     $('pickA').innerHTML = teamPickHTML(P.mySide === 0 ? 'AWAY · YOU' : 'AWAY · FRIEND', P.teams[0], 'away', P.mySide === 0);
     $('pickH').innerHTML = teamPickHTML(P.mySide === 1 ? 'HOME · YOU' : 'HOME · FRIEND', P.teams[1], 'home', P.mySide === 1);
@@ -14398,7 +15302,7 @@ function renderMenu() {
     $('pickH').innerHTML = teamPickHTML(derby || prac || season ? 'YOUR TEAM' : 'HOME', menuTeam('home'), 'home');
   }
   $('pickA').classList.toggle('hidden', derby || season); $('vsLabel').classList.toggle('hidden', derby || season);
-  $('optSide').classList.toggle('hidden', derby || spec || prac || season || !showTeams);
+  $('optSide').classList.toggle('hidden', derby || spec || prac || season || squad || !showTeams);
   $('optSeasonLen').classList.toggle('hidden', !season || activeSeason);
   $('optDrill').classList.toggle('hidden', !prac || tut);
   $('optLesson').classList.toggle('hidden', !tut);
@@ -14410,12 +15314,12 @@ function renderMenu() {
   $('optThrow').classList.toggle('hidden', derby || spec || online || tut || activeSeason);
   $('optBatter').classList.toggle('hidden', !derby);
   $('optLock').classList.toggle('hidden', !lock);
-  $('optView').classList.toggle('hidden', !lock);
+  $('optView').classList.toggle('hidden', !lock && !(squad && showTeams));
   $('optLockField').classList.toggle('hidden', !lock);
   $('optLockSkip').classList.toggle('hidden', !lock);
   $('optUmp').classList.toggle('hidden', derby || tut || !showTeams);
   $('optPark').classList.toggle('hidden', tut || season || !showTeams);
-  for (const el of ['optSide', 'optInn', 'optDiff', 'optPDiff', 'optUmp', 'optPark']) $(el).style.pointerEvents = guest ? 'none' : '';
+  for (const el of ['optSide', 'optInn', 'optDiff', 'optPDiff', 'optUmp', 'optPark', 'optNetMode', 'optSquadSkip']) $(el).style.pointerEvents = guest ? 'none' : '';
   if (showTeams) {
     // the ballpark: the home team's, or any of the others
     const hk = online ? onlinePicks().teams[1] : menuTeam('home'), hp = (hk && PARKS[hk.park || hk.key]) || PARKS.FC;
@@ -14429,6 +15333,8 @@ function renderMenu() {
   for (const seg of document.querySelectorAll('.seg[data-key]')) {
     let v = L[seg.dataset.key] ?? menu[seg.dataset.key];
     if (guest && seg.dataset.key === 'side') v = 1 - L.side;
+    if (guest && seg.dataset.key === 'netMode') v = L.squad ? 1 : 0;
+    if (seg.dataset.key === 'view') v = menu.view;   // your own camera
     for (const b of seg.querySelectorAll('button')) b.classList.toggle('on', +b.dataset.v === +v);
   }
   const sel = $('derbyBatter');
@@ -14445,18 +15351,23 @@ function renderMenu() {
   play.classList.toggle('hidden', (online && !host) || activeSeason);
   play.disabled = (host && !NET.open) || !!block;
   play.title = block;
-  play.textContent = season ? 'START SEASON' : derby ? 'START DERBY' : tut ? 'START TUTORIAL' : prac ? 'START PRACTICE' : spec ? 'WATCH GAME' : lock ? 'PLAY AS ' + (lock ? lockName() : '') : online ? (NET.open ? 'START ONLINE GAME' : 'WAITING FOR FRIEND') : 'PLAY BALL';
+  play.textContent = season ? 'START SEASON' : derby ? 'START DERBY' : tut ? 'START TUTORIAL' : prac ? 'START PRACTICE' : spec ? 'WATCH GAME' : lock ? 'PLAY AS ' + (lock ? lockName() : '') : online ? (NET.open ? (squad ? 'START SQUAD GAME' : 'START ONLINE GAME') : squad ? 'WAITING FOR FRIENDS' : 'WAITING FOR FRIEND') : 'PLAY BALL';
   if (host && NET.open && block !== (NET.blockShown || '')) { NET.blockShown = block; netStatus(block || 'Ready! Press Start when you are.', block ? 'bad' : 'good'); }
   try { localStorage.setItem('fullcount.menu', JSON.stringify(menu)); } catch (e) { /* ignore */ }
   renderResume();
   renderSeasonPanel();
+  renderSquad();
+  chatRender(); voiceRender();
   if (host && NET.open) netSendLobby();
   if (typeof renderAccount === 'function') renderAccount();
 }
 // why the host can't start the online game yet ('' when it's fine)
 function onlineBlock() {
   const P = onlinePicks();
-  if (!P.teams[1 - P.mySide]) return 'Waiting for your friend to pick a team…';
+  if (P.squad) {
+    const nobody = NET.room.find((r) => !r.pick);
+    if (nobody) return nobody.sid === 0 ? 'Pick your player: click a spot on either team.' : `Waiting for ${nobody.name} to pick a player…`;
+  } else if (!P.teams[1 - P.mySide]) return 'Waiting for your friend to pick a team…';
   if (P.teams.some((t) => t.custom && t.cost > ROSTER_BUDGET)) return 'A custom roster is over the point cap. Fix it in the Roster Builder first.';
   return '';
 }
@@ -14473,6 +15384,7 @@ function buildMenu() {
     const k = b.dataset.k, d = +b.dataset.d;
     if (menu.mode === 'online') {
       const P = onlinePicks();
+      if (P.squad) { if (NET.role !== 'guest') cycleTeam(k, d, menu[k === 'away' ? 'home' : 'away']); renderMenu(); return; }
       if ((k === 'home' ? 1 : 0) !== P.mySide) return;
       if (NET.role === 'guest') { cycleTeam('netTeam', d); netSendPick(); }
       else cycleTeam(k, d);
@@ -14489,8 +15401,9 @@ function buildMenu() {
     if (!v) return;
     if (menu.mode === 'online') {
       const P = onlinePicks();
-      if ((k === 'home' ? 1 : 0) !== P.mySide) return;
-      if (NET.role === 'guest') { menu.netTeam = v; netSendPick(); } else menu[k] = v;
+      if (P.squad) { if (NET.role !== 'guest' && v !== menu[k === 'away' ? 'home' : 'away']) menu[k] = v; }
+      else if ((k === 'home' ? 1 : 0) !== P.mySide) return;
+      else if (NET.role === 'guest') { menu.netTeam = v; netSendPick(); } else menu[k] = v;
     } else {
       const other = menu[k === 'away' ? 'home' : 'away'];
       if (v === other && menu.mode !== 'derby') return;
@@ -14508,7 +15421,9 @@ function buildMenu() {
   });
   for (const seg of document.querySelectorAll('.seg[data-key]')) seg.addEventListener('click', (e) => {
     const b = e.target.closest('button'), key = seg.dataset.key;
-    if (!b || (NET.role === 'guest' && key !== 'batCam')) return;   // the batting cam is each player's own choice
+    if (!b || (NET.role === 'guest' && key !== 'batCam' && key !== 'view')) return;   // the cameras are each player's own choice
+    // a squad of more than two can't turn into a 1v1
+    if (key === 'netMode' && +b.dataset.v === 0 && NET.links.length > 1) { netStatus('There are more than two of you in the room. A 1v1 needs just one friend.', 'bad'); return; }
     menu[key] = +b.dataset.v;
     if (key === 'batCam') { settings.batCam = menu.batCam; saveSettings(); }
     renderMenu();
@@ -14561,7 +15476,7 @@ function toMenu() {
   try { speechSynthesis.cancel(); } catch (e) { /* none */ }
   if (TUT.on) tutEnd();
   if (G.mode === 'online') netClose();
-  G.mode = 'menu'; G.paused = false; G.replay = null; G.play = null; G.lock = null; G.ctrl = ['cpu', 'cpu']; G.localPitch = false;
+  G.mode = 'menu'; G.paused = false; G.replay = null; G.play = null; G.lock = null; G.squad = null; G.me = -1; G.skipping = false; G.ctrl = ['cpu', 'cpu']; G.localPitch = false;
   setPhase('menu');
   $('hud').classList.add('hidden'); $('pause').classList.add('hidden');
   document.body.classList.remove('letterbox');
@@ -14601,6 +15516,8 @@ function update(dt) {
       if (G.cpuIBB && G.pt >= 0.7) { intentionalWalk(1 - G.half); break; }
       if (G.cpuPick && G.pt >= G.cpuPick.at) { startPickoff(G.cpuPick.base); break; }
       if (pc === 'local') updatePitchUI(); else if (pc === 'cpu' && G.pt >= G.cpuPitchAt) startWindup(G.spec);
+      // a squad can't all wait on one friend who walked away: after 30 seconds the CPU throws one for him
+      else if (pc === 'remote' && G.squad && G.pt >= 30) { startWindup(cpuChoosePitch()); chatSys(`${seatOf(curPitcher().id).name} took too long. The CPU threw that one.`); }
       break;
     }
     case 'windup': updateWindup(); updateStealers(dt); break;
@@ -14646,6 +15563,7 @@ function lockInvolved() {
 }
 function lockFF() {
   G.skipping = false;
+  if (G.squad && G.mode === 'online') return squadFF();
   if (G.mode !== 'lock' || G.replay || G.phase === 'final') return 1;
   if (G.lockSkip) {
     if (!lockInvolved()) { G.skipping = true; return SKIP_SPEED; }
@@ -14678,15 +15596,16 @@ function frameStep(dt) {
   if (!G.paused && !G.hold) {
     if (isGuest()) guestUpdate(dt);
     else if (G.beat > 0) G.beat -= dt;   // a beat to get your bearings when a skip lands you in a play
-    else if (G.mode === 'lock') {
+    else if (G.mode === 'lock' || G.squad) {
       const n = lockFF();
       // stop fast-forwarding the moment you become involved
       for (let i = 0; i < n; i++) { update(dt); if (i + 1 < n && lockFF() < n) break; }
     } else { const n = G.ff > 1 ? G.ff : 1; for (let i = 0; i < n; i++) update(dt); }
   }
   updateSkipUI();
-  $('btnTeamHud').classList.toggle('hidden', !(G.teams && G.mode !== 'menu' && mySide() >= 0 && G.mode !== 'lock' && G.mode !== 'derby' && !G.drill && G.phase !== 'final'));
+  $('btnTeamHud').classList.toggle('hidden', !(G.teams && G.mode !== 'menu' && mySide() >= 0 && G.mode !== 'lock' && !G.squad && G.mode !== 'derby' && !G.drill && G.phase !== 'final'));
   netTick();
+  talkTick(dt);
   camUpdate(dt);
   const d = camera.position.distanceTo(ballMesh.position);
   ballMesh.scale.setScalar(fpvOn ? clamp(d / 40, 1.5, 8) : clamp(d / 80, 1, 7));
@@ -14694,6 +15613,7 @@ function frameStep(dt) {
   crowdU.uEx.value = lerp(crowdU.uEx.value, crowdExTarget, 1 - Math.exp(-dt * 3));
   updateFireworks(dt);
   drawMiniMap();
+  squadTags();
   updateLockUI();
 }
 function boot() {
@@ -14705,6 +15625,7 @@ function boot() {
   buildRecordsUI();
   buildSeasonUI();
   buildOptionsUI();
+  buildTalkUI();
   $('btnRosters').addEventListener('click', openRosters);
   buildMenu();
   buildCloudUI();
@@ -14734,6 +15655,9 @@ window.__fullcount = {
   // run the real per-frame loop (fast-forward, skipping, beats) for `sec` seconds of wall time
   run(sec, dt = 1 / 60) { for (let t = 0; t < sec && G.phase !== 'final'; t += dt) frameStep(dt); renderer.render(scene, camera); },
   cam: () => ({ pos: camRig.pos.toArray().map((v) => +v.toFixed(1)), look: camRig.look.toArray().map((v) => +v.toFixed(1)), fl: { ...FL }, fpvOn, tp: { ...TP } }),
+  // what this device controls right now (online squad tests)
+  ctl: () => ({ ub: userBats(), up: userPitches(), uf: userFields(), ur: userRuns(), fpvOn, view: G.view, lock: G.lock, me: G.me, role: G.teams && G.mode !== 'menu' ? lockRole().role : null }),
+  CHAT, VOICE, voiceGain, chatSend, claimSpot, hostStartOnline,
   tick(dt = 1 / 30) { if (isGuest()) guestUpdate(dt); else update(dt); netTick(); },
   setBases(list) { const lu = G.lu[G.half]; G.bases = [null, null, null, null]; for (const b of list) G.bases[b] = lu[(b + 4) % 9]; placeForPitch(); },
   // put a specific ball in play from the current pitch setup (for testing fielding / running)

@@ -1,6 +1,6 @@
 # Full Count
 
-A broadcast-style 3D baseball game that runs in the browser. Zone hitting with a PCI, meter pitching, real ball-flight physics, user-controlled fielding and baserunning, and online 1v1 against a friend.
+A broadcast-style 3D baseball game that runs in the browser. Zone hitting with a PCI, meter pitching, real ball-flight physics, user-controlled fielding and baserunning, online 1v1 against a friend, and online squads of up to ten people who each play one player, with text and proximity voice chat.
 
 **Play it:** https://henrywei57.github.io/full-count/
 
@@ -14,7 +14,9 @@ All 30 MLB clubs with their real current rosters. Every player's ratings come fr
 - **Play Ball** – exhibition game (3, 6 or 9 innings) as the home or away team.
 - **Season** – take a real club through a 12, 30, 60 or 162-game schedule, the standings and the playoffs (see [Season](#season)).
 - **Player Lock** – pick one player. You only play when he's involved: at bat, on base, or when the ball is hit to the outfield or his way. Everything else is skipped behind a SIMULATING card (set Not Involved to Watch to see it fast-forwarded instead). Fielding and baserunning use a third-person camera behind your player, like Road to the Show: it faces home plate before the pitch, then follows the ball, the base you're running to, or the base you're about to throw to. First person and broadcast cameras are also available, and V cycles between them. At-bats use the strike-zone view. Set Your Role to Bat only to sim all of your fielding, or press Tab to skip any single at-bat.
-- **Online 1v1** – one player hosts and gets a 5-character room code (or invite link); the other joins with it. Each player picks their own team, custom rosters included. Signed in, you can invite a friend straight from your friends list. Works across devices and networks.
+- **Online** – one player hosts and gets a 5-character room code (or invite link); friends join with it. Signed in, you can invite friends straight from your friends list. Works across devices and networks. Two ways to play:
+  - **1v1**: you against one friend, each with your own team, custom rosters included.
+  - **Squad**: you and up to nine friends, each playing one player (see [Online squad](#online-squad)).
 - **Practice** – endless drills with your team against any opponent:
   - **Batting**: live pitching, as many at-bats as you want, with contact rate, hits and average exit velocity tracked.
   - **Pitching**: work a full lineup; strike %, strikeouts, walks and hits tracked. Your pitcher never tires.
@@ -24,6 +26,26 @@ All 30 MLB clubs with their real current rosters. Every player's ratings come fr
   Three outs just clears the bases and keeps going; quit from the pause menu.
 - **Home Run Derby** – 10 outs, every non-homer swing is an out.
 - **CPU vs CPU** – watch a full simulated game (press `F` to fast-forward).
+
+## Online squad
+
+Pick **Online**, set **Play** to **Squad**, and host. Up to nine friends join with the room code, so there can be ten of you in one game.
+
+- **Pick your player.** The host picks both teams. Then everyone clicks a spot: any spot in either batting order (the catcher, the DH, anyone) or either starting pitcher. You can be on the same team as your friends, against them, or a mix (say, three of you on the home team against two on the away team). Click your spot again to give it up. The CPU plays everyone nobody picks and manages both clubs. The host starts once everyone has a spot.
+- **Your player only.** Like Player Lock, you bat when he's up, pitch when he's on the mound, field when the ball comes his way and run when he's on base. Everyone does it at the same time on their own device: the shortstop and the center fielder can both be chasing the same ball.
+- **Third-person camera, MLB The Show style.** The camera sits behind your player and turns toward the play: home plate before the pitch, then the ball, the base you're running to or the base you're about to throw to. Hitting uses the strike-zone view, pitching the view from behind the mound. V cycles third person, first person and broadcast, and the mouse or right stick swings the camera around.
+- **Name tags.** Every player a friend is playing has a tag over his head in that friend's color (YOU over your own), with a speaker icon while they're talking. The mini diamond rings them in the same colors.
+- **Nobody in the play.** When none of you is batting, pitching, on base or in the way of the ball, the game skips ahead behind the SIMULATING card. The host can instead have it play fast or in real time (**Nobody in the play**).
+- **The CPU manager** goes to the bullpen and makes pinch-hit and pinch-run moves, but never takes out one of you. A pitcher stays in until he's out of gas, and then his player takes over the reliever. A friend who leaves the mound alone for 30 seconds gets a CPU pitch thrown for him. ABS challenges are up to the batter (a called strike) or the pitcher or catcher (a called ball).
+- **Dropped connection.** If a friend's connection drops, the CPU plays their man and the game goes on. They reconnect on their own and pick up where they left off. Rematch keeps everyone's spots.
+
+## Chat and voice
+
+Online, in the lobby and during the game (1v1 and squad):
+
+- **Text chat**: press **Y** (or the chat button by pause) and type; Enter sends. In a squad game, Tab switches between **All** and **Team** (just the friends on your side). Lines fade after a few seconds. Spectators can chat too.
+- **Voice chat**: press **Join voice chat** in the online panel or the mic button in the game. Your browser asks for the microphone once; without one you can still listen. **G** mutes and unmutes, or with **Push to talk** on (Options) you're live only while you hold G. Voice is a direct call between each pair of players, so it doesn't go through the host. Click someone's mic icon in the room list to mute them just for you.
+- **Proximity voice** (squad games): you hear a friend louder the closer his player is to yours. Full volume within about 35 feet, fading out across the field (around 250 feet). Teammates in the dugout together hear each other fine, and the other team's dugout is across the field. Turn it off in Options to hear everyone at full volume.
 
 ## Controls
 
@@ -44,8 +66,10 @@ All 30 MLB clubs with their real current rosters. Every player's ratings come fr
 | Challenge: ABS (a ball/strike call) or replay review (a close play on the bases) | C | Y (right after the call) |
 | Team panel: pinch hit, pinch run, defensive subs, bullpen, intentional walk | U, the team button by pause, or the pause menu | |
 | Intentional walk (your team in the field, before a pitch) | I | |
-| Swing the camera (Player Lock) | Mouse (click to grab it), right-click or T to re-center | Right stick, R3 |
-| Cycle third person / first person / broadcast (Player Lock) | V | |
+| Swing the camera (Player Lock, squad) | Mouse (click to grab it), right-click or T to re-center | Right stick, R3 |
+| Cycle third person / first person / broadcast (Player Lock, squad) | V | |
+| Chat (online): open, send, everyone / team | Y, Enter, Tab | |
+| Voice chat (online): mute, or hold to talk | G | |
 | Skip this at-bat (Player Lock) | Tab or the Skip button | Back |
 | Replay, skip, pause | R, Enter, Esc | Back, A, Start |
 
@@ -144,7 +168,7 @@ Every player costs points from his ratings: a point a step above 40, two above 7
 
 ## Friends
 
-Sign in with Google (top right of the main menu) to save rosters to your account and add friends. Everyone gets a 6-character friend code; enter a friend's code under **Friends** to add them. Your friends list shows who's online, and **Invite to 1v1** opens a room and sends them the invite. They get a pop-up with a Join button.
+Sign in with Google (top right of the main menu) to save rosters to your account and add friends. Everyone gets a 6-character friend code; enter a friend's code under **Friends** to add them. Your friends list shows who's online, and **Invite to play** opens a room (or uses the one you have open) and sends them the invite. They get a pop-up with a Join button.
 
 ## Batting cameras
 
@@ -172,7 +196,8 @@ The badge next to the pause button shows the round-trip time to your opponent (a
 - **Can't connect?** If the room is found but the two devices can't open a connection, the game says so: some school, work and mobile networks block peer-to-peer play. Both on the same Wi-Fi usually works.
 - **Reconnecting**: if the connection drops mid-game, the host's game pauses and waits up to 90 seconds while the guest reconnects on its own (for up to a minute), then picks up exactly where it was. Only the same player can take the spot back. Quitting on purpose ends the game for both of you right away.
 - **Spectators**: anyone with the room code can press **Watch** instead of Join and see the game live, from the broadcast camera (up to six at a time). Spectators can come and go at any point, even mid-game.
-- **Head to head**: when you're both signed in with Google, your record against each other is kept. It shows in the lobby when you connect, on the final screen, and next to each friend on your friends list.
+- **Head to head**: when you're both signed in with Google, your record against each other is kept. It shows in the lobby when you connect, on the final screen, and next to each friend on your friends list. (Squad games are kept as **Online Squad** in your stats, with just your player's numbers.)
+- **Squads**: the host sends fewer snapshots to each friend the more friends there are (about 30 a second with four or more), and each guest fills in the frames in between.
 
 ## Turning on Google sign-in
 
@@ -208,6 +233,6 @@ To refresh the rosters (after trades, or when a new season is underway), run `no
 
 The game is plain JavaScript with [three.js](https://threejs.org) loaded from a CDN; there is no install step.
 
-- Source lives in `src/` (`page.html` plus numbered JS modules; `12-mlb.js` is the generated MLB data, `66-roster.js` is the Roster Builder, `67-cloud.js` is sign-in and friends, `68-tutorial.js` is the tutorial).
+- Source lives in `src/` (`page.html` plus numbered JS modules; `12-mlb.js` is the generated MLB data, `64-squad.js` is the online squad, `65-net.js` the online play, `65-talk.js` chat and voice, `66-roster.js` is the Roster Builder, `67-cloud.js` is sign-in and friends, `68-tutorial.js` is the tutorial).
 - `./build.sh` concatenates them into a single `index.html`, which is what GitHub Pages serves. Edit `src/`, not `index.html`.
 - To run locally, serve the folder (for example `python3 -m http.server`) and open it in a browser.

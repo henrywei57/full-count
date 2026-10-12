@@ -44,8 +44,9 @@ function gameRecord() {
     score: G.score.slice(), line: G.line.map((l) => l.slice()), hits: G.hits.slice(), errs: G.errs.slice(), bat, pit, you: mySide(),
     season: G.season ? G.season.id : null,
     lock: lockPl ? statKey(lockPl) : null,   // Player Lock: your numbers are his
-    opp: G.mode === 'online' && !G.coop && NET.role !== 'spec' ? (NET.opp ? { uid: NET.opp.uid, name: NET.opp.name } : { uid: '', name: '' }) : null,
+    opp: G.mode === 'online' && !G.coop && !G.squad && NET.role !== 'spec' ? (NET.opp ? { uid: NET.opp.uid, name: NET.opp.name } : { uid: '', name: '' }) : null,
     coop: G.coop ? { with: NET.opp ? NET.opp.name : '' } : null,
+    squad: G.squad ? { with: G.squad.filter((s) => s.sid !== G.me).map((s) => s.name) } : null,
   };
 }
 const RECORD_MODES = ['exhibition', 'lock', 'online', 'season'];
@@ -228,7 +229,7 @@ function h2hGet(uid) {
 }
 function h2hResult() {
   const opp = NET.opp, me = mySide();
-  if (!opp || me < 0 || G.h2hDone === G.gameId || typeof Cloud === 'undefined' || !Cloud.profile) return;
+  if (!opp || me < 0 || G.squad || G.h2hDone === G.gameId || typeof Cloud === 'undefined' || !Cloud.profile) return;
   G.h2hDone = G.gameId;
   const won = G.score[me] > G.score[1 - me], cur = h2hGet(opp.uid) || { w: 0, l: 0 }, rec = { w: cur.w + (won ? 1 : 0), l: cur.l + (won ? 0 : 1) };
   const all = h2hLocal(); all[opp.uid] = { name: opp.name, ...rec, at: Date.now() };
@@ -263,10 +264,10 @@ const avgS = (b) => (b.ab ? rate3(b.h / b.ab) : '.000');
 const obpOf = (b) => (b.pa ? (b.h + b.bb) / b.pa : 0), slgOf = (b) => (b.ab ? (b.h + b.d + 2 * b.t + 3 * b.hr) / b.ab : 0);
 const eraS = (p) => (p.outs ? ((p.er * 27) / p.outs).toFixed(2) : '&ndash;');
 const whipS = (p) => (p.outs ? (((p.h + p.bb) * 3) / p.outs).toFixed(2) : '&ndash;');
-const MODE_NAME = { exhibition: 'Play Ball', lock: 'Player Lock', online: 'Online', season: 'Season' };
-const modeOf = (g) => (g.coop ? 'coop' : g.mode);
+const MODE_NAME = { exhibition: 'Play Ball', lock: 'Player Lock', online: 'Online', squad: 'Online Squad', season: 'Season' };
+const modeOf = (g) => (g.coop ? 'coop' : g.squad ? 'squad' : g.mode);
 // an online opponent (players who weren't signed in are grouped together)
-function oppOf(g) { if (g.coop || !g.opp) return null; return g.opp.uid ? g.opp : { uid: 'anon', name: 'Opponents who weren’t signed in' }; }
+function oppOf(g) { if (g.coop || g.squad || !g.opp) return null; return g.opp.uid ? g.opp : { uid: 'anon', name: 'Opponents who weren’t signed in' }; }
 function careerTotals(filter) {
   const H = new Map(), P = new Map();
   for (const g of gamesList()) {
@@ -322,7 +323,7 @@ function totalsOf(list) {
 }
 function renderYou() {
   const list = myGames(), t = totalsOf(list);
-  const modes = ['all', 'exhibition', 'season', 'online', 'lock'].filter((m) => m === 'all' || gamesList().some((g) => g.you >= 0 && modeOf(g) === m));
+  const modes = ['all', 'exhibition', 'season', 'online', 'squad', 'lock'].filter((m) => m === 'all' || gamesList().some((g) => g.you >= 0 && modeOf(g) === m));
   const seg = `<div class="st-filter seg">${modes.map((m) => `<button data-mode="${m}" class="${ST.mode === m ? 'on' : ''}">${m === 'all' ? 'All your games' : MODE_NAME[m]}</button>`).join('')}</div>`;
   if (!list.length) return `${seg}<p class="fr-note">No games here yet.</p>`;
   return `${seg}${statCards(t.rec, t.b, t.p)}${lineTables(t.b, t.p)}
