@@ -13,7 +13,7 @@ All 30 MLB clubs with their real current rosters. Every player's ratings come fr
 - **Tutorial** – five short hands-on lessons: hitting, pitching, fielding, baserunning and pickoffs. Each step asks you to do the thing (make contact, throw a strike, make a throw, call a steal) and moves on once you have. Play them all in order or pick one; skip any step.
 - **Play Ball** – exhibition game (3, 6 or 9 innings) as the home or away team.
 - **Season** – take a real club through a 12, 30, 60 or 162-game schedule, the standings and the playoffs (see [Season](#season)).
-- **Player Lock** – pick one player. You only play when he's involved: at bat, on base, or when the ball is hit to the outfield or his way. Everything else is skipped behind a SIMULATING card (set Not Involved to Watch to see it fast-forwarded instead). Fielding and baserunning use a third-person camera behind your player, like Road to the Show: it faces home plate before the pitch, then follows the ball, the base you're running to, or the base you're about to throw to. First person and broadcast cameras are also available, and V cycles between them. At-bats use the strike-zone view. Set Your Role to Bat only to sim all of your fielding, or press Tab to skip any single at-bat.
+- **Player Lock** – pick one player (any spot in your batting order, or your starting pitcher). You only play when he's involved: at bat, on base, or when the ball is hit to the outfield or his way. Everything else is skipped behind a SIMULATING card (set Not Involved to Watch to see it fast-forwarded instead). Fielding and baserunning use a third-person camera behind your player, like Road to the Show: it faces home plate before the pitch, then follows the ball, the base you're running to, or the base you're about to throw to. First person and broadcast cameras are also available, and V cycles between them. At-bats use the strike-zone view. Set Your Role to Bat only to sim all of your fielding, or press Tab to skip any single at-bat.
 - **Online** – one player hosts and gets a 5-character room code (or invite link); friends join with it. Signed in, you can invite friends straight from your friends list. Works across devices and networks. Two ways to play:
   - **1v1**: you against one friend, each with your own team, custom rosters included.
   - **Squad**: you and up to nine friends, each playing one player (see [Online squad](#online-squad)).
@@ -24,8 +24,35 @@ All 30 MLB clubs with their real current rosters. Every player's ratings come fr
   - **Fielding**: a ball comes off the bat every few seconds; outs and errors tracked.
 
   Three outs just clears the bases and keeps going; quit from the pause menu.
-- **Home Run Derby** – 10 outs, every non-homer swing is an out.
-- **CPU vs CPU** – watch a full simulated game (press `F` to fast-forward).
+- **Home Run Derby** – you bat with your team's lineup (pick the batter under **BATTER**) against batting practice from the away club's pitchers. You get 10 outs: a swing that misses, and any ball put in play that isn't a home run, uses one up. Taking a pitch is free. The round ends with a tally of your home runs and your longest.
+- **CPU vs CPU** – watch a full simulated game. Press `F` for triple speed, and again to slow back down.
+
+## Setup options
+
+The setup panel on the main menu changes with the mode. This is every option and where it applies:
+
+| Option | Choices | Applies to |
+|---|---|---|
+| Lessons | All, in order; Hitting; Pitching; Fielding; Baserunning; Pickoffs | Tutorial |
+| Drill | Batting; Pitching; Baserunning; Fielding | Practice |
+| Play | 1v1 or Squad | Online |
+| Nobody in the play | Skip ahead; Watch (fast); Real time | Online squad |
+| You play as | Away or Home | Play Ball, Player Lock, Online 1v1 |
+| Season | 12, 30, 60 or 162 games | Season setup |
+| Innings | 3, 6 or 9 | Play Ball, Season, Player Lock, Online, CPU vs CPU |
+| Hitting | Rookie, Veteran, All-Star, Hall of Fame | all except CPU vs CPU and Tutorial |
+| Pitching | Rookie, Veteran, All-Star, Hall of Fame | all except CPU vs CPU, Derby and Tutorial |
+| Umpire | Human ump (92%), ABS challenge, Robot ABS | all except Derby and Tutorial |
+| Ballpark | The home team's park, or any MLB or classic park | all except Tutorial and Season |
+| Throws | Manual or Auto | Play Ball, Player Lock, Practice, a new season |
+| Your player | Any spot in your batting order, or the starting pitcher | Player Lock |
+| Your role | Bat & field, or Bat only (sim fielding) | Player Lock |
+| Not involved | Skip ahead, or Watch (fast) | Player Lock |
+| Camera | Third person, First person or Broadcast | Player Lock, online squad |
+| Batter | Any of your lineup | Home Run Derby |
+| Batting cam | Strike Zone, Strike Zone 2 or Strike Zone High | every game (also on the pause menu) |
+
+**Throws**: on Manual, a THROW prompt waits for your base key (1–4) whenever you're holding the ball. On Auto, the CPU makes the throw unless you press a base first. Either way you steer your fielders and dive.
 
 ## Online squad
 
@@ -51,7 +78,7 @@ Online, in the lobby and during the game (1v1 and squad):
 
 | | Keyboard / mouse | Gamepad |
 |---|---|---|
-| Move PCI / aim pitch | Mouse (or WASD) | Left stick |
+| Move PCI / aim pitch | Mouse (or WASD or the arrow keys) | Left stick |
 | Normal / power / contact swing | Click or Space / Right-click or L / J | A / X / B |
 | Bunt | B | Y |
 | Pick pitch | 1–5 | LB / RB |
@@ -71,7 +98,12 @@ Online, in the lobby and during the game (1v1 and squad):
 | Chat (online): open, send, everyone / team | Y, Enter, Tab | |
 | Voice chat (online): mute, or hold to talk | G | |
 | Skip this at-bat (Player Lock) | Tab or the Skip button | Back |
-| Replay, skip, pause | R, Enter, Esc | Back, A, Start |
+| Replay the last play, skip ahead | R, Enter | Back, A |
+| Pause | Esc or P | Start |
+| Skip a home run trot | Space or click | A |
+| Strike zone overlay on / off | Z | |
+| Sound on / off | M | |
+| Fast-forward (CPU vs CPU): triple speed, and back | F | |
 
 The AI moves your fielder until you touch the controls. Any ball that comes inside the gold ring (7.5 ft) around your fielder is yours. In Player Lock, W runs the way the camera faces. When you field the ball, the best throw is ringed in green and the camera turns toward it; press 1–4 to throw. A live mini diamond shows where every runner, fielder and the ball are.
 
@@ -84,6 +116,22 @@ Every base is covered for the whole play. When the man covering a bag goes after
 Defense comes from the actual player: his glove (FLD) sets how quickly he reads the ball, how far he can reach, how fast he gets it out of his glove and how often he boots it or throws it away; his arm sets how hard he throws; his speed sets his range. A player out of position loses some of each.
 
 On a ball to the outfield the free middle infielder goes out to be the relay man, lined up between the ball and the base it's likely going to. A throw of more than about 225 feet from an outfielder goes to him, and he turns and fires it on to the base you picked. On defense the AI can cut it off and go somewhere else instead.
+
+## On screen
+
+- **Scoreboard** (top left): both clubs' runs, the inning, the runners on the diamond, the count, the outs, and the pitch count of the current pitcher. With ABS on, the dots by each club are its challenges left.
+- **Pitch info** (top right): speed and type of the last pitch, for a few seconds.
+- **Pitch tracker**: every pitch of the at-bat on a mini strike zone, numbered and colored by result (ball, called strike, swinging strike, foul or in play), with the last five pitches listed below.
+- **Name plates**: the batter on the left (his line today and his CON, POW, EYE and SPD). The pitcher on the right (pitches, innings, strikeouts, and his arsenal with speeds). His stamina bar goes from green to gold to red as he tires.
+- **Hitting feedback**: after each swing a card shows the timing (PERFECT, GOOD, EARLY, LATE, VERY EARLY, VERY LATE) and the contact (SQUARED UP, SOLID, DECENT, WEAK, TIPPED). Once the ball is in play it adds exit velocity, launch angle and distance.
+- **Calls and banners**: a big call on each pitch (BALL 2, STRIKE, SWINGING STRIKE, FOUL BALL and so on), and banners for the big moments (HOME RUN, DOUBLE PLAY, PITCHING CHANGE and more).
+- **Captions**: the play-by-play shows along the bottom, and is read aloud when the commentary voice is on.
+- **Hint line**: under the scoreboard, it tells you what to press right now.
+- **Break card**: between the halves, with the linescore and who leads.
+- **Replay**: press R after a play to watch it again from a camera that follows the ball. Enter or a click stops it.
+- **ABS card**: when a ball or strike is challenged, the pitch is shown on the zone with the result, and the card says whether the call stands or is overturned.
+- **Pause menu** (Esc or P, or Start): resume, controls, options, commentary voice on or off, strike zone on or off, batting cam, the team panel, the box score, and quit to the menu. Quitting an online 1v1 ends it for both of you. In a squad, if a friend quits, the CPU plays their player; if the host leaves, the game ends for everyone.
+- **Sound**: crowd and hit sounds, and commentary. `M` mutes everything, and the sound drops out while the SIMULATING card is up.
 
 ## Bench and bullpen
 
@@ -108,20 +156,22 @@ When you're pitching with runners on, Shift + 1 / 2 / 3 throws over. The runner 
 
 Pick **Season** on the main menu, choose your club and a length (12, 30, 60 or the full 162), and play a schedule of three-game series against the other 29 real clubs. Everyone plays every day, and every team runs a five-man rotation, so you face whoever's turn it is.
 
-- **Play next game** plays it out like any other game, in the home team's park, with that day's starters. **Sim game**, **Sim 7 days** and **Sim to the playoffs** let the computer play it for you.
+- **Play next game** plays it out like any other game, in the home team's park, with that day's starters. **Sim game**, **Sim 7 days** and **Sim to the playoffs** let the computer play it for you. The panel shows your next opponent, the park and both starting pitchers. Once you're out, **Sim the postseason** plays out the playoffs.
 - Every other game in the league is played out by a quick plate-appearance sim: each batter against each pitcher from their ratings and the park, with pitching changes, steals, double plays and sac flies. Across a season it lands on big-league rates (about a .245 average, 22% strikeouts, 3% homers and 4 to 4.5 runs a team).
 - **Standings** by division (W, L, PCT, GB, runs, last 10, streak), **league leaders** (AVG, HR, RBI, OPS, SB, W, RA9, K, SV, WHIP) from every game in the league, and **your games**, each with its box score.
 - **Playoffs**, MLB style: six teams a league (three division winners and three wild cards), a wild-card round, the Division Series, the Championship Series and the World Series. A short season gets shorter series. If your club misses out, sim ahead to see who wins it all.
-- The season saves after every game, on this device and to your Google account. A season game you quit partway through resumes where you left it.
+- A season uses each club's current roster. The classic decade teams and custom rosters aren't in it.
+- The season saves after every game, on this device and to your Google account. A season game you quit partway through resumes where you left it. **Standings, leaders & schedule** opens the hub from the season panel, and **Abandon season** ends it (click twice). Once it's over, the same button reads **Start a new season**.
 
 ## Box scores, saved games and stats
 
-- **Box score**: from the pause menu during a game, or the final screen. Every batter (subs indented) with AB, R, H, RBI, BB and K, then doubles, triples, homers and steals, and every pitcher with IP, H, R, BB, K, HR and pitch count, plus the win, loss and save.
-- **Saved games**: Play Ball and Player Lock games save themselves before every batter. Quit whenever you like (or close the tab) and press **Resume** on the main menu to pick up with the same batter, score, lineups, bullpen and pitch counts. Starting another game replaces the save.
-- **Stats**: every finished game (Play Ball, Player Lock, Online, Season) is kept with its box score. **Stats** on the main menu is about you, game by game:
+- **Box score**: from the pause menu during a game, or the final screen. The final screen also has the linescore, the player of the game (the best hitter or pitcher on the winning side), and buttons to play again, open the box score or go to the main menu. Every batter (subs indented) with AB, R, H, RBI, BB and K, then doubles, triples, homers and steals, and every pitcher with IP, H, R, BB, K, HR and pitch count, plus the win, loss and save.
+- **Saved games**: Play Ball and Player Lock games save themselves before every batter. Quit whenever you like (or close the tab) and press **Resume** on the main menu to pick up with the same batter, score, lineups, bullpen and pitch counts. Starting another game replaces the save, and **Discard** on the main menu deletes it.
+- **Stats**: every finished game (Play Ball, Player Lock, Online 1v1 and squad, and Season, including the league games you simmed) is kept with its box score. Practice and CPU vs CPU games aren't kept. **Stats** on the main menu is about you, game by game:
   - **You**: your record, your hitting (AVG, HR, RBI, OBP, SLG, OPS) and your pitching (ERA, strikeouts, WHIP, W-L-SV) across your games, filtered by mode, and your game history with how you hit and pitched in each one. In Player Lock it's just your player.
   - **Head to head**: every opponent you've played online, with your record against them, your AVG, HR and ERA against them and theirs against you. Click one for every game you've played each other.
-  - **All games**, plus **Hitters** and **Pitchers**: every MLB player's totals across your games, sortable.
+  - **All games**: every game in your records, newest first, with the date, final score, park, mode, your result and a box score button. Season games you simmed are marked (sim).
+  - **Hitters** and **Pitchers**: every MLB player's totals, sortable by any column. Choose **All your games** (including the simmed season games) or **Only games you played in**.
   ERA counts earned runs only: runs that score on an error or a passed ball, or by a runner who got on by an error, are unearned (box scores show both R and ER). Signed in with Google, your games are saved to your account and come with you to any device. (If you set up Firebase before this version, publish the updated `firestore.rules` so the account can store games.)
 
 ## Classic teams
@@ -147,6 +197,10 @@ Balls hit the wall or clear it according to its height where they get there, out
 - **Dropped third strike.** If strike three gets away and first base is open, or there are two outs, the batter can run for first. It still counts as a strikeout.
 - **Intentional walks.** No pitches: press **I** (or use the Team panel) and the batter takes first. CPU managers put a dangerous hitter on late in close games when first base is open, a runner is in scoring position and a much weaker hitter is up next.
 - **Replay review.** The base umpires call the bang-bang plays at the bags, and they miss a few of the closest. After a close play, the team the call went against can challenge it: press **C** while the prompt is up (Enter plays on). The play is shown again from a camera on that bag, then the call stands or is overturned, and the outs, runners and runs are fixed to match. Each team gets one challenge a game and keeps it when the call is overturned. CPU managers challenge most missed calls. In Player Lock, your manager decides.
+- **Extra innings.** A tie after the last inning goes on, and the batter who batted last in the inning before starts on second base.
+- **Infield in.** With a runner on third, fewer than two outs, in the last two innings and the game within a run, the infielders play in.
+- **Scoring plays.** Double plays, fielder's choices, sacrifice flies, ground-rule doubles and inside-the-park home runs are all scored as such. A batter hit by a pitch takes first.
+- **Walk-off.** When the home team takes the lead in the bottom of the last inning, the game ends right there.
 
 ## Options
 
@@ -154,9 +208,12 @@ Balls hit the wall or clear it according to its height where they get there, out
 
 - **Sound**: game sound and commentary volume sliders, and the play-by-play voice on or off.
 - **Colorblind-friendly colors**: pitch types, and balls and strikes on the pitch tracker, switch to colors that stay distinct with red-green colorblindness.
+- **Strike zone overlay**: draws the strike zone over the plate (`Z`, or the pause menu).
+- **Hitting guide**: on Rookie and Veteran, a ring shows where the pitch will cross once it's part-way in. The fly-ball landing spot shows on every level except Hall of Fame. One checkbox turns both off.
+- **Online voice chat**: voice volume, push to talk and proximity voice (see [Chat and voice](#chat-and-voice)).
 - **Keys**: give any keyboard control a different key. Your key does everything the default one did (Space is the swing, the pitch meter and the dive), and the hints on screen show your keys. Reset puts them all back.
 
-**Difficulty** is set separately for hitting (pitch speed, PCI size, timing windows, swing assist, the CPU pitcher's control) and pitching (meter speed, how well CPU hitters make contact and lay off bad pitches).
+**Difficulty** has four levels (Rookie, Veteran, All-Star and Hall of Fame), set separately for hitting and for pitching. For hitting, they change pitch speed, the PCI size, the timing windows, swing assist and the CPU pitcher's control. Rookie is the most forgiving (the biggest PCI, the most swing assist, the widest timing windows) and Hall of Fame the least (the smallest PCI, no swing assist, the tightest timing). For pitching, they change the meter (Rookie's is slowest, Hall of Fame's fastest), how well CPU hitters make contact, and how well they lay off bad pitches.
 
 ## Roster Builder
 
@@ -169,6 +226,8 @@ Every player costs points from his ratings: a point a step above 40, two above 7
 ## Friends
 
 Sign in with Google (top right of the main menu) to save rosters to your account and add friends. Everyone gets a 6-character friend code; enter a friend's code under **Friends** to add them. Your friends list shows who's online, and **Invite to play** opens a room (or uses the one you have open) and sends them the invite. They get a pop-up with a Join button.
+
+Requests and invites are listed under **Requests & invites**: **Add back** befriends someone who added you, **Join** takes you to their room, and **Dismiss** clears the entry. **Remove** (click it twice) takes someone off your list. Next to each friend you'll see your record against them. Signed in, your account also keeps your finished games and stats, your season in progress and your head-to-head records. **Sign out** is at the top right of the main menu.
 
 ## Batting cameras
 
@@ -192,6 +251,8 @@ The host runs the game and streams it to the guest over a peer-to-peer WebRTC co
 
 The badge next to the pause button shows the round-trip time to your opponent (and how many people are watching). Some strict corporate or school networks block peer-to-peer connections; a home or mobile connection usually works.
 
+- **Join by link**: an invite link opens the game with the room code filled in, ready to join.
+- **Rematch**: on the final screen, a rematch starts the same game with the same teams and spots. In a squad, anyone who left is out.
 - **Same version**: both players need the same version of the game. If one of you has an older copy cached, joining stops with a message to refresh the page on both devices.
 - **Can't connect?** If the room is found but the two devices can't open a connection, the game says so: some school, work and mobile networks block peer-to-peer play. Both on the same Wi-Fi usually works.
 - **Reconnecting**: if the connection drops mid-game, the host's game pauses and waits up to 90 seconds while the guest reconnects on its own (for up to a minute), then picks up exactly where it was. Only the same player can take the spot back. Quitting on purpose ends the game for both of you right away.
