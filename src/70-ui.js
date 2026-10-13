@@ -1771,7 +1771,8 @@ function lockFF() {
 }
 function frame(ts) {
   requestAnimationFrame(frame);
-  const dt = Math.min(0.05, Math.max(0, (ts - (frame.last || ts)) / 1000)); frame.last = ts;
+  const raw = (ts - (frame.last || ts)) / 1000, dt = Math.min(0.05, Math.max(0, raw)); frame.last = ts;
+  perfTick(raw);
   frameStep(dt);
   renderer.render(scene, camera);
 }
@@ -1827,6 +1828,7 @@ function boot() {
 // Debug handle: lets a test harness advance the simulation without waiting on animation frames.
 window.__fullcount = {
   G, TEAMS, settings, NET, keys, Play, Runner, BASES, simBatted, umpCallsStrike, inZone, eloApply, eloMine, V3, getModel, ballMesh, startPickoff, stealCmd, camTo, setPark, PARKS, fenceDist, fenceH, gameRecord, gamesList, loadSave, openLiveBox, openStats, toMenu, renderMenu, menu, teamToDef, cleanRoster, buildCustomTeam, Cloud, cloudRender, inviteToast,
+  renderer, scene, camera, MODELS, setAnim, updateModel,
   step(sec, dt = 1 / 60) {
     const n = Math.round(sec / dt);
     for (let i = 0; i < n && !G.paused; i++) { if (isGuest()) guestUpdate(dt); else update(dt); netTick(); }

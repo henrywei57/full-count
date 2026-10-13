@@ -884,7 +884,7 @@ function guestPredict(dt) {
     const nx = p.x + dx * P.v * dt, nz = p.z + dz * P.v * dt;
     if (inPoly(nx, nz) || Math.hypot(nx, nz) < Math.hypot(p.x, p.z)) { p.x = nx; p.z = nz; } else P.v *= 0.5;
     m.root.rotation.y += angDiff(m.root.rotation.y, Math.atan2(dx, dz)) * Math.min(1, dt * 14);
-    m.phase += P.v * dt * 0.42;
+    m.phase += P.v * dt * STRIDE(P.v);
     setAnim(m, P.v > 9 ? 'run' : 'jog');
   } else { P.v = Math.max(0, P.v - 45 * dt); setAnim(m, 'ready'); }
   p.y = groundY(p.x, p.z);
@@ -934,7 +934,7 @@ function guestUpdate(dt) {
     if (n.snap) { p.set(tx, n.y, tz); m.root.rotation.y = n.ry; n.snap = false; continue; }
     p.x += (tx - ox) * kp; p.z += (tz - oz) * kp; p.y = n.y;
     m.root.rotation.y += angDiff(m.root.rotation.y, n.ry) * kr;
-    m.phase += Math.hypot(p.x - ox, p.z - oz) * 0.42;   // legs cycle with how far he moved on screen
+    m.phase += Math.hypot(p.x - ox, p.z - oz) * STRIDE(Math.hypot(n.vx, n.vz));   // legs cycle with how far he moved on screen
   }
   if ((G.phase === 'live' || G.phase === 'postPlay') && !fpvOn) playCam();
   else if (G.phase === 'final') menuCam(dt * 0.6);

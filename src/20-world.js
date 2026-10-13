@@ -297,7 +297,8 @@ for (const s of [-1, 1]) {
 
 // ----------------------------------------------------------------- crowd ----
 const crowdU = { uTime: { value: 0 }, uEx: { value: 0 } };
-let crowdBody = null, crowdHead = null, crowdExTarget = 0, crowdTeams = null;
+let crowdChunks = [], crowdExTarget = 0, crowdTeams = null;
+const crowdMats = {};
 function crowdMaterial() {
   const m = new THREE.MeshLambertMaterial({ color: 0xffffff });
   m.onBeforeCompile = (sh) => {
@@ -309,39 +310,59 @@ function crowdMaterial() {
   };
   return m;
 }
+// The crowd is a few instanced meshes, one per wedge of the stands, so the wedges the camera
+// isn't looking at are culled instead of drawing every fan in the park every frame.
+const CROWD_WEDGES = 12;
 function buildCrowd(group) {
   const N = crowdSeats.length;
   const bodyGeo = new THREE.BoxGeometry(1.45, 2.2, 1.1); bodyGeo.translate(0, 1.1, 0);
-  const headGeo = new THREE.SphereGeometry(0.4, 6, 4); headGeo.translate(0, 2.62, 0.05);
-  const ph = new Float32Array(N); for (let i = 0; i < N; i++) ph[i] = Math.random();
-  bodyGeo.setAttribute('aPhase', new THREE.InstancedBufferAttribute(ph, 1));
-  headGeo.setAttribute('aPhase', new THREE.InstancedBufferAttribute(ph, 1));
-  crowdBody = new THREE.InstancedMesh(bodyGeo, crowdMaterial(), N);
-  crowdHead = new THREE.InstancedMesh(headGeo, crowdMaterial(), N);
-  const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), s = new V3(), p = new V3(), c = new THREE.Color();
+  const headGeo = new THREE.IcosahedronGeometry(0.42, 0); headGeo.translate(0, 2.62, 0.05);
+  crowdMats.body = crowdMats.body || crowdMaterial(); crowdMats.head = crowdMats.head || crowdMaterial();
+  crowdMats.body.userData.keep = crowdMats.head.userData.keep = true;
+  const wedges = Array.from({ length: CROWD_WEDGES }, () => []);
   for (let i = 0; i < N; i++) {
-    const st = crowdSeats[i];
-    q.setFromAxisAngle(UP, st.yaw); const sc = rand(0.85, 1.12); s.set(sc, sc * rand(0.9, 1.1), sc);
-    p.set(st.x, st.y, st.z); m4.compose(p, q, s);
-    crowdBody.setMatrixAt(i, m4); crowdHead.setMatrixAt(i, m4);
-    crowdHead.setColorAt(i, c.set(pick(SKINS)));
-    crowdBody.setColorAt(i, c.set(0x888888));
+    const st = crowdSeats[i], a = Math.atan2(st.x, -st.z);   // 0 straight out to center field
+    wedges[clamp(Math.floor(((a + Math.PI) / (Math.PI * 2)) * CROWD_WEDGES), 0, CROWD_WEDGES - 1)].push(i);
   }
-  group.add(crowdBody, crowdHead);
+  const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), s = new V3(), p = new V3(), c = new THREE.Color();
+  crowdChunks = [];
+  for (const idx of wedges) {
+    if (!idx.length) continue;
+    const n = idx.length, ph = new Float32Array(n); for (let k = 0; k < n; k++) ph[k] = Math.random();
+    const bg = bodyGeo.clone(), hg = headGeo.clone();
+    bg.setAttribute('aPhase', new THREE.InstancedBufferAttribute(ph, 1));
+    hg.setAttribute('aPhase', new THREE.InstancedBufferAttribute(ph, 1));
+    const body = new THREE.InstancedMesh(bg, crowdMats.body, n), head = new THREE.InstancedMesh(hg, crowdMats.head, n);
+    for (let k = 0; k < n; k++) {
+      const st = crowdSeats[idx[k]];
+      q.setFromAxisAngle(UP, st.yaw); const sc = rand(0.85, 1.12); s.set(sc, sc * rand(0.9, 1.1), sc);
+      p.set(st.x, st.y, st.z); m4.compose(p, q, s);
+      body.setMatrixAt(k, m4); head.setMatrixAt(k, m4);
+      head.setColorAt(k, c.set(pick(SKINS)));
+      body.setColorAt(k, c.set(0x888888));
+    }
+    body.computeBoundingSphere(); head.computeBoundingSphere();
+    body.matrixAutoUpdate = head.matrixAutoUpdate = false;
+    group.add(body, head);
+    crowdChunks.push({ body, head });
+  }
+  bodyGeo.dispose(); headGeo.dispose();
   if (crowdTeams) setCrowdColors(...crowdTeams);
 }
 function setCrowdColors(home, away) {
   crowdTeams = [home, away];
-  if (!crowdBody) return;
+  if (!crowdChunks.length) return;
   const c = new THREE.Color();
   const pal = ['#e8e8e8', '#2b2b2b', '#5a6b8c', '#8c3b3b', '#d9c9a3', '#3d6b4f', '#c26a2c', '#6d4c8c', '#f2f2f2'];
-  for (let i = 0; i < crowdSeats.length; i++) {
-    const r = Math.random();
-    const col = r < 0.42 ? (Math.random() < 0.6 ? home.c1 : home.c2) : r < 0.52 ? (Math.random() < 0.6 ? away.c1 : away.c2) : pick(pal);
-    c.set(col); c.offsetHSL(0, 0, rand(-0.06, 0.06));
-    crowdBody.setColorAt(i, c);
+  for (const { body } of crowdChunks) {
+    for (let i = 0; i < body.count; i++) {
+      const r = Math.random();
+      const col = r < 0.42 ? (Math.random() < 0.6 ? home.c1 : home.c2) : r < 0.52 ? (Math.random() < 0.6 ? away.c1 : away.c2) : pick(pal);
+      c.set(col); c.offsetHSL(0, 0, rand(-0.06, 0.06));
+      body.setColorAt(i, c);
+    }
+    body.instanceColor.needsUpdate = true;
   }
-  crowdBody.instanceColor.needsUpdate = true;
 }
 function excite(level, secs = 3) { crowdExTarget = level; clearTimeout(excite.t); excite.t = setTimeout(() => (crowdExTarget = 0), secs * 1000); }
 
@@ -354,7 +375,7 @@ function clearGroup(g) {
   for (const o of [...g.children]) {
     o.traverse((c) => {
       if (c.geometry) c.geometry.dispose();
-      if (c.material) for (const m of [].concat(c.material)) { if (m.map && !m.map.userData.keep) m.map.dispose(); m.dispose(); }
+      if (c.material) for (const m of [].concat(c.material)) { if (m.map && !m.map.userData.keep) m.map.dispose(); if (!m.userData.keep) m.dispose(); }
     });
     g.remove(o);
   }
@@ -558,3 +579,19 @@ function onResize() {
   renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix();
 }
 window.addEventListener('resize', onResize);
+// Adaptive resolution: when frames run slow for a couple of seconds, draw fewer pixels (down to
+// the screen's CSS size, or a bit under on a phone); when they're quick again for a while, step
+// back up (not to a level that was too slow within the last minute).
+const DPR_MAX = Math.min(window.devicePixelRatio || 1, 2);
+const DPR_MIN = Math.min(DPR_MAX, window.matchMedia && matchMedia('(pointer: coarse)').matches ? 0.75 : 1);
+const perf = { dpr: DPR_MAX, ceil: DPR_MAX, ceilT: 0, ema: 1 / 60, slow: 0, fast: 0 };
+function perfTick(dt) {
+  if (document.hidden || !(dt > 0) || dt > 0.25 || document.body.classList.contains('skipping')) return;
+  perf.ema += (dt - perf.ema) * 0.05;
+  if (perf.ema > 1 / 45) { perf.slow += dt; perf.fast = 0; } else if (perf.ema < 1 / 56) { perf.fast += dt; perf.slow = 0; } else perf.slow = perf.fast = 0;
+  let d = perf.dpr;
+  const ceil = performance.now() - perf.ceilT > 60000 ? DPR_MAX : perf.ceil;
+  if (perf.slow > 2 && d > DPR_MIN) { d = perf.ceil = Math.max(DPR_MIN, d - 0.25); perf.ceilT = performance.now(); }
+  else if (perf.fast > 10 && d < ceil) d = Math.min(ceil, d + 0.25);
+  if (d !== perf.dpr) { perf.dpr = d; perf.slow = perf.fast = 0; perf.ema = 1 / 60; renderer.setPixelRatio(d); onResize(); }
+}
