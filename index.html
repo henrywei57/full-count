@@ -826,12 +826,13 @@ span.chip{cursor:default}
         <dt>U</dt><dd>Team panel: pinch hitters, pinch runners, defensive subs and the bullpen (between pitches)</dd>
         <dt>I</dt><dd>Intentional walk (your team in the field, before a pitch)</dd>
         <dt>C</dt><dd>Challenge: a ball/strike call (ABS, 2 per team) or a close call on the bases (replay review, 1 per team); kept if you win</dd>
-        <dt>Mouse / right stick</dt><dd>Player Lock: swing the camera around your player (click to grab the mouse)</dd>
+        <dt>Mouse / right stick</dt><dd>Player Lock: swing the camera around your player (just move the mouse; rest it near an edge to keep turning)</dd>
         <dt>T / right-click</dt><dd>Player Lock: snap the camera back to following the play</dd>
         <dt>V</dt><dd>Player Lock: cycle third-person, first-person and broadcast cameras</dd>
         <dt>Options</dt><dd>Sound and commentary volume, colorblind-friendly colors and your own keys: from the pause menu or the main menu</dd>
         <dt>Batting cam</dt><dd>Strike Zone, Strike Zone 2 or Strike Zone High: pick it in the menu or the pause screen</dd>
-        <dt>Tab / Back</dt><dd>Player Lock: skip this at-bat (CPU plays your part)</dd>
+        <dt>Tab / Back</dt><dd>Player Lock: skip this at-bat (the CPU plays your part, until the ball comes to you or you're on base when it's put in play)</dd>
+        <dt>Catcher</dt><dd>Player Lock as the catcher: 1&ndash;5 pick the pitch, the mouse picks the spot, click puts the sign down. Then move the mitt to the ball to frame it; C challenges a ball that should've been a strike.</dd>
         <dt>R</dt><dd>Instant replay after a play</dd>
         <dt>Enter</dt><dd>Skip ahead</dd>
         <dt>F</dt><dd>Fast-forward (CPU vs CPU)</dd>
@@ -893,7 +894,7 @@ span.chip{cursor:default}
 <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"}}</script>
 <script type="module">
-const BUILD_ID = '3302312232';
+const BUILD_ID = '2233432151';
 import * as THREE from 'three';
 
 // ============================================================================
@@ -7221,6 +7222,13 @@ const reticleMat = lineMat(0xff5a5f, 1);
   const tk = [new V3(-0.42, 0, 0), new V3(-0.2, 0, 0), new V3(0.42, 0, 0), new V3(0.2, 0, 0), new V3(0, 0.42, 0), new V3(0, 0.2, 0), new V3(0, -0.42, 0), new V3(0, -0.2, 0)];
   const ticks = new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(tk), reticleMat); ticks.renderOrder = 22; reticle.add(ticks);
 }
+// Player Lock as the catcher: the mitt you frame the pitch with
+const mitt = new THREE.Group(); overlay.add(mitt); mitt.visible = false;
+{
+  const fill = new THREE.Mesh(new THREE.CircleGeometry(0.34, 32), new THREE.MeshBasicMaterial({ color: 0xffc94a, transparent: true, opacity: 0.16, depthTest: false, depthWrite: false })); fill.renderOrder = 21; mitt.add(fill);
+  const ring = new THREE.Line(new THREE.BufferGeometry().setFromPoints(ellipsePts(0.34, 0.34, 32)), lineMat(0xffc94a, 0.95)); ring.renderOrder = 22; mitt.add(ring);
+  const dot = new THREE.Mesh(new THREE.CircleGeometry(0.05, 12), new THREE.MeshBasicMaterial({ color: 0xffc94a, depthTest: false })); dot.renderOrder = 23; mitt.add(dot);
+}
 // last-pitch location marker
 const pitchMark = new THREE.Mesh(new THREE.CircleGeometry(0.13, 20), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.9, depthTest: false }));
 pitchMark.renderOrder = 24; pitchMark.visible = false; overlay.add(pitchMark);
@@ -7869,7 +7877,8 @@ class Runner {
 
 class Play {
   // o.field: null for a CPU defense, else { lock: playerId|null, manual: bool } for a human defense
-  // o.run:   null for CPU baserunning, else { lock: playerId|null } (AI still assists unless told otherwise)
+  // o.run:   null for CPU baserunning, else { lock: playerId|null } (AI still assists unless told otherwise;
+  //          in Player Lock your runner goes only where you send him: see lockRunners)
   // o.kind:  'hit' (a batted ball, o.bb), 'steal' (the catcher has the pitch), 'pick' (pickoff to o.pickBase)
   //          or 'wild' (a pitch got by the catcher: o.bb is the loose ball)
   constructor(o) {
@@ -7889,7 +7898,7 @@ class Play {
     // close plays at the bags (for replay review); a human umpire misses a few of the closest
     this.calls = []; this.umpErr = !G.drill && G.mode !== 'tutorial' && G.mode !== 'derby';
     for (const f of this.F) f.reset();
-    if (this.kind !== 'hit') { this.basesPlay(o); return; }
+    if (this.kind !== 'hit') { this.basesPlay(o); this.lockRunners(); return; }
     // force situation at contact
     const occ = [true, false, false, false];
     for (const r of this.R) if (!r.isBatter) occ[r.base] = true;
@@ -7908,6 +7917,19 @@ class Play {
       r.autoRun = this.outs === 2;
       if (r.wait) r.lead = 0;
     }
+    this.lockRunners();
+  }
+  // Player Lock: nobody runs your player for you. As a runner he holds (or keeps going to the
+  // bag he's headed for) until you send him; forced runs and the batter's trip to first still
+  // happen. As a fielder (lockManual) he moves only when you move him.
+  lockRunners() {
+    if (!this.hrun || !this.hrun.lock) return;
+    for (const r of this.R) if (r.pl.id === this.hrun.lock && r.userTarget == null && (r.state === 'run' || r.state === 'base')) r.userTarget = r.state === 'run' ? heading(r) : r.base;
+  }
+  lockManual() {
+    if (!this.hf || !this.hf.lock || !this.uf || this.ufManual) return;
+    this.ufManual = true;
+    if (this.bb && this.ball.mode === 'flight' && !this.hr && !this.dead) this.replan();
   }
   // A steal (the catcher just caught the pitch) or a pickoff (the pitcher throws over).
   // No batted ball and no forces: every out is a tag.
@@ -7966,8 +7988,9 @@ class Play {
     let best = null;
     for (const f of this.F) {
       f.plan = null;
-      // a fielder the human is steering isn't counted on; the AI plays the ball behind him
-      if (f.excluded || (f.downUntil && f.downUntil > fromT + 0.4) || (f === this.uf && this.ufManual)) continue;
+      // a fielder the human is steering isn't counted on; the AI plays the ball behind him. In
+      // Player Lock a ball that's yours stays yours (the others back you up) until you miss it.
+      if (f.excluded || (f.downUntil && f.downUntil > fromT + 0.4) || (f === this.uf && this.ufManual && (!this.hf.lock || this.ufMissed))) continue;
       const react = fromT === 0 ? f.react : 0.08;
       const start = f.downUntil > fromT ? f.downUntil : fromT;
       let plan = null, divePlan = null;
@@ -8061,7 +8084,7 @@ class Play {
     if (!this.hf || !this.uf) return;
     const was = this.ufManual;
     if (Math.hypot(x, z) > 0.2) { this.ufManual = true; this.lastInput = this.t; }
-    else if (this.ufManual && this.t - this.lastInput > 0.9 && this.ball.holder !== this.uf) this.ufManual = false;
+    else if (this.ufManual && !this.hf.lock && this.t - this.lastInput > 0.9 && this.ball.holder !== this.uf) this.ufManual = false;
     if (was !== this.ufManual && this.ball.mode === 'flight' && !this.hr && !this.dead) this.replan();
   }
   userSwitch() {
@@ -8198,8 +8221,11 @@ class Play {
       if (f.throwing) { this.throwRelease(f); f.sync(); continue; }
       if (f === b.holder) { this.holderLogic(f, dt); f.sync(); continue; }
       if (t < f.animHold) { f.sync(); continue; }
+      if (f === this.uf && this.ufManual && this.hf.lock && (this.hr || this.dead)) { this.manualMove(f, dt); f.sync(); continue; }
       if (f === this.uf && this.ufManual && !this.hr && !this.dead) {
         this.manualMove(f, dt); this.tryHumanCatch(f); f.sync();
+        // Player Lock: you didn't get to your ball, so now the others go get it
+        if (this.hf.lock && this.chaser === f && f.plan && b.mode === 'flight' && t > f.plan.t + 0.5) { this.ufMissed = true; this.replan(); }
         // the ball got past you: hand control to the fielder now playing it
         if (b.mode === 'flight' && !this.hf.lock && this.chaser && this.chaser !== f && this.chaser.plan && Math.hypot(this.chaser.pos.x - b.pos.x, this.chaser.pos.z - b.pos.z) < Math.hypot(f.pos.x - b.pos.x, f.pos.z - b.pos.z) - 15) {
           this.uf = this.chaser; this.ufManual = false; this.replan();
@@ -8354,7 +8380,7 @@ class Play {
         if (r.isBatter || r.state === 'out' || r.state === 'scored') continue;
         // anyone off his base has to get back and tag up before he can advance
         if (r.state === 'run' || r.base !== r.start) {
-          r.leftEarly = true; r.userTarget = null;
+          r.leftEarly = true; r.userTarget = this.hrun && this.hrun.lock === r.pl.id ? r.start : null;
           if (r.state === 'run' && !r.rev) { r.rev = true; r.v = Math.min(r.v, 6); }
           else if (r.state === 'base') { r.state = 'run'; r.rev = true; r.next = r.base; r.base--; r.d = 90; r.v = 0; }
         }
@@ -8417,6 +8443,10 @@ class Play {
       if (this.queuedThrow != null) { const base = this.queuedThrow; this.queuedThrow = null; this.prompt = false; f.holding = false; this.humanThrow(f, base); tutNote('throw'); return; }
       if (this.userDef) {
         const anyRunning = this.R.some((r) => r.state === 'run');
+        if (this.hf.lock) {
+          if (anyRunning) { this.prompt = true; return; }
+          this.prompt = false; f.holding = true; f.decideAt = t + 0.2; return;
+        }
         if (anyRunning || !f.holding) {
           if (f.promptStart == null) f.promptStart = t;
           this.prompt = true;
@@ -8546,6 +8576,7 @@ class Play {
     let best = null, bt = 1e9;
     for (const f of this.F) {
       if (f === exclude || f.throwing || (f.downUntil && this.t < f.downUntil)) continue;
+      if (f === this.uf && this.ufManual && this.hf.lock && Math.hypot(bp.x - f.pos.x, bp.z - f.pos.z) > 8) continue;   // Player Lock: only if he's there
       const t = runTime(Math.max(0, Math.hypot(bp.x - f.pos.x, bp.z - f.pos.z) - 2), f.speed, f.acc) - (this.cover && this.cover[base] === f ? 0.25 : 0);
       if (t < bt) { bt = t; best = f; }
     }
@@ -8816,6 +8847,7 @@ const G = {
   fielders: [], fByRole: {}, baseRunners: [], batter: null, batSide: 'R', batterModel: null, batPrm: null,
   umps: [], P: null, spec: null, swing: null, cpu: null, play: null, bb: null, cross: null,
   abPitches: [], pitchUI: { state: 'aim', sel: 0, aim: { x: 0, y: 2.5 }, meter: 0, power: 0, acc: 0, t0: 0 },
+  catchUI: { state: 'off', sel: 0, aim: { x: 0, y: 2.5 }, glove: { x: 0, y: 2.5 } }, frame: 0, frameD: null,
   pci: { x: 0, y: 2.5 }, glove: new V3(0, 2.4, 1.7), rec: [], recOn: false, replay: null, derby: null,
   abEnd: null, contactT: 0, menuAng: 0,
   ctrl: ['cpu', 'cpu'], lock: null, remoteIn: { x: 0, z: 0 }, remoteTake: false, camFocus: null, localPitch: false,
@@ -9110,12 +9142,13 @@ function enterPrePitch() {
   placeForPitch();
   ballMesh.visible = false; ballShadow.visible = false; trailReset(); pitchGuide.visible = false;
   hideFeedback();
-  G.spec = null;
+  G.spec = null; G.frame = 0; G.frameD = null; G.catchUI.state = 'off'; mitt.visible = false;
   if (pitchCtrl() === 'cpu') {
     G.spec = G.mode === 'derby' ? derbyPitch() : cpuChoosePitch();
     G.cpuPitchAt = G.mode === 'spectate' ? rand(0.6, 1.0) : G.mode === 'derby' ? rand(0.9, 1.3) : rand(1.0, 1.7);
     G.glove.set(G.spec.aim.x * 0.6, clamp(G.spec.aim.y, 1.6, 3.2), 1.7);
     if (G.drill !== 'field') cpuPickoff();
+    if (userCatches()) startCall();
   }
   cpuSteals();
   // the CPU manager may put this batter on (decided once, before the first pitch to him)
@@ -9127,11 +9160,11 @@ function enterPrePitch() {
 }
 // per-device presentation for a new pitch (also used by an online guest)
 function prePitchUI() {
-  const up = userPitches(), ub = userBats();
+  const up = userPitches(), ub = userBats(), uc = userCatches();
   FL.mode = 'track';
-  zoneGroup.visible = settings.zone && (ub || up);
-  zoneGroup.getObjectByName('grid').visible = up;
-  pci.visible = ub; reticle.visible = up; pitchGuide.visible = false;
+  zoneGroup.visible = settings.zone && (ub || up || uc);
+  zoneGroup.getObjectByName('grid').visible = up || uc;
+  pci.visible = ub; reticle.visible = up || uc; pitchGuide.visible = false;
   pitchMark.visible = pitchMark.visible && ub;
   $('meter').classList.toggle('hidden', !up);
   $('throwPrompt').classList.add('hidden'); runnerHUD(false);
@@ -9143,13 +9176,18 @@ function prePitchUI() {
     meterDraw();
     const on = G.bases.some(Boolean) && G.mode !== 'derby';
     setHint('<kbd>1</kbd>–<kbd>' + n + '</kbd> pitch &middot; aim with the mouse &middot; <kbd>Click</kbd> to start the meter' + (on ? ' &middot; <kbd>Shift</kbd>+<kbd>1</kbd>–<kbd>3</kbd> pickoff' : ''));
+  } else if (uc) {
+    const n = curPitcher().pitches.length;
+    reticleMat.color.set(PITCH_TYPES[curPitcher().pitches[G.catchUI.sel].type].col);
+    reticle.position.set(G.catchUI.aim.x, G.catchUI.aim.y, 0);
+    setHint(`Call the pitch: <kbd>1</kbd>–<kbd>${n}</kbd> pitch &middot; aim with the mouse &middot; <kbd>Click</kbd> to put the sign down`);
   } else if (ub) setHint('Aim the PCI &middot; <kbd>Click</kbd> swing &middot; <kbd>Right-click</kbd> power &middot; <kbd>J</kbd> contact &middot; <kbd>B</kbd> bunt' + (G.bases.some(Boolean) && userRuns() && G.mode !== 'derby' ? ' &middot; <kbd>E</kbd> steal' : ''));
   else if (userRuns() && G.bases.some(Boolean)) setHint('You run the bases &middot; <kbd>E</kbd> steal &middot; <kbd>Q</kbd> call it off &middot; click a runner\'s tag to pick just him');
   else if (G.drill === 'field') setHint('Fielding practice &middot; <kbd>WASD</kbd> move &middot; <kbd>1</kbd>&ndash;<kbd>4</kbd> throw');
   else if (G.mode === 'online') setHint('Waiting for your opponent&hellip;');
   else if (G.mode === 'lock' && G.half === 1 - G.lockSide && G.fielders.some((f) => f.pl.id === G.lock)) setHint('You are in the field &middot; get within the gold ring of the ball to field it');
   else setHint(G.mode === 'lock' ? (G.simAB ? 'Skipping to the next batter&hellip;' : 'Simulating until you are up&hellip;') : '');
-  if (up) pitchCam(G.prevCam !== 'pitch'); else if (ub) batCam(G.prevCam !== 'bat'); else cfCam(G.prevCam !== 'cf');
+  if (up) pitchCam(G.prevCam !== 'pitch'); else if (ub || uc) batCam(G.prevCam !== 'bat'); else cfCam(G.prevCam !== 'cf');
   hudPitcher();
 }
 function cpuChoosePitch() {
@@ -9176,9 +9214,44 @@ function cpuChoosePitch() {
     else { x = away * rand(0.95, 1.3) * (Math.random() < 0.7 ? 1 : -1); y = rand(1.8, 3.2); }
   } else { y = rand(0.95, 1.45); x = away * rand(0.3, 1.15) * (Math.random() < 0.75 ? 1 : -1); }
   if (G.mode === 'tutorial') { const a = { x, y }; tutPitchAim(a); x = a.x; y = a.y; }
-  const sig = (0.15 + ((100 - p.ctl) / 100) * 0.42) * (batCtrl() !== 'cpu' ? G.diff.cpuCtl : 1) * (1 + fatigue(p) * 0.9);
+  return cpuSpec(pitch, x, y);
+}
+// a CPU pitcher throwing this pitch at this spot: his command decides where it really goes
+function cpuSpec(pitch, x, y) {
+  const p = curPitcher(), sig = (0.15 + ((100 - p.ctl) / 100) * 0.42) * (batCtrl() !== 'cpu' ? G.diff.cpuCtl : 1) * (1 + fatigue(p) * 0.9);
   return { pitch, aim: { x, y }, target: { x: x + randn() * sig, y: y + randn() * sig * 0.85 }, power: rand(0.86, 1), q: rand(0.45, 0.9) };
 }
+
+// ------------------------------------------------------------- catching ----
+// Player Lock as the catcher: you call every pitch (the pitcher's idea comes up first; change
+// the pitch and the spot, then put the sign down), he throws it with his own command, and you
+// frame it. Get the mitt to where it crosses and a pitch on the edge goes your way; stab at
+// it and a strike on the edge can be called a ball (and one in the dirt can get by you).
+function userCatches() {
+  return G.mode === 'lock' && !G.simAB && !G.lockFieldSim && !!G.teams && !!G.fByRole && G.half === 1 - G.lockSide
+    && !!G.fByRole.C && G.fByRole.C.pl.id === G.lock && pitchCtrl() === 'cpu';
+}
+// the mouse is busy calling the pitch or moving the mitt
+function catcherAiming() { return ['prePitch', 'windup', 'pitch'].includes(G.phase) && G.catchUI.state !== 'off' && G.catchUI.state !== 'done' && userCatches(); }
+function startCall() {
+  const U = G.catchUI, s = G.spec, p = curPitcher();
+  U.state = 'call'; U.sel = Math.max(0, p.pitches.indexOf(s.pitch)); U.aim.x = s.aim.x; U.aim.y = s.aim.y;
+  G.spec = null; G.cpuPitchAt = Infinity;   // he waits for your sign
+}
+function callPitch() {
+  const U = G.catchUI, p = curPitcher();
+  if (U.state !== 'call') return;
+  U.state = 'called';
+  G.spec = cpuSpec(p.pitches[clamp(U.sel, 0, p.pitches.length - 1)], U.aim.x, U.aim.y);
+  G.cpuPitchAt = G.pt + rand(0.45, 0.7);
+  U.glove.x = U.aim.x; U.glove.y = U.aim.y;   // set up where you called it
+  reticle.visible = false; mitt.visible = true; mitt.position.set(U.glove.x, U.glove.y, 0);
+  SND.tick();
+  setHint('Frame it: move the mitt to the ball');
+}
+const FRAME_FT = 0.08;   // a perfect frame moves the pitch about an inch toward the zone, in the umpire's eyes
+function frameGrade(d) { return d < 0.3 ? 'Great' : d < 0.6 ? 'Good' : d < 1.1 ? 'OK' : 'Stabbed at it'; }
+function frameHint() { return G.frameD == null ? '' : `Frame: <b>${frameGrade(G.frameD)}</b>`; }
 function derbyPitch() {
   const p = curPitcher();
   const pitch = { type: 'FF', velo: 74 + Math.round(rand(-2, 2)), brk: 0.5 };
@@ -9187,6 +9260,12 @@ function derbyPitch() {
 }
 const ACC_LINE = 0.1;
 function selectPitch(i) {
+  if (G.phase === 'prePitch' && G.catchUI.state === 'call' && userCatches()) {
+    if (i < 0 || i >= curPitcher().pitches.length) return;
+    G.catchUI.sel = i; hudPitcher(); SND.tick();
+    reticleMat.color.set(PITCH_TYPES[curPitcher().pitches[i].type].col);
+    return;
+  }
   if (!userPitches() || G.phase !== 'prePitch' || G.pitchUI.state !== 'aim') return;
   if (i < 0 || i >= curPitcher().pitches.length) return;
   G.pitchUI.sel = i; hudPitcher(); SND.tick();
@@ -9279,7 +9358,7 @@ function updateGuide(t) {
 function updatePitch(dt) {
   const t = G.now - G.pitchT0;
   pitchPos(G.P, Math.min(t, G.tCatch), ballMesh.position);
-  G.glove.lerp(_tmpA.set(G.cross.x, clamp(G.cross.y - 0.05, 0.6, 4.6), 1.7), 1 - Math.exp(-dt * 9));
+  if (G.catchUI.state !== 'called') G.glove.lerp(_tmpA.set(G.cross.x, clamp(G.cross.y - 0.05, 0.6, 4.6), 1.7), 1 - Math.exp(-dt * 9));
   updateGuide(t);
   const sw = G.swing;
   if (sw && !sw.done && sw.calc && !sw.calc.miss) {
@@ -9431,6 +9510,12 @@ function catchPitch() {
   SND.pop(clamp(G.P.mph / 95, 0.6, 1.1));
   const sw = G.swing, cs = G.cpu;
   const swung = (sw && (!sw.calc || sw.calc.miss)) || (cs && cs.swing && !cs.contact);
+  if (G.catchUI.state === 'called') {
+    const U = G.catchUI;
+    G.frameD = Math.hypot(U.glove.x - G.cross.x, U.glove.y - G.cross.y);
+    G.frame = swung || G.hbp ? 0 : clamp(1.25 - G.frameD * 1.6, -1, 1);
+    U.state = 'done'; mitt.visible = false;
+  }
   let call;
   if (swung) call = sw && sw.type === 'bunt' ? 'buntMiss' : 'swinging';
   else if (G.hbp) call = 'hbp';
@@ -9442,6 +9527,11 @@ function catchPitch() {
   recordPitch(call === 'ball' ? 'Ball' : call === 'hbp' ? 'HBP' : call === 'called' ? 'Called K' : 'Swinging K');
   G.recOn = false;
   applyCall(call);
+  if (G.frameD != null) {
+    if (call === 'called' && !G.isStrike && G.frame > 0.3) Caster.line(pick([`Beautiful frame job by ${lastName(G.fByRole.C.pl.name)}. He steals a strike.`, 'That was off the plate, but he framed it into a strike.']), false);
+    else if (call === 'ball' && G.isStrike && G.frame < 0) Caster.line('That looked like a strike, but the catcher stabbed at it and the umpire didn\'t give it.', false);
+    setHint(frameHint());
+  }
   if (wildPitch()) return;
   if (G.baseRunners.some((r) => r.steal && r.steal.went) && stealAfterPitch()) return;
   setupChallenge(call);
@@ -9533,6 +9623,7 @@ function lockPlayFor(pl) {
   if (G.mode !== 'lock') return;
   G.lockInv = pl.R.some((r) => r.pl.id === G.lock) || pl.F.some((f) => f.pl.id === G.lock && (f.role === 'C' || f.role === 'P' || f.task === 'cover'));
   if (G.lockSkip && pl.hf && !G.lockInv) { pl.hf = null; pl.userDef = false; pl.uf = null; }
+  pl.lockManual();
 }
 function finishStealPlay() {
   const pl = G.play, res = pl.summary(), ps = pstat(curPitcher());
@@ -9653,7 +9744,9 @@ function wildPitch() {
   const c = G.cross, C = G.fByRole.C;
   const hard = Math.max(clamp((1.2 - c.y) / 0.7, 0, 1), clamp((Math.abs(c.x) - 1.25) / 0.9, 0, 1), clamp((c.y - 4.1) / 0.9, 0, 1));
   const glove = clamp(1.3 - (C.pl.fld ?? 60) / 100, 0.3, 1);
-  const pWP = hard * hard * 0.9 * glove, pPB = 0.004 * glove, x = Math.random();
+  let pWP = hard * hard * 0.9 * glove, pPB = 0.004 * glove;
+  if (G.frameD != null) { pWP *= clamp(0.35 + G.frameD * 0.75, 0.35, 2); pPB = 0.002 + clamp((G.frameD - 1.2) / 2.2, 0, 0.55); }   // your mitt
+  const x = Math.random();
   if (x >= pWP + pPB) return false;
   const kind = x < pWP ? 'WP' : 'PB';
   if (K && !d3) { settleAB(k); G.abEnd = 'settled'; }   // strike three, and he's out: the runners can still go
@@ -9838,13 +9931,12 @@ function fungo() {
 }
 
 // ------------------------------------------------------------ lock skip ----
-// is this ball hit to the outfield or your way?
+// is this ball yours: you're the one to field it, or it comes right at you?
 function lockFieldInvolved(pl) {
   const me = pl.uf;
   if (!me || pl.hr) return false;
   if (pl.chaser === me) return true;
   if (pl.bb.foul) return false;
-  if (pl.chaser && pl.chaser.isOF) return true;
   for (const s of pl.bb.S) {
     if (s.t > 2.5) break;
     if (s.y < 9 && Math.hypot(s.x - me.pos.x, s.z - me.pos.z) < 30) return true;
@@ -9861,7 +9953,8 @@ function startSim() {
     pl.hf = null; pl.hrun = null; pl.userDef = false; pl.ufManual = false; pl.prompt = false; pl.queuedThrow = null; pl.uf = null;
     if (pl.ball.mode === 'flight' && !pl.hr && !pl.dead) pl.replan();
   }
-  pci.visible = false; reticle.visible = false; zoneGroup.visible = false; pitchGuide.visible = false;
+  pci.visible = false; reticle.visible = false; zoneGroup.visible = false; pitchGuide.visible = false; mitt.visible = false;
+  if (G.catchUI.state === 'called') G.catchUI.state = 'off';
   $('meter').classList.add('hidden'); $('throwPrompt').classList.add('hidden'); runnerHUD(false);
   ctrlRing.visible = false; landMark.visible = false; baseMark.visible = false;
   setHint('Skipping to the next batter&hellip;');
@@ -9880,8 +9973,11 @@ function zoneEdgeDist(x, y) {
 // a human umpire misses some borderline pitches (about 92% right overall); the robot never does
 function umpCallsStrike() {
   const truth = G.isStrike;
-  const pMiss = G.ump === 2 ? 0 : 0.5 * Math.exp(-Math.abs(zoneEdgeDist(G.cross.x, G.cross.y)) / UMP_S);
-  const strike = Math.random() < pMiss ? !truth : truth;
+  if (G.ump === 2) { if (G.umpLog) { G.umpLog.n++; G.umpLog.ok++; } return truth; }
+  // a framed pitch looks a little closer to the zone than it was (G.frame: -1 a stab, 1 perfect)
+  const d = zoneEdgeDist(G.cross.x, G.cross.y) + (G.frame || 0) * FRAME_FT, seen = G.frame ? d >= 0 : truth;
+  const pMiss = 0.5 * Math.exp(-Math.abs(d) / UMP_S);
+  const strike = Math.random() < pMiss ? !seen : seen;
   if (G.umpLog) { G.umpLog.n++; if (strike === truth) G.umpLog.ok++; }
   return strike;
 }
@@ -9906,7 +10002,7 @@ function setupChallenge(call) {
     if (Math.random() < (wrong ? (big ? 0.8 : 0.3) : 0.015)) G.cpuChallengeAt = G.now + 0.7; else G.challengeable = null;
   } else {
     G.dur = Math.max(G.dur, 2.8);
-    if (c === 'local') setHint(`<kbd>C</kbd> challenge the call &middot; ${G.challenges[side]} left`);
+    if (c === 'local') setHint((G.frameD != null ? frameHint() + ' &middot; ' : '') + `<kbd>C</kbd> challenge the call &middot; ${G.challenges[side]} left`);
   }
   hudScore();
 }
@@ -9951,7 +10047,7 @@ function recordPitch(res) {
   if (res !== 'Ball' && res !== 'HBP' && userPitches()) tutNote('strike');
   pitchMark.position.set(G.cross.x, G.cross.y, 0);
   pitchMark.material.color.set(resultCol(res));
-  pitchMark.visible = userBats() && settings.zone;
+  pitchMark.visible = (userBats() || G.frameD != null) && settings.zone;
   drawTracker(); hudPitchInfo(); drawBoards();
   hudPitcher();
 }
@@ -10031,7 +10127,7 @@ function afterAB() {
 function launch(ev, la, spray, origin, q, byUser) {
   SND.crack(clamp(q, 0.15, 1));
   if (q > 0.85 && ev > 100) camRig.shake = 0.5;
-  pci.visible = false; zoneGroup.visible = false; pitchMark.visible = false; pitchGuide.visible = false; reticle.visible = false;
+  pci.visible = false; zoneGroup.visible = false; pitchMark.visible = false; pitchGuide.visible = false; reticle.visible = false; mitt.visible = false;
   $('meter').classList.add('hidden');
   const bb = simBatted(origin, ev, la, spray);
   netBBOut(origin, ev, la, spray);
@@ -10043,18 +10139,24 @@ function launch(ev, la, spray, origin, q, byUser) {
   const br = new Runner(G.batter, G.batterModel, 0);
   br.from0 = G.batterModel.root.position.clone();
   const runners = [br, ...G.baseRunners];
+  // Player Lock: skipping this at-bat (Tab) ends the moment the ball comes to you or you're
+  // on base when it's put in play; otherwise the CPU plays it and the skip goes on
+  const skipped = G.mode === 'lock' && G.simAB;
+  G.simAB = false;
   const fc = fieldCtrl(), rc = runCtrl();
   G.play = new Play({
     bb, fielders: G.fielders, runners, outs: G.outs,
     field: fc === 'cpu' ? null : { lock: G.lock, manual: settings.manual },
     run: rc === 'cpu' ? null : { lock: G.lock },
   });
-  // Player Lock: you field balls hit to the outfield or your way; the CPU plays the rest
-  if (G.mode === 'lock' && G.lockSkip && G.play.hf) {
-    const pl = G.play;
-    G.lockInv = lockFieldInvolved(pl);
-    if (!G.lockInv) { pl.hf = null; pl.userDef = false; pl.uf = null; pl.planFielders(0); }
-    else if (G.skipping) { G.beat = 0.6; hudCall('YOUR PLAY', 'play'); }
+  // Player Lock: you field the balls that are yours (hit your way); the CPU plays the rest
+  if (G.mode === 'lock') {
+    const pl = G.play, running = pl.R.some((r) => r.pl.id === G.lock && !(skipped && r.isBatter));
+    G.lockInv = !!pl.hf && lockFieldInvolved(pl);
+    if (pl.hf && !G.lockInv && (G.lockSkip || skipped)) { pl.hf = null; pl.userDef = false; pl.uf = null; pl.planFielders(0); }
+    if (skipped && !G.lockInv && !running) { G.simAB = true; pl.hrun = null; }
+    else if ((skipped || G.skipping) && (G.lockInv || running)) { G.beat = 0.6; hudCall('YOUR PLAY', 'play'); }
+    pl.lockManual();
   }
   if (bb.hr) { excite(1, 6); SND.roar(0.55, 2.5, 4); }
   else if (ev > 95 && la > 15 && la < 45) { SND.roar(0.3, 1.2, 2.5); }
@@ -13319,15 +13421,35 @@ const FL = { mode: 'track', yaw: 0, pitch: 0 };
 function lookDelta(dx, dy) {
   if (!fpvOn) return;
   if (FL.mode !== 'free') {
+    lookAcc = 0;
     const lx = camRig.look.x - camRig.pos.x, ly = camRig.look.y - camRig.pos.y, lz = camRig.look.z - camRig.pos.z;
     FL.yaw = Math.atan2(lx, lz); FL.pitch = Math.atan2(ly, Math.hypot(lx, lz)); FL.mode = 'free';
   }
   FL.yaw -= dx * 0.0028; FL.pitch = clamp(FL.pitch - dy * 0.0028, -1.3, 1.3);
 }
 function lookRecenter() { FL.mode = 'track'; }
+// Mouse look needs no click: moving the mouse turns the camera (after a few pixels, so a nudge
+// doesn't stop it following the play), and resting it near the left or right edge keeps
+// turning. Clicking still locks the pointer for unlimited turning.
+let mouseIn = false, lookAcc = 0, lookAt = 0;
+function mouseLook(dx, dy) {
+  if (FL.mode !== 'free') {
+    const now = performance.now();
+    if (now - lookAt > 300) lookAcc = 0;
+    lookAt = now; lookAcc += Math.abs(dx) + Math.abs(dy);
+    if (lookAcc < 10) return;
+  }
+  lookDelta(dx, dy);
+}
+function edgeTurn(dt) {
+  if (!fpvOn || G.paused || !mouseIn || lastPointer !== 'mouse' || document.pointerLockElement === canvasEl || userPitches() || catcherAiming()) return;
+  const x = mouseNDC.x, e = 0.85;
+  if (Math.abs(x) > e) lookDelta(Math.sign(x) * Math.min(1, (Math.abs(x) - e) / (1 - e)) * 650 * dt, 0);
+}
 function exitPointerLock() { if (document.pointerLockElement) try { document.exitPointerLock(); } catch (e) { /* not locked */ } }
 function fpvActive() { return G.mode === 'lock' && G.view > 0 && !G.replay && LOCK_PHASES.includes(G.phase); }
 function lockRole() {
+  if (userCatches() && G.phase !== 'live' && G.phase !== 'postPlay') return { role: 'bat' };   // calling and framing: the strike-zone view
   if (G.half === 1 - G.lockSide) {
     const f = G.fielders.find((x) => x.pl.id === G.lock);
     return f ? { role: 'field', m: f.m, f } : { role: 'dugout' };
@@ -13352,7 +13474,7 @@ function fpvHide(m) {
 function restoreCam() {
   if (G.replay || !LOCK_PHASES.includes(G.phase)) return;   // other phases set their own camera
   if (G.phase === 'live' || G.phase === 'postPlay') playCam();
-  else if (userPitches()) pitchCam(true); else if (userBats()) batCam(true); else cfCam(true);
+  else if (userPitches()) pitchCam(true); else if (userBats() || userCatches()) batCam(true); else cfCam(true);
 }
 function lockCamOff() {
   fpvHide(null); tpUmpGhost = false;
@@ -13523,7 +13645,8 @@ function hudBatter() {
 }
 function hudPitcher() {
   const p = curPitcher(); if (!p) return;
-  const ps = pstat(p), up = userPitches();
+  const ps = pstat(p), up = userPitches(), calling = !up && G.catchUI.state === 'call' && userCatches();
+  const sel = up ? G.pitchUI.sel : calling ? G.catchUI.sel : -1;
   teamHead($('pitcherCard').querySelector('.plate-head'), p.team);
   $('pHead').textContent = `#${p.num} · ${p.pos === 'SP' ? 'STARTER' : 'RELIEVER'}`;
   $('pHand').textContent = p.throws === 'L' ? 'LHP' : 'RHP';
@@ -13532,8 +13655,8 @@ function hudPitcher() {
   const st = clamp(1 - ps.pc / pitchLimit(p), 0, 1);
   $('pStam').style.width = st * 100 + '%';
   $('pStam').style.background = st > 0.45 ? 'var(--ball)' : st > 0.2 ? 'var(--gold)' : 'var(--strike)';
-  $('pitcherCard').classList.toggle('cpu', !up);
-  $('pitchList').innerHTML = p.pitches.map((pt, i) => `<div class="pitch-row ${up && i === G.pitchUI.sel ? 'sel' : ''}" data-i="${i}"><span class="key">${i + 1}</span><span class="pname"><i class="dot" style="background:${PITCH_TYPES[pt.type].col}"></i>${PITCH_TYPES[pt.type].name}</span><span class="mph">${Math.round(pt.velo - fatigue(p) * 2.4)} mph</span></div>`).join('');
+  $('pitcherCard').classList.toggle('cpu', !up && !calling);
+  $('pitchList').innerHTML = p.pitches.map((pt, i) => `<div class="pitch-row ${i === sel ? 'sel' : ''}" data-i="${i}"><span class="key">${i + 1}</span><span class="pname"><i class="dot" style="background:${PITCH_TYPES[pt.type].col}"></i>${PITCH_TYPES[pt.type].name}</span><span class="mph">${Math.round(pt.velo - fatigue(p) * 2.4)} mph</span></div>`).join('');
   hudLock();
 }
 function hudLock() {
@@ -13744,7 +13867,7 @@ function updateThrowGuide() {
 function skipText() {
   if (G.simAB) return 'Skipping to the next batter';
   const fielding = G.half === 1 - G.lockSide;
-  if (fielding && !G.lockFieldSim && G.fielders.some((f) => f.pl.id === G.lock)) return 'In the field: waiting for a ball hit to the outfield or your way';
+  if (fielding && !G.lockFieldSim && G.fielders.some((f) => f.pl.id === G.lock)) return 'In the field: waiting for a ball hit your way';
   const idx = G.lu[G.lockSide].findIndex((p) => p.id === G.lock);
   if (idx < 0) return fielding ? 'Your team is in the field' : 'Your team is batting';
   const k = (idx - G.order[G.lockSide] + 9) % 9;
@@ -14095,10 +14218,14 @@ const keys = new Set();
 function setMouse(e) { mouseNDC.set((e.clientX / window.innerWidth) * 2 - 1, -(e.clientY / window.innerHeight) * 2 + 1); mouseMoved = true; lastPointer = e.pointerType || 'mouse'; }
 canvasEl.addEventListener('pointermove', (e) => {
   setMouse(e);
+  mouseIn = e.pointerType === 'mouse';
   if (!fpvOn || G.paused) return;
-  const locked = document.pointerLockElement === canvasEl;
-  if (locked || (e.buttons && !userPitches())) lookDelta(e.movementX || 0, e.movementY || 0);
+  if (document.pointerLockElement === canvasEl) { lookDelta(e.movementX || 0, e.movementY || 0); return; }
+  if (userPitches() || catcherAiming()) return;
+  if (e.buttons) lookDelta(e.movementX || 0, e.movementY || 0);
+  else if (e.pointerType === 'mouse') mouseLook(e.movementX || 0, e.movementY || 0);
 });
+canvasEl.addEventListener('pointerleave', () => { mouseIn = false; });
 canvasEl.addEventListener('contextmenu', (e) => e.preventDefault());
 canvasEl.addEventListener('pointerdown', (e) => {
   SND.init(); setMouse(e);
@@ -14258,6 +14385,11 @@ function pollGamepad() {
       if (edge(4) || edge(14)) selectPitch((G.pitchUI.sel + n - 1) % n);
       if (edge(5) || edge(15)) selectPitch((G.pitchUI.sel + 1) % n);
       if (edge(0)) primaryAction('normal');
+    } else if (G.phase === 'prePitch' && G.catchUI.state === 'call' && userCatches()) {
+      const n = curPitcher().pitches.length;
+      if (edge(4) || edge(14)) selectPitch((G.catchUI.sel + n - 1) % n);
+      if (edge(5) || edge(15)) selectPitch((G.catchUI.sel + 1) % n);
+      if (edge(0)) primaryAction('normal');
     } else if (G.phase === 'postPitch' && edge(3)) requestChallenge();
     else {
       if (edge(0)) primaryAction('normal'); if (edge(2)) primaryAction('power'); if (edge(1)) primaryAction('contact'); if (edge(3)) primaryAction('bunt');
@@ -14275,13 +14407,15 @@ function pollGamepad() {
 function aimUpdate(dt, snap = false) {
   const ub = userBats() && ['prePitch', 'windup', 'pitch', 'halfIntro', 'wait'].includes(G.phase) && !G.swing;
   const up = userPitches() && G.phase === 'prePitch' && G.pitchUI.state === 'aim';
-  if (!ub && !up) return;
-  const tgt = ub ? G.pci : G.pitchUI.aim;
+  const uc = !ub && !up && catcherAiming(), mittOn = uc && G.catchUI.state === 'called';
+  if (!ub && !up && !uc) return;
+  const tgt = ub ? G.pci : up ? G.pitchUI.aim : mittOn ? G.catchUI.glove : G.catchUI.aim;
   let vx = 0, vy = 0;
   if (keys.has('arrowleft') || keys.has('a')) vx -= 1; if (keys.has('arrowright') || keys.has('d')) vx += 1;
   if (keys.has('arrowup') || keys.has('w')) vy += 1; if (keys.has('arrowdown') || keys.has('s')) vy -= 1;
   if (G.stick) { vx += G.stick.x * 1.3; vy += G.stick.y * 1.3; }
-  if (vx || vy) { tgt.x += vx * dt * 3.2; tgt.y += vy * dt * 3.2; mouseMoved = false; }
+  const kv = mittOn ? 7 : 3.2;   // the mitt has to get there in the time the pitch takes
+  if (vx || vy) { tgt.x += vx * dt * kv; tgt.y += vy * dt * kv; mouseMoved = false; }
   else if (mouseMoved) {
     raycaster.setFromCamera(mouseNDC, camera);
     if (raycaster.ray.intersectPlane(platePlane, _hit)) {
@@ -14290,7 +14424,10 @@ function aimUpdate(dt, snap = false) {
     }
   }
   if (ub) { tgt.x = clamp(tgt.x, -1.7, 1.7); tgt.y = clamp(tgt.y, 0.8, 4.4); const d = pciDims('normal'); pci.position.set(tgt.x, tgt.y, 0); pci.scale.set(d.w, d.h, 1); }
-  else { tgt.x = clamp(tgt.x, -2.2, 2.2); tgt.y = clamp(tgt.y, 0.4, 4.8); reticle.position.set(tgt.x, tgt.y, 0); }
+  else if (mittOn) {
+    tgt.x = clamp(tgt.x, -2.8, 2.8); tgt.y = clamp(tgt.y, 0.2, 5.2); mitt.position.set(tgt.x, tgt.y, 0);
+    G.glove.lerp(_tmpA.set(tgt.x, clamp(tgt.y, 0.6, 4.6), 1.7), 1 - Math.exp(-dt * 20));   // the catcher's real mitt follows yours
+  } else { tgt.x = clamp(tgt.x, -2.2, 2.2); tgt.y = clamp(tgt.y, 0.4, 4.8); reticle.position.set(tgt.x, tgt.y, 0); }
 }
 function primaryAction(kind) {
   if (G.paused) return;
@@ -14300,6 +14437,7 @@ function primaryAction(kind) {
   if (ph === 'prePitch' || ph === 'windup' || ph === 'pitch') {
     if (userBats()) userSwing(kind);
     else if (userPitches() && ph === 'prePitch' && (kind === 'normal' || lastPointer === 'touch')) pitchPress();
+    else if (ph === 'prePitch' && G.catchUI.state === 'call' && userCatches()) callPitch();
     return;
   }
   if (ph === 'live') {
@@ -14315,7 +14453,7 @@ function skip(force) {
   if (G.phase === 'reviewWait') { if (G.review && G.review.who === (force ? 'remote' : 'local')) G.pt = G.dur; return; }
   if (['postPitch', 'postPlay', 'postFoul', 'halfIntro', 'break', 'derbyResult'].includes(G.phase) && (force || G.pt > 0.3)) G.pt = G.dur;
 }
-function toggleZone() { settings.zone = !settings.zone; saveSettings(); zoneGroup.visible = settings.zone && (userBats() || userPitches()) && ['prePitch', 'windup', 'pitch'].includes(G.phase); $('btnZone').textContent = `Strike zone: ${settings.zone ? 'On' : 'Off'}`; }
+function toggleZone() { settings.zone = !settings.zone; saveSettings(); zoneGroup.visible = settings.zone && (userBats() || userPitches() || userCatches()) && ['prePitch', 'windup', 'pitch'].includes(G.phase); $('btnZone').textContent = `Strike zone: ${settings.zone ? 'On' : 'Off'}`; }
 function toggleSound() { SND.init(); SND.setOn(!settings.sound); muteIcon(); }
 function muteIcon() { $('btnMute').style.opacity = settings.sound ? 1 : 0.45; }
 function togglePause(force, remote) {
@@ -14605,7 +14743,7 @@ function toMenu() {
   document.body.classList.remove('letterbox');
   for (const m of MODELS) m.root.visible = false;
   ballMesh.visible = false; ballShadow.visible = false; trailReset();
-  pci.visible = false; reticle.visible = false; zoneGroup.visible = false; pitchMark.visible = false; pitchGuide.visible = false; ctrlRing.visible = false; landMark.visible = false;
+  pci.visible = false; reticle.visible = false; mitt.visible = false; zoneGroup.visible = false; pitchMark.visible = false; pitchGuide.visible = false; ctrlRing.visible = false; landMark.visible = false;
   fpvHide(null); fpvOn = false; exitPointerLock(); $('absCard').classList.add('hidden'); $('simBtn').classList.add('hidden'); runnerHUD(false); $('throwPrompt').classList.add('hidden');
   showScreen('menu');
   renderMenu();
@@ -14672,13 +14810,13 @@ function update(dt) {
   fpvCam(dt);
 }
 // Player Lock: you only play when you're involved - at bat, on base, or when the ball is
-// hit to the outfield or your way. Everything else is skipped behind the SIMULATING card
+// hit your way. Everything else is skipped behind the SIMULATING card
 // (or, with skipping turned off, fast-forwarded on screen).
 const SKIP_SPEED = 40;
 function lockInvolved() {
   if (G.simAB) return false;
   const ph = G.phase, pl = G.play, live = (ph === 'live' || ph === 'postPlay') && !!pl;
-  if (!live) return userBats() || userPitches() || (LOCK_PHASES.includes(ph) && (G.baseRunners || []).some((x) => x.pl.id === G.lock));
+  if (!live) return userBats() || userPitches() || userCatches() || (LOCK_PHASES.includes(ph) && (G.baseRunners || []).some((x) => x.pl.id === G.lock));
   if (pl.R.some((r) => r.pl.id === G.lock && (r.state === 'run' || r.state === 'base'))) return true;
   return G.lockInv && G.half === 1 - G.lockSide;
 }
@@ -14688,14 +14826,15 @@ function lockFF() {
   if (G.lockSkip) {
     if (!lockInvolved()) { G.skipping = true; return SKIP_SPEED; }
     // on base: watch the pitch, but don't wait around between pitches
-    return !userBats() && !userPitches() && (G.phase === 'postPitch' || G.phase === 'postFoul') ? 3 : 1;
+    return !userBats() && !userPitches() && !userCatches() && (G.phase === 'postPitch' || G.phase === 'postFoul') ? 3 : 1;
   }
   if (G.simAB) return 6;
-  if (userBats() || userPitches()) return 1;
+  if (userBats() || userPitches() || userCatches()) return 1;
   const ph = G.phase;
   if (ph === 'live') {
     const pl = G.play; if (!pl) return 1;
-    if (pl.uf && (pl.uf === pl.chaser || pl.uf === pl.ball.holder || pl.prompt || pl.ufManual || pl.uf.task === 'cover')) return 1;
+    // your player is always yours to steer now, so "steering" means you touched the controls lately
+    if (pl.uf && (pl.uf === pl.chaser || pl.uf === pl.ball.holder || pl.prompt || G.lockInv || pl.t - pl.lastInput < 1.5 || pl.uf.task === 'cover')) return 1;
     if (pl.R.some((r) => r.pl.id === G.lock && (r.state === 'run' || r.state === 'base'))) return 1;
     return 3;
   }
@@ -14723,6 +14862,7 @@ function frameStep(dt) {
     } else { const n = G.ff > 1 ? G.ff : 1; for (let i = 0; i < n; i++) update(dt); }
   }
   updateSkipUI();
+  edgeTurn(dt);
   $('btnTeamHud').classList.toggle('hidden', !(G.teams && G.mode !== 'menu' && mySide() >= 0 && G.mode !== 'lock' && G.mode !== 'derby' && !G.drill && G.phase !== 'final'));
   netTick();
   camUpdate(dt);
@@ -14762,7 +14902,7 @@ function boot() {
 }
 // Debug handle: lets a test harness advance the simulation without waiting on animation frames.
 window.__fullcount = {
-  G, TEAMS, settings, NET, keys, BAT_CAMS, Play, Runner, BASES, simBatted, V3, getModel, ballMesh, startPickoff, stealCmd, camTo, setPark, PARKS, fenceDist, fenceH, gameRecord, gamesList, loadSave, openLiveBox, openStats, toMenu, simGame, SIMK, seasonLoad, startSeason, seasonSimNext, seasonSimMany, seasonPlayNext, seasonNextGame, standings, openSeasonHub, renderMenu, menu, TUT, tutStart, rosterCost, teamToDef, cleanRoster, buildCustomTeam, Cloud, cloudRender, inviteToast, get ROSTERS() { return ROSTERS; },
+  G, TEAMS, settings, NET, keys, BAT_CAMS, Play, Runner, BASES, simBatted, umpCallsStrike, inZone, V3, getModel, ballMesh, startPickoff, stealCmd, camTo, setPark, PARKS, fenceDist, fenceH, gameRecord, gamesList, loadSave, openLiveBox, openStats, toMenu, simGame, SIMK, seasonLoad, startSeason, seasonSimNext, seasonSimMany, seasonPlayNext, seasonNextGame, standings, openSeasonHub, renderMenu, menu, TUT, tutStart, rosterCost, teamToDef, cleanRoster, buildCustomTeam, Cloud, cloudRender, inviteToast, get ROSTERS() { return ROSTERS; },
   step(sec, dt = 1 / 60) {
     const n = Math.round(sec / dt);
     for (let i = 0; i < n && !G.paused; i++) { if (isGuest()) guestUpdate(dt); else update(dt); netTick(); }

@@ -12,6 +12,7 @@ const G = {
   fielders: [], fByRole: {}, baseRunners: [], batter: null, batSide: 'R', batterModel: null, batPrm: null,
   umps: [], P: null, spec: null, swing: null, cpu: null, play: null, bb: null, cross: null,
   abPitches: [], pitchUI: { state: 'aim', sel: 0, aim: { x: 0, y: 2.5 }, meter: 0, power: 0, acc: 0, t0: 0 },
+  catchUI: { state: 'off', sel: 0, aim: { x: 0, y: 2.5 }, glove: { x: 0, y: 2.5 } }, frame: 0, frameD: null,
   pci: { x: 0, y: 2.5 }, glove: new V3(0, 2.4, 1.7), rec: [], recOn: false, replay: null, derby: null,
   abEnd: null, contactT: 0, menuAng: 0,
   ctrl: ['cpu', 'cpu'], lock: null, remoteIn: { x: 0, z: 0 }, remoteTake: false, camFocus: null, localPitch: false,
@@ -306,12 +307,13 @@ function enterPrePitch() {
   placeForPitch();
   ballMesh.visible = false; ballShadow.visible = false; trailReset(); pitchGuide.visible = false;
   hideFeedback();
-  G.spec = null;
+  G.spec = null; G.frame = 0; G.frameD = null; G.catchUI.state = 'off'; mitt.visible = false;
   if (pitchCtrl() === 'cpu') {
     G.spec = G.mode === 'derby' ? derbyPitch() : cpuChoosePitch();
     G.cpuPitchAt = G.mode === 'spectate' ? rand(0.6, 1.0) : G.mode === 'derby' ? rand(0.9, 1.3) : rand(1.0, 1.7);
     G.glove.set(G.spec.aim.x * 0.6, clamp(G.spec.aim.y, 1.6, 3.2), 1.7);
     if (G.drill !== 'field') cpuPickoff();
+    if (userCatches()) startCall();
   }
   cpuSteals();
   // the CPU manager may put this batter on (decided once, before the first pitch to him)
@@ -323,11 +325,11 @@ function enterPrePitch() {
 }
 // per-device presentation for a new pitch (also used by an online guest)
 function prePitchUI() {
-  const up = userPitches(), ub = userBats();
+  const up = userPitches(), ub = userBats(), uc = userCatches();
   FL.mode = 'track';
-  zoneGroup.visible = settings.zone && (ub || up);
-  zoneGroup.getObjectByName('grid').visible = up;
-  pci.visible = ub; reticle.visible = up; pitchGuide.visible = false;
+  zoneGroup.visible = settings.zone && (ub || up || uc);
+  zoneGroup.getObjectByName('grid').visible = up || uc;
+  pci.visible = ub; reticle.visible = up || uc; pitchGuide.visible = false;
   pitchMark.visible = pitchMark.visible && ub;
   $('meter').classList.toggle('hidden', !up);
   $('throwPrompt').classList.add('hidden'); runnerHUD(false);
@@ -339,13 +341,18 @@ function prePitchUI() {
     meterDraw();
     const on = G.bases.some(Boolean) && G.mode !== 'derby';
     setHint('<kbd>1</kbd>–<kbd>' + n + '</kbd> pitch &middot; aim with the mouse &middot; <kbd>Click</kbd> to start the meter' + (on ? ' &middot; <kbd>Shift</kbd>+<kbd>1</kbd>–<kbd>3</kbd> pickoff' : ''));
+  } else if (uc) {
+    const n = curPitcher().pitches.length;
+    reticleMat.color.set(PITCH_TYPES[curPitcher().pitches[G.catchUI.sel].type].col);
+    reticle.position.set(G.catchUI.aim.x, G.catchUI.aim.y, 0);
+    setHint(`Call the pitch: <kbd>1</kbd>–<kbd>${n}</kbd> pitch &middot; aim with the mouse &middot; <kbd>Click</kbd> to put the sign down`);
   } else if (ub) setHint('Aim the PCI &middot; <kbd>Click</kbd> swing &middot; <kbd>Right-click</kbd> power &middot; <kbd>J</kbd> contact &middot; <kbd>B</kbd> bunt' + (G.bases.some(Boolean) && userRuns() && G.mode !== 'derby' ? ' &middot; <kbd>E</kbd> steal' : ''));
   else if (userRuns() && G.bases.some(Boolean)) setHint('You run the bases &middot; <kbd>E</kbd> steal &middot; <kbd>Q</kbd> call it off &middot; click a runner\'s tag to pick just him');
   else if (G.drill === 'field') setHint('Fielding practice &middot; <kbd>WASD</kbd> move &middot; <kbd>1</kbd>&ndash;<kbd>4</kbd> throw');
   else if (G.mode === 'online') setHint('Waiting for your opponent&hellip;');
   else if (G.mode === 'lock' && G.half === 1 - G.lockSide && G.fielders.some((f) => f.pl.id === G.lock)) setHint('You are in the field &middot; get within the gold ring of the ball to field it');
   else setHint(G.mode === 'lock' ? (G.simAB ? 'Skipping to the next batter&hellip;' : 'Simulating until you are up&hellip;') : '');
-  if (up) pitchCam(G.prevCam !== 'pitch'); else if (ub) batCam(G.prevCam !== 'bat'); else cfCam(G.prevCam !== 'cf');
+  if (up) pitchCam(G.prevCam !== 'pitch'); else if (ub || uc) batCam(G.prevCam !== 'bat'); else cfCam(G.prevCam !== 'cf');
   hudPitcher();
 }
 function cpuChoosePitch() {
@@ -372,9 +379,44 @@ function cpuChoosePitch() {
     else { x = away * rand(0.95, 1.3) * (Math.random() < 0.7 ? 1 : -1); y = rand(1.8, 3.2); }
   } else { y = rand(0.95, 1.45); x = away * rand(0.3, 1.15) * (Math.random() < 0.75 ? 1 : -1); }
   if (G.mode === 'tutorial') { const a = { x, y }; tutPitchAim(a); x = a.x; y = a.y; }
-  const sig = (0.15 + ((100 - p.ctl) / 100) * 0.42) * (batCtrl() !== 'cpu' ? G.diff.cpuCtl : 1) * (1 + fatigue(p) * 0.9);
+  return cpuSpec(pitch, x, y);
+}
+// a CPU pitcher throwing this pitch at this spot: his command decides where it really goes
+function cpuSpec(pitch, x, y) {
+  const p = curPitcher(), sig = (0.15 + ((100 - p.ctl) / 100) * 0.42) * (batCtrl() !== 'cpu' ? G.diff.cpuCtl : 1) * (1 + fatigue(p) * 0.9);
   return { pitch, aim: { x, y }, target: { x: x + randn() * sig, y: y + randn() * sig * 0.85 }, power: rand(0.86, 1), q: rand(0.45, 0.9) };
 }
+
+// ------------------------------------------------------------- catching ----
+// Player Lock as the catcher: you call every pitch (the pitcher's idea comes up first; change
+// the pitch and the spot, then put the sign down), he throws it with his own command, and you
+// frame it. Get the mitt to where it crosses and a pitch on the edge goes your way; stab at
+// it and a strike on the edge can be called a ball (and one in the dirt can get by you).
+function userCatches() {
+  return G.mode === 'lock' && !G.simAB && !G.lockFieldSim && !!G.teams && !!G.fByRole && G.half === 1 - G.lockSide
+    && !!G.fByRole.C && G.fByRole.C.pl.id === G.lock && pitchCtrl() === 'cpu';
+}
+// the mouse is busy calling the pitch or moving the mitt
+function catcherAiming() { return ['prePitch', 'windup', 'pitch'].includes(G.phase) && G.catchUI.state !== 'off' && G.catchUI.state !== 'done' && userCatches(); }
+function startCall() {
+  const U = G.catchUI, s = G.spec, p = curPitcher();
+  U.state = 'call'; U.sel = Math.max(0, p.pitches.indexOf(s.pitch)); U.aim.x = s.aim.x; U.aim.y = s.aim.y;
+  G.spec = null; G.cpuPitchAt = Infinity;   // he waits for your sign
+}
+function callPitch() {
+  const U = G.catchUI, p = curPitcher();
+  if (U.state !== 'call') return;
+  U.state = 'called';
+  G.spec = cpuSpec(p.pitches[clamp(U.sel, 0, p.pitches.length - 1)], U.aim.x, U.aim.y);
+  G.cpuPitchAt = G.pt + rand(0.45, 0.7);
+  U.glove.x = U.aim.x; U.glove.y = U.aim.y;   // set up where you called it
+  reticle.visible = false; mitt.visible = true; mitt.position.set(U.glove.x, U.glove.y, 0);
+  SND.tick();
+  setHint('Frame it: move the mitt to the ball');
+}
+const FRAME_FT = 0.08;   // a perfect frame moves the pitch about an inch toward the zone, in the umpire's eyes
+function frameGrade(d) { return d < 0.3 ? 'Great' : d < 0.6 ? 'Good' : d < 1.1 ? 'OK' : 'Stabbed at it'; }
+function frameHint() { return G.frameD == null ? '' : `Frame: <b>${frameGrade(G.frameD)}</b>`; }
 function derbyPitch() {
   const p = curPitcher();
   const pitch = { type: 'FF', velo: 74 + Math.round(rand(-2, 2)), brk: 0.5 };
@@ -383,6 +425,12 @@ function derbyPitch() {
 }
 const ACC_LINE = 0.1;
 function selectPitch(i) {
+  if (G.phase === 'prePitch' && G.catchUI.state === 'call' && userCatches()) {
+    if (i < 0 || i >= curPitcher().pitches.length) return;
+    G.catchUI.sel = i; hudPitcher(); SND.tick();
+    reticleMat.color.set(PITCH_TYPES[curPitcher().pitches[i].type].col);
+    return;
+  }
   if (!userPitches() || G.phase !== 'prePitch' || G.pitchUI.state !== 'aim') return;
   if (i < 0 || i >= curPitcher().pitches.length) return;
   G.pitchUI.sel = i; hudPitcher(); SND.tick();
@@ -475,7 +523,7 @@ function updateGuide(t) {
 function updatePitch(dt) {
   const t = G.now - G.pitchT0;
   pitchPos(G.P, Math.min(t, G.tCatch), ballMesh.position);
-  G.glove.lerp(_tmpA.set(G.cross.x, clamp(G.cross.y - 0.05, 0.6, 4.6), 1.7), 1 - Math.exp(-dt * 9));
+  if (G.catchUI.state !== 'called') G.glove.lerp(_tmpA.set(G.cross.x, clamp(G.cross.y - 0.05, 0.6, 4.6), 1.7), 1 - Math.exp(-dt * 9));
   updateGuide(t);
   const sw = G.swing;
   if (sw && !sw.done && sw.calc && !sw.calc.miss) {
@@ -627,6 +675,12 @@ function catchPitch() {
   SND.pop(clamp(G.P.mph / 95, 0.6, 1.1));
   const sw = G.swing, cs = G.cpu;
   const swung = (sw && (!sw.calc || sw.calc.miss)) || (cs && cs.swing && !cs.contact);
+  if (G.catchUI.state === 'called') {
+    const U = G.catchUI;
+    G.frameD = Math.hypot(U.glove.x - G.cross.x, U.glove.y - G.cross.y);
+    G.frame = swung || G.hbp ? 0 : clamp(1.25 - G.frameD * 1.6, -1, 1);
+    U.state = 'done'; mitt.visible = false;
+  }
   let call;
   if (swung) call = sw && sw.type === 'bunt' ? 'buntMiss' : 'swinging';
   else if (G.hbp) call = 'hbp';
@@ -638,6 +692,11 @@ function catchPitch() {
   recordPitch(call === 'ball' ? 'Ball' : call === 'hbp' ? 'HBP' : call === 'called' ? 'Called K' : 'Swinging K');
   G.recOn = false;
   applyCall(call);
+  if (G.frameD != null) {
+    if (call === 'called' && !G.isStrike && G.frame > 0.3) Caster.line(pick([`Beautiful frame job by ${lastName(G.fByRole.C.pl.name)}. He steals a strike.`, 'That was off the plate, but he framed it into a strike.']), false);
+    else if (call === 'ball' && G.isStrike && G.frame < 0) Caster.line('That looked like a strike, but the catcher stabbed at it and the umpire didn\'t give it.', false);
+    setHint(frameHint());
+  }
   if (wildPitch()) return;
   if (G.baseRunners.some((r) => r.steal && r.steal.went) && stealAfterPitch()) return;
   setupChallenge(call);
@@ -729,6 +788,7 @@ function lockPlayFor(pl) {
   if (G.mode !== 'lock') return;
   G.lockInv = pl.R.some((r) => r.pl.id === G.lock) || pl.F.some((f) => f.pl.id === G.lock && (f.role === 'C' || f.role === 'P' || f.task === 'cover'));
   if (G.lockSkip && pl.hf && !G.lockInv) { pl.hf = null; pl.userDef = false; pl.uf = null; }
+  pl.lockManual();
 }
 function finishStealPlay() {
   const pl = G.play, res = pl.summary(), ps = pstat(curPitcher());
@@ -849,7 +909,9 @@ function wildPitch() {
   const c = G.cross, C = G.fByRole.C;
   const hard = Math.max(clamp((1.2 - c.y) / 0.7, 0, 1), clamp((Math.abs(c.x) - 1.25) / 0.9, 0, 1), clamp((c.y - 4.1) / 0.9, 0, 1));
   const glove = clamp(1.3 - (C.pl.fld ?? 60) / 100, 0.3, 1);
-  const pWP = hard * hard * 0.9 * glove, pPB = 0.004 * glove, x = Math.random();
+  let pWP = hard * hard * 0.9 * glove, pPB = 0.004 * glove;
+  if (G.frameD != null) { pWP *= clamp(0.35 + G.frameD * 0.75, 0.35, 2); pPB = 0.002 + clamp((G.frameD - 1.2) / 2.2, 0, 0.55); }   // your mitt
+  const x = Math.random();
   if (x >= pWP + pPB) return false;
   const kind = x < pWP ? 'WP' : 'PB';
   if (K && !d3) { settleAB(k); G.abEnd = 'settled'; }   // strike three, and he's out: the runners can still go
@@ -1034,13 +1096,12 @@ function fungo() {
 }
 
 // ------------------------------------------------------------ lock skip ----
-// is this ball hit to the outfield or your way?
+// is this ball yours: you're the one to field it, or it comes right at you?
 function lockFieldInvolved(pl) {
   const me = pl.uf;
   if (!me || pl.hr) return false;
   if (pl.chaser === me) return true;
   if (pl.bb.foul) return false;
-  if (pl.chaser && pl.chaser.isOF) return true;
   for (const s of pl.bb.S) {
     if (s.t > 2.5) break;
     if (s.y < 9 && Math.hypot(s.x - me.pos.x, s.z - me.pos.z) < 30) return true;
@@ -1057,7 +1118,8 @@ function startSim() {
     pl.hf = null; pl.hrun = null; pl.userDef = false; pl.ufManual = false; pl.prompt = false; pl.queuedThrow = null; pl.uf = null;
     if (pl.ball.mode === 'flight' && !pl.hr && !pl.dead) pl.replan();
   }
-  pci.visible = false; reticle.visible = false; zoneGroup.visible = false; pitchGuide.visible = false;
+  pci.visible = false; reticle.visible = false; zoneGroup.visible = false; pitchGuide.visible = false; mitt.visible = false;
+  if (G.catchUI.state === 'called') G.catchUI.state = 'off';
   $('meter').classList.add('hidden'); $('throwPrompt').classList.add('hidden'); runnerHUD(false);
   ctrlRing.visible = false; landMark.visible = false; baseMark.visible = false;
   setHint('Skipping to the next batter&hellip;');
@@ -1076,8 +1138,11 @@ function zoneEdgeDist(x, y) {
 // a human umpire misses some borderline pitches (about 92% right overall); the robot never does
 function umpCallsStrike() {
   const truth = G.isStrike;
-  const pMiss = G.ump === 2 ? 0 : 0.5 * Math.exp(-Math.abs(zoneEdgeDist(G.cross.x, G.cross.y)) / UMP_S);
-  const strike = Math.random() < pMiss ? !truth : truth;
+  if (G.ump === 2) { if (G.umpLog) { G.umpLog.n++; G.umpLog.ok++; } return truth; }
+  // a framed pitch looks a little closer to the zone than it was (G.frame: -1 a stab, 1 perfect)
+  const d = zoneEdgeDist(G.cross.x, G.cross.y) + (G.frame || 0) * FRAME_FT, seen = G.frame ? d >= 0 : truth;
+  const pMiss = 0.5 * Math.exp(-Math.abs(d) / UMP_S);
+  const strike = Math.random() < pMiss ? !seen : seen;
   if (G.umpLog) { G.umpLog.n++; if (strike === truth) G.umpLog.ok++; }
   return strike;
 }
@@ -1102,7 +1167,7 @@ function setupChallenge(call) {
     if (Math.random() < (wrong ? (big ? 0.8 : 0.3) : 0.015)) G.cpuChallengeAt = G.now + 0.7; else G.challengeable = null;
   } else {
     G.dur = Math.max(G.dur, 2.8);
-    if (c === 'local') setHint(`<kbd>C</kbd> challenge the call &middot; ${G.challenges[side]} left`);
+    if (c === 'local') setHint((G.frameD != null ? frameHint() + ' &middot; ' : '') + `<kbd>C</kbd> challenge the call &middot; ${G.challenges[side]} left`);
   }
   hudScore();
 }
@@ -1147,7 +1212,7 @@ function recordPitch(res) {
   if (res !== 'Ball' && res !== 'HBP' && userPitches()) tutNote('strike');
   pitchMark.position.set(G.cross.x, G.cross.y, 0);
   pitchMark.material.color.set(resultCol(res));
-  pitchMark.visible = userBats() && settings.zone;
+  pitchMark.visible = (userBats() || G.frameD != null) && settings.zone;
   drawTracker(); hudPitchInfo(); drawBoards();
   hudPitcher();
 }
@@ -1227,7 +1292,7 @@ function afterAB() {
 function launch(ev, la, spray, origin, q, byUser) {
   SND.crack(clamp(q, 0.15, 1));
   if (q > 0.85 && ev > 100) camRig.shake = 0.5;
-  pci.visible = false; zoneGroup.visible = false; pitchMark.visible = false; pitchGuide.visible = false; reticle.visible = false;
+  pci.visible = false; zoneGroup.visible = false; pitchMark.visible = false; pitchGuide.visible = false; reticle.visible = false; mitt.visible = false;
   $('meter').classList.add('hidden');
   const bb = simBatted(origin, ev, la, spray);
   netBBOut(origin, ev, la, spray);
@@ -1239,18 +1304,24 @@ function launch(ev, la, spray, origin, q, byUser) {
   const br = new Runner(G.batter, G.batterModel, 0);
   br.from0 = G.batterModel.root.position.clone();
   const runners = [br, ...G.baseRunners];
+  // Player Lock: skipping this at-bat (Tab) ends the moment the ball comes to you or you're
+  // on base when it's put in play; otherwise the CPU plays it and the skip goes on
+  const skipped = G.mode === 'lock' && G.simAB;
+  G.simAB = false;
   const fc = fieldCtrl(), rc = runCtrl();
   G.play = new Play({
     bb, fielders: G.fielders, runners, outs: G.outs,
     field: fc === 'cpu' ? null : { lock: G.lock, manual: settings.manual },
     run: rc === 'cpu' ? null : { lock: G.lock },
   });
-  // Player Lock: you field balls hit to the outfield or your way; the CPU plays the rest
-  if (G.mode === 'lock' && G.lockSkip && G.play.hf) {
-    const pl = G.play;
-    G.lockInv = lockFieldInvolved(pl);
-    if (!G.lockInv) { pl.hf = null; pl.userDef = false; pl.uf = null; pl.planFielders(0); }
-    else if (G.skipping) { G.beat = 0.6; hudCall('YOUR PLAY', 'play'); }
+  // Player Lock: you field the balls that are yours (hit your way); the CPU plays the rest
+  if (G.mode === 'lock') {
+    const pl = G.play, running = pl.R.some((r) => r.pl.id === G.lock && !(skipped && r.isBatter));
+    G.lockInv = !!pl.hf && lockFieldInvolved(pl);
+    if (pl.hf && !G.lockInv && (G.lockSkip || skipped)) { pl.hf = null; pl.userDef = false; pl.uf = null; pl.planFielders(0); }
+    if (skipped && !G.lockInv && !running) { G.simAB = true; pl.hrun = null; }
+    else if ((skipped || G.skipping) && (G.lockInv || running)) { G.beat = 0.6; hudCall('YOUR PLAY', 'play'); }
+    pl.lockManual();
   }
   if (bb.hr) { excite(1, 6); SND.roar(0.55, 2.5, 4); }
   else if (ev > 95 && la > 15 && la < 45) { SND.roar(0.3, 1.2, 2.5); }

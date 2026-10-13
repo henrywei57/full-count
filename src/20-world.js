@@ -515,6 +515,13 @@ const reticleMat = lineMat(0xff5a5f, 1);
   const tk = [new V3(-0.42, 0, 0), new V3(-0.2, 0, 0), new V3(0.42, 0, 0), new V3(0.2, 0, 0), new V3(0, 0.42, 0), new V3(0, 0.2, 0), new V3(0, -0.42, 0), new V3(0, -0.2, 0)];
   const ticks = new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(tk), reticleMat); ticks.renderOrder = 22; reticle.add(ticks);
 }
+// Player Lock as the catcher: the mitt you frame the pitch with
+const mitt = new THREE.Group(); overlay.add(mitt); mitt.visible = false;
+{
+  const fill = new THREE.Mesh(new THREE.CircleGeometry(0.34, 32), new THREE.MeshBasicMaterial({ color: 0xffc94a, transparent: true, opacity: 0.16, depthTest: false, depthWrite: false })); fill.renderOrder = 21; mitt.add(fill);
+  const ring = new THREE.Line(new THREE.BufferGeometry().setFromPoints(ellipsePts(0.34, 0.34, 32)), lineMat(0xffc94a, 0.95)); ring.renderOrder = 22; mitt.add(ring);
+  const dot = new THREE.Mesh(new THREE.CircleGeometry(0.05, 12), new THREE.MeshBasicMaterial({ color: 0xffc94a, depthTest: false })); dot.renderOrder = 23; mitt.add(dot);
+}
 // last-pitch location marker
 const pitchMark = new THREE.Mesh(new THREE.CircleGeometry(0.13, 20), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.9, depthTest: false }));
 pitchMark.renderOrder = 24; pitchMark.visible = false; overlay.add(pitchMark);
