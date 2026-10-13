@@ -204,7 +204,7 @@ const DIFFS = [
 ];
 const PBYID = {};   // player id -> player, filled in by 14-teams.js and each game's teams
 
-const settings = { sound: true, voice: true, zone: true, manual: true, guide: true, batCam: 0, vcVol: 1, vcPTT: false, vcNear: true, netName: '' };
+const settings = { sound: true, voice: true, zone: true, manual: true, guide: true, netName: '' };
 try { const s = JSON.parse(localStorage.getItem('fullcount.settings') || '{}'); Object.assign(settings, s); } catch (e) { /* storage unavailable */ }
 function saveSettings() { try { localStorage.setItem('fullcount.settings', JSON.stringify(settings)); } catch (e) { /* ignore */ } }
 
