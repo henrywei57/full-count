@@ -247,11 +247,11 @@ function renderFriends() {
     return;
   }
   if (C.state !== 'ready') { body.innerHTML = `<p class="fr-note">${C.state === 'loading' ? 'Loading…' : esc(C.err || 'Sign-in is unavailable right now.')}</p>`; return; }
-  if (!C.user) { body.innerHTML = `${err}<p class="fr-note">Sign in with Google to save your rosters to your account, add friends, and invite them to a 1v1.</p><div>${signInBtn()}</div>`; return; }
+  if (!C.user) { body.innerHTML = `${err}<p class="fr-note">Sign in with Google to save your rosters to your account, add friends, and invite them to play online.</p><div>${signInBtn()}</div>`; return; }
   if (!C.profile) { body.innerHTML = `${err}<p class="fr-note">Setting up your account…</p>`; return; }
   const inbox = C.inbox.filter((m) => m.type !== 'invite' || inviteFresh(m));
   const isFriend = (uid) => C.friends.some((f) => f.uid === uid);
-  const reqs = inbox.map((m) => `<div class="fr-row">${avatar(m.photo)}<span class="nm">${esc(m.name || 'A player')}<small>${m.type === 'invite' ? 'invited you to a 1v1' : 'added you as a friend'}</small></span>`
+  const reqs = inbox.map((m) => `<div class="fr-row">${avatar(m.photo)}<span class="nm">${esc(m.name || 'A player')}<small>${m.type === 'invite' ? 'invited you to play online' : 'added you as a friend'}</small></span>`
     + (m.type === 'invite' ? `<button class="cta fr-mini" data-act="join" data-id="${esc(m.id)}">JOIN</button>` : isFriend(m.from) ? '' : `<button class="ghost fr-mini" data-act="accept" data-id="${esc(m.id)}">Add back</button>`)
     + `<button class="ghost fr-mini" data-act="dismiss" data-id="${esc(m.id)}">Dismiss</button></div>`).join('');
   const sorted = [...C.friends].sort((a, b) => friendOnline(b.uid) - friendOnline(a.uid) || String(a.name).localeCompare(String(b.name)));
@@ -260,7 +260,7 @@ function renderFriends() {
     return `<div class="fr-row"><i class="fr-on ${live ? 'live' : ''}"></i>${avatar(p.photo)}<span class="nm">${esc(p.name || 'Player')}<small>${live ? 'Online now' : ago(tsMs(p.lastSeen))}</small></span>`
       + (eloNum(p.elo) ? `<span class="fr-elo" title="Online rating">${eloNum(p.elo)}</span>` : '')
       + (hh ? `<span class="fr-h2h" title="Your record against ${esc(p.name || 'them')} online"><b>${hh.w}-${hh.l}</b><small>vs you</small></span>` : '')
-      + `<button class="cta fr-mini" data-act="invite" data-uid="${esc(f.uid)}">INVITE TO 1V1</button><button class="ghost fr-mini" data-act="remove" data-uid="${esc(f.uid)}" title="Remove friend">&times;</button></div>`;
+      + `<button class="cta fr-mini" data-act="invite" data-uid="${esc(f.uid)}">INVITE TO PLAY</button><button class="ghost fr-mini" data-act="remove" data-uid="${esc(f.uid)}" title="Remove friend">&times;</button></div>`;
   }).join('');
   const add = $('frAddCode') ? $('frAddCode').value : '';
   body.innerHTML = `${err}
@@ -272,7 +272,7 @@ function renderFriends() {
 // invite list in the online lobby while you're hosting
 function renderNetFriends() {
   const el = $('netFriends'); if (!el) return;
-  const C = Cloud, show = NET.role === 'host' && !NET.open && NET.code && C.user && C.friends.length;
+  const C = Cloud, show = NET.role === 'host' && (squadMode() ? NET.links.length < SQUAD_MAX - 1 : !NET.open) && NET.code && C.user && C.friends.length;
   if (!show) { el.innerHTML = ''; return; }
   const list = [...C.friends].sort((a, b) => friendOnline(b.uid) - friendOnline(a.uid)).slice(0, 8);
   el.innerHTML = '<div class="net-or">or invite a friend</div>' + list.map((f) => {
@@ -314,7 +314,7 @@ function joinInvite(m) {
 let toastT = 0;
 function inviteToast(m) {
   const el = $('toast');
-  el.innerHTML = `${avatar(m.photo)}<span class="t-msg"><b>${esc(m.name || 'A friend')}</b> invited you to a 1v1</span><button class="cta fr-mini" data-act="join" data-id="${esc(m.id)}">JOIN</button><button class="ghost fr-mini" data-act="later">Later</button>`;
+  el.innerHTML = `${avatar(m.photo)}<span class="t-msg"><b>${esc(m.name || 'A friend')}</b> invited you to play online</span><button class="cta fr-mini" data-act="join" data-id="${esc(m.id)}">JOIN</button><button class="ghost fr-mini" data-act="later">Later</button>`;
   el.classList.remove('hidden');
   SND.init(); if (SND.ctx) SND.tick();
   clearTimeout(toastT); toastT = setTimeout(hideToast, 30000);

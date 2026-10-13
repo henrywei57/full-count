@@ -622,6 +622,83 @@ span.chip{cursor:default}
   .controls-grid{grid-template-columns:1fr}
   #hint{display:none}
 }
+
+/* ---------- online squad: lobby spots, name tags ---------- */
+#squadPanel{display:flex;flex-direction:column;gap:10px}
+.sq-head{font-family:var(--f-display);font-weight:700;letter-spacing:.16em;font-size:14px;color:var(--gold);display:flex;flex-direction:column;gap:2px}
+.sq-head small{font-family:var(--f-body);letter-spacing:0;font-size:12px;font-weight:500;color:var(--dust)}
+.sq-cols{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.sq-col{display:flex;flex-direction:column;gap:3px;min-width:0}
+.sq-team{font-family:var(--f-display);font-weight:800;font-size:14px;letter-spacing:.12em;padding:5px 9px;border-radius:4px;margin-bottom:2px}
+.sq-spot{display:grid;grid-template-columns:14px 30px minmax(0,1fr) auto;align-items:center;gap:6px;padding:5px 8px;border-radius:4px;border:1px solid var(--line);background:transparent;cursor:pointer;text-align:left;min-width:0}
+.sq-spot:hover:not(:disabled){background:var(--panel-hi);border-color:rgba(255,255,255,.3)}
+.sq-spot:disabled{cursor:default;opacity:.9}
+.sq-spot.mine{border-color:var(--gold);background:rgba(255,201,74,.1)}
+.sq-spot b{font-family:var(--f-display);font-weight:800;font-size:14px;color:var(--dust)}
+.sq-ord{font-size:11px;color:var(--dust);font-variant-numeric:tabular-nums}
+.sq-pl{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sq-who{font-family:var(--f-display);font-weight:800;font-size:12px;letter-spacing:.06em;padding:1px 7px;border-radius:10px;background:var(--sc);color:#081020;max-width:90px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sq-free{font-family:var(--f-display);font-weight:700;font-size:11px;letter-spacing:.12em;color:var(--dust)}
+.sq-spot:hover:not(:disabled) .sq-free{color:var(--gold)}
+.sq-room{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.sq-room-h{font-family:var(--f-display);font-weight:700;letter-spacing:.14em;font-size:12px;color:var(--dust);margin-right:4px}
+.sq-person{display:inline-flex;align-items:center;gap:6px;padding:3px 9px 3px 6px;border-radius:14px;background:var(--panel);border:1px solid var(--line);font-size:13px}
+.sq-person.me{border-color:var(--sc)}
+.sq-person>i{width:9px;height:9px;border-radius:50%;background:var(--sc)}
+.sq-person b{font-weight:700}.sq-person b small{font-size:10px;letter-spacing:.1em;color:var(--gold)}
+.sq-person>small{font-size:11px;color:var(--dust)}
+.sq-mic{width:14px;height:14px;background:var(--dust);-webkit-mask:var(--mic) center/contain no-repeat;mask:var(--mic) center/contain no-repeat;cursor:pointer}
+.sq-mic.talk{background:var(--ball)}.sq-mic.blocked{background:var(--strike);opacity:.7}
+:root{--mic:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 14a3 3 0 003-3V5a3 3 0 00-6 0v6a3 3 0 003 3zm5-3a5 5 0 01-10 0H5a7 7 0 006 6.9V21h2v-3.1A7 7 0 0019 11h-2z'/%3E%3C/svg%3E")}
+#squadTags{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.sq-tag{position:absolute;transform:translate(-50%,-100%);display:flex;align-items:center;gap:4px;padding:2px 8px;margin-top:-7px;border-radius:4px;background:rgba(5,10,20,.8);border:2px solid var(--sc);font-family:var(--f-display);font-weight:800;font-size:13px;letter-spacing:.04em;white-space:nowrap;color:var(--chalk)}
+.sq-tag::after{content:'';position:absolute;left:50%;bottom:-8px;transform:translateX(-50%);border:6px solid transparent;border-top-color:var(--sc);border-bottom:0}
+.sq-tag.me{background:var(--sc);color:#081020}
+.sq-tag.cpu{opacity:.6}
+.sq-tag small{font-size:10px;color:var(--dust)}
+.sq-spk{width:12px;height:12px;background:var(--ball);-webkit-mask:var(--mic) center/contain no-repeat;mask:var(--mic) center/contain no-repeat}
+.sq-tag.me .sq-spk{background:#081020}
+.sq-tag.talk{box-shadow:0 0 0 2px rgba(63,211,138,.55)}
+/* ---------- chat ---------- */
+#chat{position:fixed;left:16px;bottom:calc(178px + env(safe-area-inset-bottom,0px));z-index:6;width:min(360px,calc(100vw - 32px));display:flex;flex-direction:column;gap:4px;pointer-events:none}
+#chatLog{display:flex;flex-direction:column;gap:2px;max-height:132px;overflow-y:auto;scrollbar-width:thin;overscroll-behavior:contain}
+.cm{font-size:13px;line-height:1.3;padding:3px 8px;border-radius:4px;background:rgba(5,10,20,.68);text-shadow:0 1px 2px rgba(0,0,0,.6);overflow-wrap:anywhere;transition:opacity .6s;-webkit-user-select:text;user-select:text}
+.cm b{font-weight:700}.cm b small{font-weight:500;color:var(--dust)}
+.cm.sys{color:var(--dust);font-style:italic}
+.cm.team{border-left:3px solid var(--play)}
+.cm-to{font-family:var(--f-display);font-weight:800;font-size:11px;letter-spacing:.1em;color:var(--play);margin-right:5px}
+.cm.old{opacity:0}
+#chatForm{display:none;gap:6px}
+#chat.open{pointer-events:auto}
+#chat.open #chatForm{display:flex}
+#chat.open #chatLog{background:rgba(5,10,20,.45);border-radius:4px}
+#chatTo{flex:none;padding:6px 9px;border-radius:4px;border:1px solid var(--line);background:var(--panel);font-family:var(--f-display);font-weight:800;font-size:12px;letter-spacing:.1em;cursor:pointer}
+#chatTo.team{color:var(--play);border-color:var(--play)}
+#chatTo:disabled{cursor:default;opacity:.7}
+#chatIn{flex:1;min-width:0;font:inherit;font-size:14px;padding:7px 10px;border-radius:4px;border:1px solid var(--line);background:rgba(5,10,20,.92);color:var(--chalk);-webkit-user-select:text;user-select:text}
+#chatIn:focus{outline:none;border-color:var(--gold)}
+#chat.lobby{position:static;width:auto;z-index:auto}
+#chat.lobby #chatLog{max-height:120px;min-height:0}
+#chat.lobby .cm{background:rgba(255,255,255,.04)}
+#hud.replaying ~ #chat,body.skipping #chat:not(.open){visibility:hidden}
+#topbar button[data-st]{position:relative}
+#btnMic svg{fill:var(--dust)}
+#btnMic[data-st="live"]{border-color:var(--ball)}#btnMic[data-st="live"] svg{fill:var(--ball)}
+#btnMic[data-st="muted"]{border-color:var(--strike)}#btnMic[data-st="muted"] svg{fill:var(--strike)}
+#btnMic[data-st="ptt"] svg{fill:var(--gold)}
+#btnMic[data-st="off"]::after,#btnMic[data-st="muted"]::after{content:'';position:absolute;width:20px;height:2px;background:currentColor;transform:rotate(-45deg);color:var(--dust)}
+#btnMic[data-st="muted"]::after{color:var(--strike)}
+.net-name{display:flex;align-items:center;gap:10px;font-family:var(--f-display);font-weight:700;letter-spacing:.16em;font-size:12px;color:var(--dust);flex:1}
+.net-name input{flex:1;min-width:0;font:inherit;font-family:var(--f-body);font-weight:600;font-size:15px;letter-spacing:0;padding:7px 10px;border-radius:4px;border:1px solid var(--line);background:var(--night);color:var(--chalk);text-transform:none}
+#btnVoiceMic.muted{color:var(--strike);border-color:rgba(255,90,95,.5)}
+@media (max-width:560px){
+  .sq-cols{grid-template-columns:1fr}
+  #chat:not(.lobby){bottom:calc(298px + env(safe-area-inset-bottom,0px))}
+  #chatLog{max-height:84px}
+  #lockTag{top:calc(108px + env(safe-area-inset-top,0px));padding:3px 10px}
+  #lockTag em{display:none}
+  #caption{top:calc(146px + env(safe-area-inset-top,0px))}
+}
 @media (prefers-reduced-motion:reduce){#call.show,#banner.show{animation-duration:.01s}}
 </style>
 
@@ -648,6 +725,8 @@ span.chip{cursor:default}
   <div id="pitchInfo"><b id="piMph">0<small>MPH</small></b><span id="piType">Fastball</span></div>
   <div id="topbar">
     <span id="netPing" class="hidden"></span>
+    <button id="btnChat" class="hidden" title="Chat (Y)" aria-label="Chat"><svg viewBox="0 0 24 24"><path d="M4 4h16a1 1 0 011 1v11a1 1 0 01-1 1H9l-5 4v-4H4a1 1 0 01-1-1V5a1 1 0 011-1z"/></svg></button>
+    <button id="btnMic" class="hidden" data-st="off" title="Join voice chat" aria-label="Voice chat"><svg viewBox="0 0 24 24"><path d="M12 14a3 3 0 003-3V5a3 3 0 00-6 0v6a3 3 0 003 3zm5-3a5 5 0 01-10 0H5a7 7 0 006 6.9V21h2v-3.1A7 7 0 0019 11h-2z"/></svg></button>
     <button id="btnTeamHud" class="hidden" title="Team: lineup, bench and bullpen (U)" aria-label="Team"><svg viewBox="0 0 24 24"><path d="M9 11a4 4 0 100-8 4 4 0 000 8zm8 0a3 3 0 100-6 3 3 0 000 6zM9 13c-3.3 0-7 1.6-7 4v2h14v-2c0-2.4-3.7-4-7-4zm8 0c-.5 0-1 0-1.6.1 1.1.9 1.6 2 1.6 3.9v2h5v-2c0-2.2-2.6-4-5-4z"/></svg></button>
     <button id="btnMute" title="Sound (M)" aria-label="Toggle sound"><svg viewBox="0 0 24 24"><path id="muteIcon" d="M3 9v6h4l5 5V4L7 9H3zm13.5 3A4.5 4.5 0 0014 8v8a4.5 4.5 0 002.5-4zM14 3.2v2.1a7 7 0 010 13.4v2.1A9 9 0 0014 3.2z"/></svg></button>
     <button id="btnPause" title="Pause (Esc)" aria-label="Pause"><svg viewBox="0 0 24 24"><path d="M6 5h4v14H6zm8 0h4v14h-4z"/></svg></button>
@@ -691,6 +770,7 @@ span.chip{cursor:default}
   <div id="pracHud" class="hidden"></div>
   <div id="pickHelp" class="hidden"><span class="ph-label">PICKOFF</span><span id="pickList"></span></div>
   <div id="runTags"></div>
+  <div id="squadTags"></div>
   <div id="runHelp" class="hidden">
     <div class="rh-head">BASERUNNING<span id="rhTip">click a runner to pick him, then <kbd>E</kbd>/<kbd>Q</kbd></span></div>
     <div class="rh-all" id="rhAll"></div>
@@ -712,7 +792,7 @@ span.chip{cursor:default}
         <button data-mode="exhibition" class="on">Play Ball <small>Exhibition game</small></button>
         <button data-mode="season">Season <small>A schedule, standings, playoffs</small></button>
         <button data-mode="lock">Player Lock <small>Play as one player</small></button>
-        <button data-mode="online">Online 1v1 <small>Play a friend on another device</small></button>
+        <button data-mode="online">Online <small>1v1, or a squad of up to 10</small></button>
         <button data-mode="derby">Home Run Derby <small>10 outs, swing away</small></button>
         <button data-mode="practice">Practice <small>Batting, pitching, running, fielding</small></button>
         <button data-mode="spectate">CPU vs CPU <small>Sit back and watch</small></button>
@@ -730,20 +810,25 @@ span.chip{cursor:default}
       </div>
       <div class="sea-panel hidden" id="seasonPanel"></div>
       <div id="netPanel" class="hidden">
-        <h3>ONLINE 1V1</h3>
+        <h3 id="netTitle">ONLINE 1V1</h3>
         <div class="net-elo" id="netElo"></div>
+        <div class="net-row"><label class="net-name">YOUR NAME<input id="netName" maxlength="16" placeholder="Player" autocomplete="off" spellcheck="false"></label></div>
         <div class="net-row" id="netHostRow"><button class="cta" id="btnHost">HOST A GAME</button></div>
         <div class="net-or" id="netOr">or join your friend's game with their room code</div>
         <div class="net-row" id="netJoinRow"><input id="joinCode" maxlength="5" placeholder="CODE" autocomplete="off" spellcheck="false" aria-label="Room code"><button class="ghost" id="btnJoin">Join</button><button class="ghost" id="btnWatch" title="Watch the game as a spectator">Watch</button></div>
         <div id="netShare" class="hidden"><div class="net-or">Send your friend this code</div><div class="net-code" id="netCode"></div><div class="net-row"><button class="ghost" id="btnCopyLink">Copy invite link</button><span class="net-link" id="netLink"></span></div><div id="netFriends"></div></div>
         <div class="net-status" id="netStatus" role="status"></div>
+        <div class="net-row hidden" id="netVoiceRow"><button class="ghost fr-mini" id="btnVoiceJoin">Join voice chat</button><button class="ghost fr-mini hidden" id="btnVoiceMic">Mic on</button><span class="net-or" id="voiceNote"></span></div>
       </div>
       <div class="matchup" id="matchup">
         <div class="team-pick" id="pickA"></div>
         <div class="vs" id="vsLabel">VS</div>
         <div class="team-pick" id="pickH"></div>
       </div>
+      <div id="squadPanel" class="hidden"></div>
       <div class="opts">
+        <div class="opt hidden" id="optNetMode"><span>PLAY</span><div class="seg" data-key="netMode"><button data-v="0" class="on">1v1: your team vs theirs</button><button data-v="1">Squad: up to 10, one player each</button></div></div>
+        <div class="opt hidden" id="optSquadSkip"><span>NOBODY IN THE PLAY</span><div class="seg" data-key="squadSkip"><button data-v="1" class="on">Skip ahead</button><button data-v="0">Watch (fast)</button><button data-v="2">Real time</button></div></div>
         <div class="opt hidden" id="optLesson"><span>LESSONS</span><div class="seg" data-key="tutLesson"><button data-v="-1" class="on">All, in order</button><button data-v="0">Hitting</button><button data-v="1">Pitching</button><button data-v="2">Fielding</button><button data-v="3">Baserunning</button><button data-v="4">Pickoffs</button></div></div>
         <div class="opt hidden" id="optDrill"><span>DRILL</span><div class="seg" data-key="drill"><button data-v="0" class="on">Batting</button><button data-v="1">Pitching</button><button data-v="2">Baserunning</button><button data-v="3">Fielding</button></div></div>
         <div class="opt" id="optSide"><span>YOU PLAY AS</span><div class="seg" data-key="side"><button data-v="0">Away</button><button data-v="1" class="on">Home</button></div></div>
@@ -788,6 +873,7 @@ span.chip{cursor:default}
   </div>
 </div>
 <div id="toast" class="hidden" role="status"></div>
+<div id="chat" class="hidden"><div id="chatLog" role="log" aria-live="polite"></div><form id="chatForm" autocomplete="off"><button type="button" id="chatTo">ALL</button><input id="chatIn" maxlength="160" placeholder="Say something (Enter to send)" aria-label="Chat message" spellcheck="false"></form></div>
 <div id="tutCard" class="hidden" role="dialog" aria-label="Tutorial"></div>
 
 <div id="teamScreen" class="screen modal hidden">
@@ -862,6 +948,8 @@ span.chip{cursor:default}
         <dt>R</dt><dd>Instant replay after a play. In a replay: Space pauses, &larr; &rarr; skip (a frame when paused), &uarr; &darr; speed, V camera, Esc closes. Every play this game is under Replays in the pause menu.</dd>
         <dt>Enter</dt><dd>Skip ahead</dd>
         <dt>F</dt><dd>Fast-forward (CPU vs CPU)</dd>
+        <dt>Y</dt><dd>Online: chat (Enter sends; Tab switches between everyone and your team)</dd>
+        <dt>G</dt><dd>Online voice chat: mute / unmute, or hold to talk with push to talk on (Options)</dd>
         <dt>Gamepad</dt><dd>Stick aims, A swing, X power, B contact</dd>
       </dl></div>
     </div>

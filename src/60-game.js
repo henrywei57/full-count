@@ -22,37 +22,45 @@ const battingTeam = () => G.teams[G.half];
 const fieldingTeam = () => G.teams[1 - G.half];
 const curPitcher = () => G.pitcher[1 - G.half];
 // Who controls what: each side is 'local' (this device), 'remote' (online opponent) or 'cpu'.
-// Player Lock narrows a side's control to one player.
+// Player Lock narrows a side's control to one player. In an online squad (64-squad.js) both
+// sides are the CPU's except the players people are playing, each one on his own device.
 // Player Lock "skip": the CPU plays your part until the next batter
 const sideCtrl = (s) => (!G.ctrl ? 'cpu' : G.simAB && s === G.lockSide ? 'cpu' : G.ctrl[s]);
 // Practice drills (G.drill) hand one job to you and give the rest to the CPU.
 function batCtrl() {
   if (!G.teams || !G.batter || G.drill === 'run' || G.drill === 'field') return 'cpu';
+  if (G.squad) return squadCtrl(G.batter.id);
   const c = sideCtrl(G.half);
   if (c === 'cpu' || (G.lock && G.batter.id !== G.lock)) return 'cpu';
   return c;
 }
 function pitchCtrl() {
   if (!G.teams || G.mode === 'derby' || G.drill === 'field' || G.drill === 'run' || G.drill === 'bat') return 'cpu';
+  if (G.squad) { const p = curPitcher(); return p ? squadCtrl(p.id) : 'cpu'; }
   const c = sideCtrl(1 - G.half), p = curPitcher();
   if (c === 'cpu' || (G.lock && (!p || p.id !== G.lock))) return 'cpu';
   return c;
 }
 function fieldCtrl() {
   if (!G.teams || G.mode === 'derby' || G.drill === 'pitch' || G.drill === 'run' || G.drill === 'bat') return 'cpu';
+  if (G.squad) { const fs = squadFielders(); return fs.some((s) => s.sid === G.me) ? 'local' : fs.length ? 'remote' : 'cpu'; }
   const c = sideCtrl(1 - G.half);
   if (c === 'cpu' || (G.lock && (G.lockFieldSim || !(G.fielders || []).some((f) => f.pl.id === G.lock)))) return 'cpu';
   return c;
 }
 // a human defense: Player Lock narrows it to your one player; online 1v1 always gives you the
 // fielder nearest the ball, never the pitcher or catcher (they still field it and throw on your keys)
-function fieldOpts(fc) { return fc === 'cpu' ? null : { lock: G.lock, manual: settings.manual, near: G.mode === 'online' }; }
-function runCtrl() { if (!G.teams || G.mode === 'derby' || G.drill === 'pitch' || G.drill === 'field') return 'cpu'; return sideCtrl(G.half); }
+function fieldOpts(fc) { return fc === 'cpu' ? null : { lock: G.lock, manual: settings.manual, near: G.mode === 'online' && !G.squad }; }
+function runCtrl() {
+  if (!G.teams || G.mode === 'derby' || G.drill === 'pitch' || G.drill === 'field') return 'cpu';
+  if (G.squad) { const me = mySeat(); return me && !me.cpu && me.side === G.half ? 'local' : squadBatting() ? 'remote' : 'cpu'; }
+  return sideCtrl(G.half);
+}
 const userBats = () => batCtrl() === 'local';
 const userPitches = () => pitchCtrl() === 'local';
 const userFields = () => fieldCtrl() === 'local';
 const userRuns = () => runCtrl() === 'local';
-const localSide = () => (G.ctrl ? G.ctrl.indexOf('local') : -1);
+const localSide = () => (G.squad ? (mySeat() ? G.lockSide : -1) : G.ctrl ? G.ctrl.indexOf('local') : -1);
 function setPhase(name, dur = 0) { G.phase = name; G.pt = 0; G.dur = dur; }
 function bstat(pl) { if (!G.stats.has(pl.id)) G.stats.set(pl.id, { pa: 0, ab: 0, h: 0, d: 0, t: 0, hr: 0, rbi: 0, bb: 0, k: 0, r: 0, sb: 0, cs: 0 }); return G.stats.get(pl.id); }
 function pstat(pl) { if (!G.pstats.has(pl.id)) G.pstats.set(pl.id, { outs: 0, h: 0, r: 0, er: 0, bb: 0, k: 0, pc: 0, hr: 0, wp: 0 }); return G.pstats.get(pl.id); }
@@ -172,10 +180,11 @@ function startGame(cfg) {
   if (G.drill) G.innings = 99;
   // look players up by id (lock, online, HUD); a custom team's players are only registered for the game they play in
   for (const t of G.teams) for (const p of teamPlayers(t)) PBYID[p.id] = p;
-  G.lock = null;
+  G.lock = null; G.squad = null; G.me = -1;
   G.season = cfg.season || null;   // which season game this is (63-season.js)
   if (cfg.mode === 'exhibition' || cfg.mode === 'lock' || cfg.mode === 'season') { G.ctrl = ['cpu', 'cpu']; G.ctrl[cfg.side] = 'local'; }
   else if (cfg.mode === 'derby') G.ctrl = ['local', 'cpu'];
+  else if (cfg.mode === 'online' && cfg.squad) G.ctrl = ['cpu', 'cpu'];   // a squad: the CPU manages, each person plays his own man
   else if (cfg.mode === 'online') { G.ctrl = ['remote', 'remote']; if (!cfg.spec) G.ctrl[cfg.guest ? 1 - cfg.side : cfg.side] = 'local'; }   // a spectator controls nothing
   else if (G.drill) G.ctrl = youBat ? ['local', 'cpu'] : ['cpu', 'local'];
   else G.ctrl = ['cpu', 'cpu'];
@@ -199,9 +208,10 @@ function startGame(cfg) {
     const team = G.teams[cfg.side], pick = cfg.lockPick || 'h3';
     G.lock = pick[0] === 'p' ? G.pitcher[cfg.side].id : team.lineup[+pick.slice(1)].id;
   }
+  if (cfg.mode === 'online' && Array.isArray(cfg.squad)) squadInit(cfg);
   G.gameId = 'g' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
   G.clips = []; G.lastClip = null; G.clipN = 0;   // this game's replays (70-ui.js)
-  G.eloOpp = cfg.mode === 'online' && !cfg.spec ? NET.oppElo ?? ELO_START : null; G.eloRes = null; $('finalElo').innerHTML = '';
+  G.eloOpp = cfg.mode === 'online' && !cfg.spec && !cfg.squad ? NET.oppElo ?? ELO_START : null;   // 1v1s are rated, squads aren't G.eloRes = null; $('finalElo').innerHTML = '';
   G.dec = null; G.decIds = null; G.enterLead = {};
   const resumed = !!cfg.resume && restoreSave(cfg.resume);
   for (const m of MODELS) m.root.visible = false;
@@ -212,11 +222,12 @@ function startGame(cfg) {
   $('bug').classList.toggle('hidden', G.mode === 'derby');
   $('derbyHud').classList.toggle('hidden', G.mode !== 'derby');
   $('tracker').classList.toggle('hidden', G.mode === 'derby' || G.mode === 'tutorial');
-  $('lockTag').classList.toggle('hidden', G.mode !== 'lock');
+  $('lockTag').classList.toggle('hidden', !(G.mode === 'lock' || (G.squad && G.lock)));
+  $('lockTag').querySelector('span').textContent = G.squad ? 'SQUAD' : 'PLAYER LOCK';
   $('pracHud').classList.toggle('hidden', !G.drill || G.mode === 'tutorial'); $('hud').classList.toggle('prac', !!G.drill && G.mode !== 'tutorial'); $('hud').classList.toggle('tut', G.mode === 'tutorial');
   hudPrac();
   SND.init();
-  if (G.mode === 'online' && cfg.guest) { guestStart(); return; }
+  if (G.mode === 'online' && cfg.guest) { guestStart(); hudLock(); return; }
   if (G.mode === 'derby') {
     const team = G.teams[0];
     G.derby = { hr: 0, outs: 10, longest: 0, swings: 0, batter: team.lineup[cfg.batter] || team.lineup[3] };
@@ -264,7 +275,7 @@ function maybePitchingChange() {
   if (G.mode === 'derby') return false;
   const ti = 1 - G.half, p = curPitcher();
   if (fatigue(p) < 0.6 || !G.bullpen[ti].length) return false;
-  if (G.lock === p.id && fatigue(p) < 0.97) return false;
+  if ((G.squad ? seatOf(p.id) : G.lock === p.id) && fatigue(p) < 0.97) return false;   // you stay in until you're out of gas
   // a human manager makes his own pitching changes (the bullpen is in the Team panel)
   if (sideCtrl(ti) !== 'cpu' && G.lock !== p.id && fatigue(p) < 0.95) return false;
   bringReliever(ti);
@@ -277,8 +288,10 @@ function bringReliever(ti, pick) {
   const np = pick && pen.includes(pick) ? pick : pickReliever(ti);
   G.bullpen[ti] = pen.filter((x) => x !== np);
   G.pen[ti]++;
-  G.gone[ti].add(G.pitcher[ti].id);
+  const old = G.pitcher[ti];
+  G.gone[ti].add(old.id);
   G.pitcher[ti] = np; G.pitched[ti].push(np);
+  if (G.squad) squadTakeOver(old.id, np);
   G.enterLead[np.id] = G.score[ti] - G.score[1 - ti];   // for the save
   if (ti === 1 - G.half) {
     const f = new Fielder(np, 'P', getModel(np)); f.setHome(...ROLE_POS.P);
@@ -332,6 +345,7 @@ function enterPrePitch() {
 // per-device presentation for a new pitch (also used by an online guest)
 function prePitchUI() {
   const up = userPitches(), ub = userBats(), uc = userCatches();
+  const onBase = G.squad ? G.bases.some((p) => p && p.id === G.lock) : G.bases.some(Boolean);   // runners you run
   FL.mode = 'track';
   zoneGroup.visible = settings.zone && (ub || up || uc);
   zoneGroup.getObjectByName('grid').visible = up || uc;
@@ -352,9 +366,10 @@ function prePitchUI() {
     reticleMat.color.set(PITCH_TYPES[curPitcher().pitches[G.catchUI.sel].type].col);
     reticle.position.set(G.catchUI.aim.x, G.catchUI.aim.y, 0);
     setHint(`Call the pitch: <kbd>1</kbd>–<kbd>${n}</kbd> pitch &middot; aim with the mouse &middot; <kbd>Click</kbd> to put the sign down`);
-  } else if (ub) setHint('Aim the PCI &middot; <kbd>Click</kbd> swing &middot; <kbd>Right-click</kbd> power &middot; <kbd>J</kbd> contact &middot; <kbd>B</kbd> bunt' + (G.bases.some(Boolean) && userRuns() && G.mode !== 'derby' ? ' &middot; <kbd>E</kbd> steal' : ''));
-  else if (userRuns() && G.bases.some(Boolean)) setHint('You run the bases &middot; <kbd>E</kbd> steal &middot; <kbd>Q</kbd> call it off &middot; click a runner\'s tag to pick just him');
+  } else if (ub) setHint('Aim the PCI &middot; <kbd>Click</kbd> swing &middot; <kbd>Right-click</kbd> power &middot; <kbd>J</kbd> contact &middot; <kbd>B</kbd> bunt' + (onBase && userRuns() && G.mode !== 'derby' ? ' &middot; <kbd>E</kbd> steal' : ''));
+  else if (userRuns() && onBase) setHint('You run the bases &middot; <kbd>E</kbd> steal &middot; <kbd>Q</kbd> call it off &middot; click a runner\'s tag to pick just him');
   else if (G.drill === 'field') setHint('Fielding practice &middot; <kbd>WASD</kbd> move &middot; <kbd>1</kbd>&ndash;<kbd>4</kbd> throw');
+  else if (G.squad) setHint(squadHint());
   else if (G.mode === 'online') setHint('Waiting for your opponent&hellip;');
   else if (G.mode === 'lock' && G.half === 1 - G.lockSide && G.fielders.some((f) => f.pl.id === G.lock)) setHint('You are in the field &middot; get within the gold ring of the ball to field it');
   else setHint(G.mode === 'lock' ? (G.simAB ? 'Skipping to the next batter&hellip;' : 'Simulating until you are up&hellip;') : '');
@@ -672,7 +687,7 @@ function contactUser(c, at) {
   launch(c.ev, c.la, c.spray, origin, c.Q, true);
 }
 // hitting feedback goes to whoever is batting: this screen or the online opponent's
-function fbShow(c) { const bc = batCtrl(); if (bc === 'local') showFeedback(c); else if (bc === 'remote') netEvTo('showFeedback', [c]); }
+function fbShow(c) { const bc = batCtrl(); if (bc === 'local') showFeedback(c); else if (bc === 'remote') netEvTo('showFeedback', [c], G.squad ? seatOf(G.batter.id).sid : null); }
 function fbData() { const bb = G.bb; return bb ? { ev: bb.ev, la: bb.la, dist: bb.dist, showDist: !!(bb.hr || (bb.la > 8 && bb.landPos)) } : null; }
 
 // ------------------------------------------------------------ outcomes ----
@@ -715,7 +730,7 @@ function catchPitch() {
 // If it is put in play, the runner already has his jump (hit-and-run).
 const STEAL_PHASES = ['prePitch', 'windup', 'pitch'];
 const BASE_WORD = ['home', 'first', 'second', 'third', 'home'];
-function runnerIsHuman(r) { return runCtrl() !== 'cpu' && (!G.lock || r.pl.id === G.lock); }
+function runnerIsHuman(r) { return G.squad ? !!seatOf(r.pl.id) : runCtrl() !== 'cpu' && (!G.lock || r.pl.id === G.lock); }
 // he can go only if the bag ahead is empty, or its runner is going too
 function canSteal(r) {
   if (r.state !== 'base' || r.base >= 4) return false;
@@ -780,9 +795,8 @@ function stealAfterPitch() {
   if (k === 'walk' || k === 'hbp') { cancelSteals(); return false; }   // the walk moves them; no throw
   if (k === 'kLook' || k === 'kSwing') { settleAB(k); G.abEnd = 'settled'; }   // strike 'em out...
   if (G.outs >= 3) { cancelSteals(); return false; }
-  const fc = fieldCtrl(), rc = runCtrl();
   G.recOn = true;   // for a replay review of the tag
-  const pl = (G.play = new Play({ kind: 'steal', fielders: G.fielders, runners: G.baseRunners, outs: G.outs, field: fieldOpts(fc), run: rc === 'cpu' ? null : { lock: G.lock } }));
+  const pl = (G.play = new Play({ kind: 'steal', fielders: G.fielders, runners: G.baseRunners, outs: G.outs, ...playCtl() }));
   lockPlayFor(pl);
   netPlayOut();
   setPhase('live');
@@ -791,9 +805,16 @@ function stealAfterPitch() {
 }
 // Player Lock: are you in this steal or pickoff? If not, it sims like any other play.
 function lockPlayFor(pl) {
+  if (G.squad) {
+    const ids = squadIds();
+    G.lockInv = pl.R.some((r) => ids.has(r.pl.id)) || pl.F.some((f) => ids.has(f.pl.id) && (f.role === 'C' || f.role === 'P' || f.task === 'cover'));
+    if (G.squadSkip === 1 && pl.hf && !G.lockInv) pl.cpuDefense();
+    pl.lockManual();
+    return;
+  }
   if (G.mode !== 'lock') return;
   G.lockInv = pl.R.some((r) => r.pl.id === G.lock) || pl.F.some((f) => f.pl.id === G.lock && (f.role === 'C' || f.role === 'P' || f.task === 'cover'));
-  if (G.lockSkip && pl.hf && !G.lockInv) { pl.hf = null; pl.userDef = false; pl.uf = null; }
+  if (G.lockSkip && pl.hf && !G.lockInv) pl.cpuDefense();
   pl.lockManual();
 }
 function finishStealPlay() {
@@ -844,8 +865,7 @@ function startPickoff(base) {
   if (!canPickoff(base)) return;
   G.abPicks++; G.cpuPick = null; G.recOn = true;
   pci.visible = false; reticle.visible = false; zoneGroup.visible = false; $('meter').classList.add('hidden');
-  const fc = fieldCtrl(), rc = runCtrl();
-  const pl = (G.play = new Play({ kind: 'pick', pickBase: base, fielders: G.fielders, runners: G.baseRunners, outs: G.outs, field: fieldOpts(fc), run: rc === 'cpu' ? null : { lock: G.lock } }));
+  const pl = (G.play = new Play({ kind: 'pick', pickBase: base, fielders: G.fielders, runners: G.baseRunners, outs: G.outs, ...playCtl() }));
   lockPlayFor(pl);
   netPlayOut();
   ballMesh.visible = true;
@@ -925,8 +945,7 @@ function wildPitch() {
   const runners = [...G.baseRunners];
   if (d3) { const br = new Runner(G.batter, G.batterModel, 0); br.from0 = G.batterModel.root.position.clone(); runners.unshift(br); }
   const side = Math.abs(c.x) > 0.4 ? Math.sign(c.x) : Math.random() < 0.5 ? -1 : 1;
-  const fc = fieldCtrl(), rc = runCtrl();
-  const pl = (G.play = new Play({ kind: 'wild', bb: looseBall(G.glove, side), fielders: G.fielders, runners, outs: G.outs, field: fieldOpts(fc), run: rc === 'cpu' ? null : { lock: G.lock } }));
+  const pl = (G.play = new Play({ kind: 'wild', bb: looseBall(G.glove, side), fielders: G.fielders, runners, outs: G.outs, ...playCtl() }));
   pl.wildKind = kind; pl.d3 = d3;
   lockPlayFor(pl);
   netPlayOut();
@@ -1021,7 +1040,7 @@ function setupReview(pl) {
   const c = cand.find((x) => x.call !== x.truth) || cand.reduce((a, b) => (b.margin < a.margin ? b : a));
   const side = c.call === 'out' ? G.half : 1 - G.half;
   if (G.reviews[side] <= 0) return false;
-  const who = G.lock ? 'cpu' : sideCtrl(side), wrong = c.call !== c.truth;
+  const who = G.lock || G.squad ? 'cpu' : sideCtrl(side), wrong = c.call !== c.truth;
   if (who === 'cpu') { if (Math.random() >= (wrong ? 0.85 : 0.05)) return false; G.cpuChallengeAt = G.now + 1.0; }
   else if (c.margin >= 0.12) return false;   // not close enough to ask
   G.review = { c, side, who, pl };
@@ -1104,8 +1123,7 @@ function fungo() {
 
 // ------------------------------------------------------------ lock skip ----
 // is this ball yours: you're the one to field it, or it comes right at you?
-function lockFieldInvolved(pl) {
-  const me = pl.uf;
+function lockFieldInvolved(pl, me = pl.uf) {
   if (!me || pl.hr) return false;
   if (pl.chaser === me) return true;
   if (pl.bb.foul) return false;
@@ -1122,7 +1140,7 @@ function startSim() {
   if (G.phase === 'prePitch' && !G.spec) { G.spec = cpuChoosePitch(); G.cpuPitchAt = G.pt + 0.3; }
   const pl = G.play;
   if (pl && G.phase === 'live') {
-    pl.hf = null; pl.hrun = null; pl.userDef = false; pl.ufManual = false; pl.prompt = false; pl.queuedThrow = null; pl.uf = null;
+    pl.cpuDefense(); pl.hrun = null;
     if (pl.ball.mode === 'flight' && !pl.hr && !pl.dead) pl.replan();
   }
   pci.visible = false; reticle.visible = false; zoneGroup.visible = false; pitchGuide.visible = false; mitt.visible = false;
@@ -1162,7 +1180,12 @@ function setupChallenge(call) {
   G.challengeable = { side, call, truth: G.isStrike ? 'called' : 'ball', x: G.cross.x, y: G.cross.y, pre: { ...G.preCall } };
   let c = sideCtrl(side);
   // like MLB, only the batter, pitcher or catcher may challenge; in Player Lock that has to be you
-  if (G.lock && side === G.lockSide) {
+  if (G.squad) {
+    // a squad: any of you who's the batter (a called strike) or the pitcher or catcher (a called ball)
+    const catcher = G.fByRole.C && G.fByRole.C.pl, ids = call === 'called' ? [G.batter.id] : [curPitcher().id, catcher && catcher.id];
+    G.challengeable.sids = G.squad.filter((s) => !s.cpu && ids.includes(s.pid)).map((s) => s.sid);
+    c = G.challengeable.sids.length ? 'squad' : 'cpu';
+  } else if (G.lock && side === G.lockSide) {
     const catcher = G.fByRole.C && G.fByRole.C.pl;
     const mine = call === 'called' ? G.batter.id === G.lock : curPitcher().id === G.lock || (catcher && catcher.id === G.lock);
     if (!mine) c = 'cpu';
@@ -1174,7 +1197,7 @@ function setupChallenge(call) {
     if (Math.random() < (wrong ? (big ? 0.8 : 0.3) : 0.015)) G.cpuChallengeAt = G.now + 0.7; else G.challengeable = null;
   } else {
     G.dur = Math.max(G.dur, 2.8);
-    if (c === 'local') setHint((G.frameD != null ? frameHint() + ' &middot; ' : '') + `<kbd>C</kbd> challenge the call &middot; ${G.challenges[side]} left`);
+    if (c === 'local' || (c === 'squad' && G.challengeable.sids.includes(G.me))) setHint((G.frameD != null ? frameHint() + ' &middot; ' : '') + `<kbd>C</kbd> challenge the call &middot; ${G.challenges[side]} left`);
   }
   hudScore();
 }
@@ -1315,19 +1338,21 @@ function launch(ev, la, spray, origin, q, byUser) {
   // on base when it's put in play; otherwise the CPU plays it and the skip goes on
   const skipped = G.mode === 'lock' && G.simAB;
   G.simAB = false;
-  const fc = fieldCtrl(), rc = runCtrl();
-  G.play = new Play({
-    bb, fielders: G.fielders, runners, outs: G.outs,
-    field: fieldOpts(fc),
-    run: rc === 'cpu' ? null : { lock: G.lock },
-  });
+  G.play = new Play({ bb, fielders: G.fielders, runners, outs: G.outs, ...playCtl() });
   // Player Lock: you field the balls that are yours (hit your way); the CPU plays the rest
   if (G.mode === 'lock') {
     const pl = G.play, running = pl.R.some((r) => r.pl.id === G.lock && !(skipped && r.isBatter));
     G.lockInv = !!pl.hf && lockFieldInvolved(pl);
-    if (pl.hf && !G.lockInv && (G.lockSkip || skipped)) { pl.hf = null; pl.userDef = false; pl.uf = null; pl.planFielders(0); }
+    if (pl.hf && !G.lockInv && (G.lockSkip || skipped)) { pl.cpuDefense(); pl.planFielders(0); }
     if (skipped && !G.lockInv && !running) { G.simAB = true; pl.hrun = null; }
     else if ((skipped || G.skipping) && (G.lockInv || running)) { G.beat = 0.6; hudCall('YOUR PLAY', 'play'); }
+    pl.lockManual();
+  } else if (G.squad && G.play.hf) {
+    // a squad: same idea, for anyone in the field (skipping ahead, a play none of you is in is the CPU's)
+    const pl = G.play;
+    G.lockInv = pl.ctl.some((c) => lockFieldInvolved(pl, c.f));
+    if (!G.lockInv && G.squadSkip === 1) { pl.cpuDefense(); pl.planFielders(0); }
+    else if (G.lockInv && G.skipping) G.beat = 0.6;   // a skip just landed you in it: a beat to find the ball
     pl.lockManual();
   }
   if (bb.hr) { excite(1, 6); SND.roar(0.55, 2.5, 4); }
