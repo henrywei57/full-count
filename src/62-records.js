@@ -238,6 +238,67 @@ function h2hResult() {
   if (sub) sub.textContent = `${sub.textContent} You're ${rec.w}-${rec.l} against ${opp.name}.`.trim();
 }
 
+// ---------------------------------------------------------------- rating ----
+// Elo for online 1v1. Everyone starts at 1000; beat a higher-rated player and you gain more
+// than for beating a lower one (K = 40 for your first 10 games, then 24). Quitting a game in
+// progress is a loss, and the player left gets the win. Kept for your account (or for this
+// device when you aren't signed in) and on your public profile, for friends and the leaderboard.
+const ELO_KEY = 'fullcount.elo', ELO_START = 1000;
+const eloNum = (v) => (v != null && v !== '' && Number.isFinite(+v) ? clamp(Math.round(+v), 100, 4000) : null);
+function eloAll() { try { return JSON.parse(localStorage.getItem(ELO_KEY) || '{}') || {}; } catch (e) { return {}; } }
+function eloWho() { return typeof Cloud !== 'undefined' && Cloud.profile ? Cloud.profile.uid : 'local'; }
+function eloMine() {
+  const e = eloAll()[eloWho()];
+  return e && eloNum(e.r) ? e : { r: ELO_START, n: 0, w: 0, l: 0, peak: ELO_START, hist: [] };
+}
+function eloSave(e) {
+  const all = eloAll(); all[eloWho()] = e;
+  try { localStorage.setItem(ELO_KEY, JSON.stringify(all)); } catch (x) { /* blocked */ }
+  if (typeof Cloud !== 'undefined') Cloud.saveElo(e);
+}
+const eloExpect = (r, o) => 1 / (1 + 10 ** ((o - r) / 400));
+// book this game (once): won, against G.eloOpp, the opponent's rating when it started
+function eloApply(won, why = '') {
+  if (G.eloOpp == null || G.eloDone === G.gameId) return null;
+  G.eloDone = G.gameId;
+  const e = eloMine(), before = e.r, k = e.n < 10 ? 40 : 24;
+  e.r = Math.max(100, Math.round(before + k * ((won ? 1 : 0) - eloExpect(before, G.eloOpp))));
+  e.n++; if (won) e.w++; else e.l++;
+  e.peak = Math.max(e.peak || ELO_START, e.r);
+  e.hist = [...(e.hist || []), { at: Date.now(), r: e.r, d: e.r - before, won, opp: NET.opp ? NET.opp.name : '', oppR: G.eloOpp, why }].slice(-30);
+  eloSave(e);
+  G.eloRes = { before, after: e.r, d: e.r - before };
+  const el = $('finalElo'); if (el) el.innerHTML = eloLine(G.eloRes);
+  return G.eloRes;
+}
+function eloResult() { const me = mySide(); if (me >= 0) eloApply(G.score[me] > G.score[1 - me]); }
+const eloSigned = (d) => `<span class="${d >= 0 ? 'good' : 'bad'}">${d >= 0 ? '+' : ''}${d}</span>`;
+const eloLine = (r) => `RATING <b>${r.before}</b> &rarr; <b>${r.after}</b> ${eloSigned(r.d)}`;
+// the Rating tab: your rating, your last games, and the top players (signed in)
+const LB = { list: null, at: 0, err: '' };
+function renderRating() {
+  const e = eloMine(), signed = typeof Cloud !== 'undefined' && Cloud.user;
+  const card = (v, l) => `<div><b>${v}</b><small>${l}</small></div>`;
+  const hist = (e.hist || []).slice().reverse().map((h) => `<tr><td class="who">${new Date(h.at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</td><td class="who">${esc(h.opp || 'Opponent')}${h.oppR ? ` <small>(${h.oppR})</small>` : ''}</td>`
+    + `<td>${h.won ? '<b class="good">W</b>' : '<b class="bad">L</b>'}${h.why === 'quit' ? ' <small>quit</small>' : h.why === 'forfeit' ? ' <small>they left</small>' : ''}</td><td>${eloSigned(h.d)}</td><td><b>${h.r}</b></td></tr>`).join('');
+  let lb = '';
+  if (!signed) lb = '<p class="fr-note">Sign in with Google to keep your rating with your account and see the leaderboard.</p>';
+  else {
+    if (!LB.list && !LB.busy && Date.now() - LB.at > 30000) {
+      LB.busy = true;
+      Cloud.topElo().then((l) => { LB.list = l; LB.err = ''; }).catch((x) => { LB.err = 'The leaderboard needs the latest Firestore rules (firestore.rules) published.'; console.warn('[cloud] leaderboard', x); })
+        .finally(() => { LB.busy = false; LB.at = Date.now(); renderStats(); });
+    }
+    const me = Cloud.user.uid;
+    lb = LB.list ? (LB.list.length ? `<div class="rs-scroll"><table class="rs-table st-table"><thead><tr><th>#</th><th>PLAYER</th><th>RATING</th><th>W-L</th></tr></thead><tbody>${LB.list.map((p, i) => `<tr class="${p.uid === me ? 'sel' : ''}"><td>${i + 1}</td><td class="who">${esc(p.name || 'Player')}</td><td><b>${eloNum(p.elo) ?? ''}</b></td><td>${p.eloW | 0}-${p.eloL | 0}</td></tr>`).join('')}</tbody></table></div>` : '<p class="fr-note">Nobody is rated yet. Play an online game to get on the board.</p>')
+      : `<p class="fr-note">${LB.err ? esc(LB.err) : 'Loading the leaderboard…'}</p>`;
+  }
+  return `<div class="st-cards four">${card(e.r, 'RATING')}${card(e.peak || e.r, 'BEST')}${card(`${e.w | 0}-${e.l | 0}`, 'ONLINE W-L')}${card(e.n | 0, e.n < 10 ? 'GAMES (PROVISIONAL)' : 'GAMES')}</div>
+    <p class="fr-note">Your Elo rating from online 1v1 games${signed ? ', kept with your account' : ' on this device'}. Everyone starts at ${ELO_START}. Beat a higher-rated player and you gain more; lose to a lower-rated one and you drop more. Your first 10 games move it faster. Quitting a game in progress counts as a loss.</p>
+    ${hist ? `<h3>YOUR LAST GAMES</h3><div class="rs-scroll"><table class="rs-table st-table"><thead><tr><th>DATE</th><th>OPPONENT</th><th>RESULT</th><th>+/-</th><th>RATING</th></tr></thead><tbody>${hist}</tbody></table></div>` : ''}
+    <h3>LEADERBOARD</h3>${lb}`;
+}
+
 // ------------------------------------------------------------- your stats ----
 // Your numbers are your team's, game by game (in Player Lock, just your player's): your record,
 // your hitting and your pitching, against everyone or against one friend in particular.
@@ -358,6 +419,7 @@ function renderStats() {
   const games = gamesList();
   for (const b of $('stTabs').querySelectorAll('button')) b.classList.toggle('on', b.dataset.t === ST.tab);
   $('stSub').textContent = games.length ? `${games.length} game${games.length === 1 ? '' : 's'}${typeof Cloud !== 'undefined' && Cloud.user ? ' · saved to your account' : ' · on this device'}` : '';
+  if (ST.tab === 'elo') { $('stBody').innerHTML = renderRating(); return; }
   if (!games.length) { $('stBody').innerHTML = '<p class="fr-note">Finish a game (Play Ball, Player Lock, Online or Season) and your record, your hitting and pitching, and every box score start adding up here.</p>'; return; }
   if (ST.tab === 'you') { $('stBody').innerHTML = renderYou(); return; }
   if (ST.tab === 'h2h') { $('stBody').innerHTML = renderH2H(); return; }

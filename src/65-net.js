@@ -21,7 +21,7 @@ const NET = {
   mcache: new Map(), lastAbLen: 0, remoteInAt: 0, off: 0, rtt: 0, pings: [], pingT: 0, guestSpec: null, guestSp: 0,
   pid: 0, bb: null, ball: null, pclock: { pid: -1, t: 0 }, pred: { m: null, key: null, on: false, v: 0, lastIn: -9, hold: 0 },
   invited: null, pendingInvite: null,
-  specs: [], specSnapT: 0, tok: null, waiting: 0, waitHint: 0, pausedForDrop: false, rejoin: null, bye: false, opp: null,
+  specs: [], specSnapT: 0, tok: null, waiting: 0, waitHint: 0, pausedForDrop: false, rejoin: null, bye: false, opp: null, oppElo: null,
 };
 const SPEC_MSGS = new Set(['start', 'gs', 'ev', 'screen', 'pitch', 'bb', 'pause', 'bye']);
 const PEER_PREFIX = 'fullcount26-';
@@ -106,7 +106,7 @@ function netBind(conn) {
   conn.on('open', () => {
     if (NET.conn !== conn) return;
     netAttach(conn);
-    conn.send({ t: 'hello', ver: BUILD_ID, me: meId(), tok: NET.tok || undefined, spec: NET.role === 'spec' ? 1 : undefined });
+    conn.send({ t: 'hello', ver: BUILD_ID, me: meId(), elo: eloMine().r, tok: NET.tok || undefined, spec: NET.role === 'spec' ? 1 : undefined });
     if (NET.rejoin) { NET.rejoin = null; setHint(''); hudBanner('RECONNECTED', 'Back to the game', ''); }
     else netStatus(NET.role === 'spec' ? 'Connected. You\'ll see the game as soon as it starts.' : 'Connected! Pick your team. The host starts the game.', 'good');
     renderMenu(); cloudRender();
@@ -146,8 +146,9 @@ function hostIncoming(conn) {
     netAttach(conn);
     NET.opp = cleanOpp(m.me);
     if (rejoin) { netRejoined(); return; }
+    NET.oppElo = eloNum(m.elo) ?? ELO_START;
     const rec = NET.opp ? h2hGet(NET.opp.uid) : null;
-    netStatus(`${NET.opp ? NET.opp.name : 'Your friend'} is here!${rec ? ` You're ${rec.w}-${rec.l} against each other.` : ''} Pick your team and press Start.`, 'good');
+    netStatus(`${NET.opp ? NET.opp.name : 'Your friend'} (rated ${NET.oppElo}) is here!${rec ? ` You're ${rec.w}-${rec.l} against each other.` : ''} Pick your team and press Start.`, 'good');
     netSendLobby(); renderMenu(); cloudRender();
   });
   conn.on('close', () => { if (role === 'guest' && NET.conn === conn) netLost(); });
@@ -169,6 +170,7 @@ function netRejoinTick() {
   if (G.mode !== 'online') { NET.rejoin = null; return; }
   if (now > R.until) {
     NET.rejoin = null;
+    G.eloDone = G.gameId;   // the host is gone and we can't tell whose fault it was: no rating change
     hudBanner('DISCONNECTED', 'Could not get back to the game', ''); setHint('');
     setTimeout(() => { if (G.mode === 'online' && !NET.open) toMenu(); }, 3000);
     return;
@@ -186,7 +188,8 @@ function netWaitTick() {
   const left = Math.ceil(90 - (Date.now() - NET.waiting) / 1000);
   if (left <= 0) {
     NET.waiting = 0; G.paused = false; NET.pausedForDrop = false;
-    hudBanner('DISCONNECTED', 'Your opponent did not come back', ''); setHint('');
+    const r = eloApply(true, 'forfeit');
+    hudBanner('DISCONNECTED', 'Your opponent did not come back' + (r ? ` · rating ${r.after} (+${r.d})` : ''), ''); setHint('');
     setTimeout(() => { if (G.mode === 'online' && !NET.open) toMenu(); }, 3000);
   } else if (left !== NET.waitHint) { NET.waitHint = left; setHint(`Your opponent lost their connection. Waiting for them to come back&hellip; ${left}s`); }
 }
@@ -225,18 +228,25 @@ function netLost() {
   }
   if (G.mode === 'online') {
     G.paused = false; $('pause').classList.add('hidden');
-    hudBanner('DISCONNECTED', 'Your opponent left the game', '');
+    const r = NET.role !== 'spec' && G.phase !== 'final' ? eloApply(true, 'forfeit') : null;   // they quit: the win is yours
+    hudBanner('DISCONNECTED', 'Your opponent left the game' + (r ? ` · rating ${r.after} (+${r.d})` : ''), '');
     setTimeout(() => { if (G.mode === 'online') toMenu(); }, 3500);
   }
   netStatus('The connection closed. Host or join again to play.', 'bad');
   renderMenu(); cloudRender();
 }
+// closing the tab in the middle of an online game is quitting it
+window.addEventListener('pagehide', () => {
+  if (G.mode !== 'online' || NET.role === 'spec' || G.phase === 'final' || !NET.open) return;
+  eloApply(false, 'quit');
+  try { NET.conn.send({ t: 'bye' }); } catch (e) { /* closing */ }
+});
 function netClose() {
   const { conn, peer, fast, specs, open } = NET;
   // say goodbye first, so the other side knows it wasn't a dropped connection
   if (open && conn) try { conn.send({ t: 'bye' }); } catch (e) { /* closing */ }
   for (const c of specs) try { c.send({ t: 'bye' }); } catch (e) { /* closing */ }
-  Object.assign(NET, { role: null, peer: null, conn: null, fast: null, fastOK: false, open: false, peerOpen: false, code: null, lobby: null, lobbySent: '', blockShown: '', snap: null, guestSpec: null, guestSp: 0, bb: null, ball: null, invited: null, pendingInvite: null, specs: [], tok: null, waiting: 0, rejoin: null, bye: false, opp: null, pausedForDrop: false });
+  Object.assign(NET, { role: null, peer: null, conn: null, fast: null, fastOK: false, open: false, peerOpen: false, code: null, lobby: null, lobbySent: '', blockShown: '', snap: null, guestSpec: null, guestSp: 0, bb: null, ball: null, invited: null, pendingInvite: null, specs: [], tok: null, waiting: 0, rejoin: null, bye: false, opp: null, oppElo: null, pausedForDrop: false });
   setTimeout(() => {
     try { if (fast) fast.close(); } catch (e) { /* ignore */ }
     try { if (conn) conn.close(); } catch (e) { /* ignore */ }
@@ -269,7 +279,7 @@ function netSendFast(m) {
 // Custom rosters travel as data, so your friend doesn't need them saved.
 function netSendLobby() {
   if (NET.role !== 'host' || !NET.open) return;
-  const m = { t: 'lobby', ver: BUILD_ID, me: meId(), side: menu.side, innings: menu.innings, diff: menu.diff, pdiff: menu.pdiff, ump: menu.ump, park: menu.park || '', hostSpec: teamSpec(menuTeam(menu.side ? 'home' : 'away')), hostSp: menuSP(menu.side ? 'home' : 'away') };
+  const m = { t: 'lobby', ver: BUILD_ID, me: meId(), elo: eloMine().r, side: menu.side, innings: menu.innings, diff: menu.diff, pdiff: menu.pdiff, ump: menu.ump, park: menu.park || '', hostSpec: teamSpec(menuTeam(menu.side ? 'home' : 'away')), hostSp: menuSP(menu.side ? 'home' : 'away') };
   const s = JSON.stringify(m);
   if (s !== NET.lobbySent) { NET.lobbySent = s; netSend(m); }
 }
@@ -345,10 +355,11 @@ function guestOnMsg(m) {
     case 'lobby': {
       if (m.ver !== BUILD_ID) { netStatus(VERSION_MSG, 'bad'); netClose(); renderMenu(); break; }
       const first = !NET.lobby; NET.lobby = { ...m, hostSpec: specOK(m.hostSpec) }; NET.opp = cleanOpp(m.me);
+      if (NET.role === 'guest') NET.oppElo = eloNum(m.elo) ?? ELO_START;
       if (first) {
         netSendPick();
         const rec = NET.opp ? h2hGet(NET.opp.uid) : null;
-        if (NET.opp) netStatus(`Connected to ${NET.opp.name}'s game.${rec ? ` You're ${rec.w}-${rec.l} against each other.` : ''} Pick your team. The host starts the game.`, 'good');
+        if (NET.opp) netStatus(`Connected to ${NET.opp.name}'s game (rated ${NET.oppElo}).${rec ? ` You're ${rec.w}-${rec.l} against each other.` : ''} Pick your team. The host starts the game.`, 'good');
       }
       renderMenu(); break;
     }
@@ -588,12 +599,13 @@ function netApplySnap(s) {
   }
 }
 function guestPhase(ph) {
+  if (G.phase === 'postPlay' && ph !== 'postPlay') archivePlay();   // the play that just ended, onto the Replays list
   G.phase = ph; G.pt = 0;
   if (ph !== 'pitch') G.localPitch = false;
   switch (ph) {
     case 'prePitch':
       G.swing = null; G.P = null; pitchGuide.visible = false; trailReset(); hideFeedback();
-      prePitchUI(); G.rec = []; G.recOn = true; G.bb = null;
+      prePitchUI(); G.rec = []; G.recOn = true; G.bb = null; G.lastCallText = ''; G.scoreAtPitch = G.score[0] + G.score[1];
       break;
     case 'windup': reticle.visible = false; break;
     case 'live':
@@ -660,8 +672,9 @@ function guestScreen(m) {
   const d = m.d || {};
   if (m.id === 'breakCard') { $('breakTitle').textContent = String(d.title || ''); $('breakSub').textContent = String(d.sub || ''); $('breakLS').innerHTML = linescoreHTML(); }
   if (m.id === 'final') {
+    if (G.phase === 'postPlay') archivePlay();
     setPhase('final');
-    if (NET.role === 'guest') { recordGame(); h2hResult(); }
+    if (NET.role === 'guest') { recordGame(); h2hResult(); eloResult(); }
     $('finalTitle').textContent = String(d.title || 'FINAL'); $('finalSub').textContent = String(d.sub || '');
     $('finalLS').innerHTML = linescoreHTML(); $('potg').innerHTML = d.potg ? potgHTML(d.potg) : '';
   }

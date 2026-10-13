@@ -163,6 +163,25 @@ button{font:inherit;color:inherit}
 #hud.replaying .plate,#hud.replaying #tracker,#hud.replaying #caption,#hud.replaying #hint,#hud.replaying #feedback,#hud.replaying #pitchInfo,#hud.replaying #bug,#hud.replaying #derbyHud,#hud.replaying #topbar,#hud.replaying #runHelp,#hud.replaying #runTags,#hud.replaying #pickHelp,#hud.replaying #pracHud{display:none}
 .letterbox::before,.letterbox::after{content:"";position:fixed;left:0;right:0;height:9vh;background:#000;z-index:4}
 .letterbox::before{top:0}.letterbox::after{bottom:0}
+#replayBar{position:fixed;left:50%;bottom:calc(9vh + 12px);transform:translateX(-50%);z-index:30;display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:center;width:min(1180px,calc(100vw - 32px));padding:8px 12px;background:rgba(8,14,26,.88);border:1px solid var(--line);border-radius:6px}
+#replayBar.hidden{display:none}
+#replayBar .rp-btn{width:36px;height:32px;border-radius:4px;border:1px solid var(--line);background:transparent;cursor:pointer;font-size:15px;line-height:1;padding:0}
+#replayBar .rp-btn:hover{background:var(--panel-hi)}
+#replayBar .rp-btn:disabled{opacity:.35;cursor:default}
+#rpSeek{flex:1 1 140px;min-width:100px;accent-color:var(--gold)}
+#rpTime,#rpCount{font-family:var(--f-display);font-weight:700;font-size:13px;color:var(--dust);min-width:64px;text-align:center;font-variant-numeric:tabular-nums}
+#rpCount:empty{display:none}
+#rpSpeed button{padding:5px 8px;font-size:13px}
+#rpCam{font-size:13px;padding:5px 8px}
+.rp-card{max-width:720px}
+.rp-list{display:flex;flex-direction:column;gap:6px;overflow:auto;max-height:min(60vh,560px);margin-top:10px}
+.rp-row{display:grid;grid-template-columns:64px 1fr 28px;align-items:center;gap:10px;text-align:left;padding:8px 10px;border:1px solid var(--line);border-radius:4px;background:rgba(255,255,255,.03);cursor:pointer;color:inherit;font:inherit}
+.rp-row:hover{background:var(--panel-hi)}
+.rp-inn{font-family:var(--f-display);font-weight:700;letter-spacing:.12em;font-size:12px;color:var(--dust)}
+.rp-title{font-family:var(--f-display);font-weight:800;font-size:16px;letter-spacing:.04em;min-width:0}
+.rp-title small{display:block;font-family:var(--f-body);font-weight:500;font-size:12px;letter-spacing:0;color:var(--dust);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rp-star{color:var(--gold);font-style:normal;margin-right:6px}
+.rp-go{color:var(--gold);font-size:14px}
 
 /* ---------- screens ---------- */
 .screen{position:fixed;inset:0;z-index:10;display:flex;align-items:center;justify-content:center;padding-inline:16px;padding-block:24px;overflow-y:auto}
@@ -225,6 +244,14 @@ button:focus-visible,select:focus-visible{outline:2px solid var(--gold);outline-
 .linescore .rhe{font-weight:800;background:rgba(255,255,255,.05)}
 .ls-wrap{overflow-x:auto}
 .final-sub{color:var(--dust);font-size:15px;line-height:1.5}
+.final-elo{font-family:var(--f-display);font-weight:700;letter-spacing:.14em;font-size:14px;color:var(--dust)}
+.final-elo:empty,.net-elo:empty{display:none}
+.final-elo b{color:var(--chalk);font-size:18px;letter-spacing:.04em}
+.final-elo .good,.st-table .good{color:var(--ball)}.final-elo .bad,.st-table .bad{color:var(--strike)}
+.net-elo{font-family:var(--f-display);font-weight:700;letter-spacing:.14em;font-size:12px;color:var(--dust);margin:-4px 0 4px}
+.net-elo b{color:var(--gold);font-size:15px;letter-spacing:.04em}
+.elo-chip{font-family:var(--f-display);font-weight:800;font-size:13px;color:#1a1205;background:var(--gold);border-radius:3px;padding:1px 6px}
+.fr-elo{font-family:var(--f-display);font-weight:800;font-size:13px;color:var(--gold);margin-right:6px}
 .potg{display:flex;gap:14px;align-items:center;padding:12px;background:var(--panel-hi);border-radius:4px}
 .potg b{font-family:var(--f-display);font-size:22px;text-transform:uppercase}
 .potg span{color:var(--dust);font-size:14px}
@@ -322,6 +349,7 @@ button:focus-visible,select:focus-visible{outline:2px solid var(--gold);outline-
 .st-table th[data-sort]{cursor:pointer}
 .st-cards{display:grid;grid-template-columns:repeat(8,1fr);gap:8px;margin:6px 0 12px}
 @media (max-width:860px){.st-cards{grid-template-columns:repeat(4,1fr)}}
+.st-cards.four{grid-template-columns:repeat(4,1fr)}
 .st-cards div{display:flex;flex-direction:column;align-items:center;padding:8px 4px;border:1px solid var(--line);border-radius:4px;background:rgba(255,255,255,.03)}
 .st-cards b{font-family:var(--f-display);font-size:24px;font-weight:800}
 .st-cards small{font-size:10px;letter-spacing:.12em;color:var(--dust)}
@@ -381,6 +409,9 @@ body.cb{--ball:#56B4E9;--strike:#E69F00}
 .sea-next small{font-family:var(--f-display);letter-spacing:.12em;color:var(--gold);font-size:12px}
 .sea-next b{font-size:17px}
 .sea-next span{color:var(--dust);font-size:12px}
+.sea-sp{display:flex;align-items:center;gap:8px;margin-top:6px;flex-wrap:wrap}
+.sea-sp small{font-family:var(--f-display);letter-spacing:.12em;color:var(--dust);font-size:11px}
+.sea-sp select{font-size:12px;padding:4px 8px;max-width:100%}
 .sea-panel .row-actions{margin-bottom:6px;flex-wrap:wrap}
 .tbadge{display:inline-block;min-width:44px;padding:4px 7px;border-radius:3px;border:1px solid;font-family:var(--f-display);font-weight:800;font-size:16px;letter-spacing:.04em;text-align:center}
 .tbadge.sm{min-width:30px;padding:0 4px;font-size:10px;vertical-align:1px}
@@ -707,6 +738,7 @@ span.chip{cursor:default}
       <div class="sea-panel hidden" id="seasonPanel"></div>
       <div id="netPanel" class="hidden">
         <h3>ONLINE 1V1</h3>
+        <div class="net-elo" id="netElo"></div>
         <div class="net-row" id="netHostRow"><button class="cta" id="btnHost">HOST A GAME</button></div>
         <div class="net-or" id="netOr">or join your friend's game with their room code</div>
         <div class="net-row" id="netJoinRow"><input id="joinCode" maxlength="5" placeholder="CODE" autocomplete="off" spellcheck="false" aria-label="Room code"><button class="ghost" id="btnJoin">Join</button><button class="ghost" id="btnWatch" title="Watch the game as a spectator">Watch</button></div>
@@ -784,6 +816,7 @@ span.chip{cursor:default}
       <button class="ghost" id="btnBatCam">Batting cam: Strike Zone</button>
       <button class="ghost" id="btnTeam">Team: lineup, bench &amp; bullpen</button>
       <button class="ghost" id="btnBox">Box score</button>
+      <button class="ghost" id="btnReplays">Replays &amp; highlights</button>
       <button class="ghost" id="btnQuit">Quit to menu</button>
     </div>
   </div>
@@ -833,7 +866,7 @@ span.chip{cursor:default}
         <dt>Batting cam</dt><dd>Strike Zone, Strike Zone 2 or Strike Zone High: pick it in the menu or the pause screen</dd>
         <dt>Tab / Back</dt><dd>Player Lock: skip this at-bat (the CPU plays your part, until the ball comes to you or you're on base when it's put in play)</dd>
         <dt>Catcher</dt><dd>Player Lock as the catcher: 1&ndash;5 pick the pitch, the mouse picks the spot, click puts the sign down. Then move the mitt to the ball to frame it; C challenges a ball that should've been a strike.</dd>
-        <dt>R</dt><dd>Instant replay after a play</dd>
+        <dt>R</dt><dd>Instant replay after a play. In a replay: Space pauses, &larr; &rarr; skip (a frame when paused), &uarr; &darr; speed, V camera, Esc closes. Every play this game is under Replays in the pause menu.</dd>
         <dt>Enter</dt><dd>Skip ahead</dd>
         <dt>F</dt><dd>Fast-forward (CPU vs CPU)</dd>
         <dt>Gamepad</dt><dd>Stick aims, A swing, X power, B contact</dd>
@@ -857,7 +890,26 @@ span.chip{cursor:default}
     <div class="ls-wrap"><table class="linescore" id="finalLS"></table></div>
     <div class="potg" id="potg"></div>
     <div class="final-sub" id="finalSub"></div>
-    <div class="row-actions"><button class="cta" id="btnAgain">PLAY AGAIN</button><button class="ghost" id="btnFinalBox">Box score</button><button class="ghost" id="btnMenu">Main menu</button></div>
+    <div class="final-elo" id="finalElo"></div>
+    <div class="row-actions"><button class="cta" id="btnAgain">PLAY AGAIN</button><button class="ghost" id="btnFinalBox">Box score</button><button class="ghost" id="btnFinalReplays">Highlights</button><button class="ghost" id="btnMenu">Main menu</button></div>
+  </div>
+</div>
+
+<div id="replayBar" class="hidden">
+  <button id="rpPlay" class="rp-btn" title="Pause (Space)">&#10074;&#10074;</button>
+  <button id="rpRestart" class="rp-btn" title="From the start (Home)">&#10226;</button>
+  <input type="range" id="rpSeek" min="0" max="1000" value="0" aria-label="Replay position">
+  <span id="rpTime"></span>
+  <div class="seg" id="rpSpeed" aria-label="Speed"></div>
+  <select id="rpCam" aria-label="Camera"></select>
+  <button id="rpPrev" class="rp-btn hidden" title="Previous play ([)">&lsaquo;</button><span id="rpCount"></span><button id="rpNext" class="rp-btn hidden" title="Next play (])">&rsaquo;</button>
+  <button id="rpClose" class="ghost" title="Close (Esc)">Close</button>
+</div>
+
+<div id="replaysScreen" class="screen modal hidden">
+  <div class="card tm-card rp-card">
+    <div class="fr-head"><h2>REPLAYS</h2><span class="tm-sub">Every play this game &middot; &#9733; highlights</span><button class="ghost" id="rpListClose">Back</button></div>
+    <div id="rpListBody"></div>
   </div>
 </div>
 
@@ -879,7 +931,7 @@ span.chip{cursor:default}
 <div id="statsScreen" class="screen modal hidden">
   <div class="card tm-card">
     <div class="fr-head"><h2>STATS</h2><span id="stSub" class="tm-sub"></span><button class="ghost" id="stClose">Back</button></div>
-    <div class="seg st-tabs" id="stTabs"><button data-t="you" class="on">You</button><button data-t="h2h">Head to head</button><button data-t="games">All games</button><button data-t="bat">Hitters</button><button data-t="pit">Pitchers</button></div>
+    <div class="seg st-tabs" id="stTabs"><button data-t="you" class="on">You</button><button data-t="h2h">Head to head</button><button data-t="elo">Rating</button><button data-t="games">All games</button><button data-t="bat">Hitters</button><button data-t="pit">Pitchers</button></div>
     <div id="stBody"></div>
   </div>
 </div>
@@ -894,7 +946,7 @@ span.chip{cursor:default}
 <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"}}</script>
 <script type="module">
-const BUILD_ID = '2233432151';
+const BUILD_ID = '1001702337';
 import * as THREE from 'three';
 
 // ============================================================================
@@ -7876,7 +7928,8 @@ class Runner {
 }
 
 class Play {
-  // o.field: null for a CPU defense, else { lock: playerId|null, manual: bool } for a human defense
+  // o.field: null for a CPU defense, else { lock: playerId|null, manual: bool, near: bool } for a human
+  //          defense (near: you only ever steer a fielder, never the pitcher or catcher; see pickUF)
   // o.run:   null for CPU baserunning, else { lock: playerId|null } (AI still assists unless told otherwise;
   //          in Player Lock your runner goes only where you send him: see lockRunners)
   // o.kind:  'hit' (a batted ball, o.bb), 'steal' (the catcher has the pitch), 'pick' (pickoff to o.pickBase)
@@ -7887,7 +7940,7 @@ class Play {
     this.outs = o.outs; this.startOuts = o.outs;
     this.hf = o.field || null; this.hrun = o.run || null;
     this.userDef = !!(this.hf && this.hf.manual);
-    this.t = 0; this.done = false; this.endAt = null;
+    this.t = 0; this.done = false; this.endAt = null; this.at = G.now;
     this.ball = { mode: 'flight', pos: new V3(), holder: null, thr: null, si: 0 };
     this.runs = []; this.outEvents = []; this.error = false; this.caught = false; this.firstFielder = null; this.firstAir = false;
     this.fairKnown = false; this.foul = false; this.hr = !!(o.bb && o.bb.hr); this.awarded = false; this.thirdOutForce = false;
@@ -7956,7 +8009,12 @@ class Play {
     const holder = this.kind === 'steal' ? C : P;
     this.ball.mode = 'held'; this.ball.holder = holder;
     holder.m.root.updateMatrixWorld(true); handWorld(holder.m, holder.m.lefty ? 'R' : 'L', this.ball.pos);
-    if (this.hf) this.uf = this.hf.lock ? this.F.find((f) => f.pl.id === this.hf.lock) || null : holder;
+    if (this.hf) {
+      const lead = this.R.filter((r) => r.state === 'run').sort((a, b) => heading(b) - heading(a))[0];
+      const tgt = this.kind === 'pick' ? o.pickBase : lead ? heading(lead) : 2;
+      const cov = this.cover[tgt];
+      this.uf = this.hf.lock ? this.F.find((f) => f.pl.id === this.hf.lock) || null : this.hf.near ? (cov && !this.isBattery(cov) ? cov : this.pickUF(holder)) : holder;
+    }
     if (this.kind === 'steal') {
       // pop time: the transfer is quicker for a strong arm
       holder.readyAt = 0.1; holder.decideAt = clamp(0.68 - ((holder.pl.arm ?? 60) - 50) * 0.004 + rand(-0.06, 0.06), 0.4, 0.85);
@@ -8029,7 +8087,17 @@ class Play {
     }
     this.chaser = best ? best.f : null;
     this.assignTasks();
-    if (this.hf && !this.hf.lock && !this.ufManual && this.chaser) this.uf = this.chaser;
+    if (this.hf && !this.hf.lock && !this.ufManual && this.chaser) this.uf = this.pickUF(this.chaser);
+  }
+  // online 1v1: never the pitcher or catcher. When one of them is playing the ball you get the
+  // fielder nearest to where it's going (the throw is still yours: press a base)
+  isBattery(f) { return f && (f.role === 'P' || f.role === 'C'); }
+  pickUF(f) {
+    if (!this.hf || !this.hf.near || !this.isBattery(f)) return f;
+    const p = this.chaser && this.chaser.plan && this.ball.mode === 'flight' ? this.chaser.plan : this.ball.pos;
+    let best = null, bd = Infinity;
+    for (const g of this.F) { if (this.isBattery(g)) continue; const d = Math.hypot(g.pos.x - p.x, g.pos.z - p.z); if (d < bd) { bd = d; best = g; } }
+    return best || f;
   }
   assignTasks() {
     const ch = this.chaser, by = (r) => this.F.find((f) => f.role === r);
@@ -8091,7 +8159,7 @@ class Play {
     if (!this.hf || this.hf.lock || this.done) return;
     const bp = this.ball.mode === 'flight' && this.chaser && this.chaser.plan ? new V3(this.chaser.plan.x, 0, this.chaser.plan.z) : this.ball.pos;
     let best = null, bd = 1e9;
-    for (const f of this.F) { if (f === this.uf) continue; const d = Math.hypot(f.pos.x - bp.x, f.pos.z - bp.z); if (d < bd) { bd = d; best = f; } }
+    for (const f of this.F) { if (f === this.uf || (this.hf.near && this.isBattery(f))) continue; const d = Math.hypot(f.pos.x - bp.x, f.pos.z - bp.z); if (d < bd) { bd = d; best = f; } }
     if (best) { this.uf = best; this.ufManual = false; }
   }
   userDive() {
@@ -8228,7 +8296,7 @@ class Play {
         if (this.hf.lock && this.chaser === f && f.plan && b.mode === 'flight' && t > f.plan.t + 0.5) { this.ufMissed = true; this.replan(); }
         // the ball got past you: hand control to the fielder now playing it
         if (b.mode === 'flight' && !this.hf.lock && this.chaser && this.chaser !== f && this.chaser.plan && Math.hypot(this.chaser.pos.x - b.pos.x, this.chaser.pos.z - b.pos.z) < Math.hypot(f.pos.x - b.pos.x, f.pos.z - b.pos.z) - 15) {
-          this.uf = this.chaser; this.ufManual = false; this.replan();
+          this.uf = this.pickUF(this.chaser); this.ufManual = false; this.replan();
         }
         continue;
       }
@@ -8366,7 +8434,7 @@ class Play {
     b.mode = 'held'; b.holder = f; f.holding = false; f.touched = 0; f.readyAt = this.t + bobble + 0.12;
     if (!this.firstFielder) { this.firstFielder = f; this.firstAir = air; }
     if (!dove) { f.anim(air ? 'catchHigh' : 'fieldLow'); f.animHold = this.t + 0.3; }
-    if (this.hf && !this.hf.lock) { if (this.uf !== f) this.ufManual = false; this.uf = f; }
+    if (this.hf && !this.hf.lock && !(this.hf.near && this.isBattery(f))) { if (this.uf !== f) this.ufManual = false; this.uf = f; }
     if (!this.fairKnown && !air) {
       const r = Math.hypot(b.pos.x, b.pos.z);
       if (r < 95) { this.fairKnown = true; this.foul = !isFairAngle(sprayOf(f.pos.x, f.pos.z)); if (this.foul) { this.deadBall('foul'); return; } }
@@ -8414,7 +8482,7 @@ class Play {
       return;
     }
     const human = this.humanHolder(f) && f === this.uf;
-    if (human && this.queuedThrow != null && t >= Math.max(f.quickAt, f.readyAt - 0.12)) {
+    if ((human || (this.hf && this.hf.near && this.isBattery(f))) && this.queuedThrow != null && t >= Math.max(f.quickAt, f.readyAt - 0.12)) {
       const base = this.queuedThrow; this.queuedThrow = null; this.prompt = false; f.holding = false; this.humanThrow(f, base); tutNote('throw'); return;
     }
     if (t < f.animHold) return;
@@ -8587,7 +8655,7 @@ class Play {
     const recv = th.recv || this.receiverFor(base, th.by);
     this.ball.mode = 'held'; this.ball.holder = recv; recv.holding = false; recv.task = 'hold'; recv.recvAt = null; recv.aimBase = null;
     recv.anim('catchHigh'); recv.animHold = this.t + 0.22; recv.promptStart = null; recv.readyAt = this.t + (th.err ? 1.1 : 0.1); recv.quickAt = this.t + (th.err ? 1.1 : 0.15);
-    if (this.hf && !this.hf.lock) { this.uf = recv; this.ufManual = false; }
+    if (this.hf && !this.hf.lock && !(this.hf.near && this.isBattery(recv))) { this.uf = recv; this.ufManual = false; }
     SND.pop(0.55);
     if (th.err) { this.error = true; this.events.push('throwError'); recv.decideAt = this.t + 1.1; return; }
     if (th.relay) {
@@ -8879,6 +8947,9 @@ function fieldCtrl() {
   if (c === 'cpu' || (G.lock && (G.lockFieldSim || !(G.fielders || []).some((f) => f.pl.id === G.lock)))) return 'cpu';
   return c;
 }
+// a human defense: Player Lock narrows it to your one player; online 1v1 always gives you the
+// fielder nearest the ball, never the pitcher or catcher (they still field it and throw on your keys)
+function fieldOpts(fc) { return fc === 'cpu' ? null : { lock: G.lock, manual: settings.manual, near: G.mode === 'online' }; }
 function runCtrl() { if (!G.teams || G.mode === 'derby' || G.drill === 'pitch' || G.drill === 'field') return 'cpu'; return sideCtrl(G.half); }
 const userBats = () => batCtrl() === 'local';
 const userPitches = () => pitchCtrl() === 'local';
@@ -9032,6 +9103,8 @@ function startGame(cfg) {
     G.lock = pick[0] === 'p' ? G.pitcher[cfg.side].id : team.lineup[+pick.slice(1)].id;
   }
   G.gameId = 'g' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  G.clips = []; G.lastClip = null; G.clipN = 0;   // this game's replays (70-ui.js)
+  G.eloOpp = cfg.mode === 'online' && !cfg.spec ? NET.oppElo ?? ELO_START : null; G.eloRes = null; $('finalElo').innerHTML = '';
   G.dec = null; G.decIds = null; G.enterLead = {};
   const resumed = !!cfg.resume && restoreSave(cfg.resume);
   for (const m of MODELS) m.root.visible = false;
@@ -9138,6 +9211,7 @@ function newBatter() {
 function enterPrePitch() {
   setPhase('prePitch');
   G.P = null; G.swing = null; G.cpu = null; G.play = null; G.bb = null; G.call = null; G.remoteTake = false; G.challengeable = null; G.cpuPick = null;
+  G.lastClip = null; G.lastCallText = ''; G.scoreAtPitch = G.score[0] + G.score[1];
   if ((G.drill === 'run' || G.tutRunners) && !G.abPitches.length && !G.bases[1] && !G.bases[2] && !G.bases[3]) practiceRunners();
   placeForPitch();
   ballMesh.visible = false; ballShadow.visible = false; trailReset(); pitchGuide.visible = false;
@@ -9611,7 +9685,7 @@ function stealAfterPitch() {
   if (G.outs >= 3) { cancelSteals(); return false; }
   const fc = fieldCtrl(), rc = runCtrl();
   G.recOn = true;   // for a replay review of the tag
-  const pl = (G.play = new Play({ kind: 'steal', fielders: G.fielders, runners: G.baseRunners, outs: G.outs, field: fc === 'cpu' ? null : { lock: G.lock, manual: settings.manual }, run: rc === 'cpu' ? null : { lock: G.lock } }));
+  const pl = (G.play = new Play({ kind: 'steal', fielders: G.fielders, runners: G.baseRunners, outs: G.outs, field: fieldOpts(fc), run: rc === 'cpu' ? null : { lock: G.lock } }));
   lockPlayFor(pl);
   netPlayOut();
   setPhase('live');
@@ -9674,7 +9748,7 @@ function startPickoff(base) {
   G.abPicks++; G.cpuPick = null; G.recOn = true;
   pci.visible = false; reticle.visible = false; zoneGroup.visible = false; $('meter').classList.add('hidden');
   const fc = fieldCtrl(), rc = runCtrl();
-  const pl = (G.play = new Play({ kind: 'pick', pickBase: base, fielders: G.fielders, runners: G.baseRunners, outs: G.outs, field: fc === 'cpu' ? null : { lock: G.lock, manual: settings.manual }, run: rc === 'cpu' ? null : { lock: G.lock } }));
+  const pl = (G.play = new Play({ kind: 'pick', pickBase: base, fielders: G.fielders, runners: G.baseRunners, outs: G.outs, field: fieldOpts(fc), run: rc === 'cpu' ? null : { lock: G.lock } }));
   lockPlayFor(pl);
   netPlayOut();
   ballMesh.visible = true;
@@ -9755,7 +9829,7 @@ function wildPitch() {
   if (d3) { const br = new Runner(G.batter, G.batterModel, 0); br.from0 = G.batterModel.root.position.clone(); runners.unshift(br); }
   const side = Math.abs(c.x) > 0.4 ? Math.sign(c.x) : Math.random() < 0.5 ? -1 : 1;
   const fc = fieldCtrl(), rc = runCtrl();
-  const pl = (G.play = new Play({ kind: 'wild', bb: looseBall(G.glove, side), fielders: G.fielders, runners, outs: G.outs, field: fc === 'cpu' ? null : { lock: G.lock, manual: settings.manual }, run: rc === 'cpu' ? null : { lock: G.lock } }));
+  const pl = (G.play = new Play({ kind: 'wild', bb: looseBall(G.glove, side), fielders: G.fielders, runners, outs: G.outs, field: fieldOpts(fc), run: rc === 'cpu' ? null : { lock: G.lock } }));
   pl.wildKind = kind; pl.d3 = d3;
   lockPlayFor(pl);
   netPlayOut();
@@ -9893,6 +9967,7 @@ function finishLive(pl, reviewed) {
   G.recOn = false;
   if (!reviewed && setupReview(pl)) return;
   if (pl.kind === 'steal') finishStealPlay(); else if (pl.kind === 'pick') finishPickPlay(); else if (pl.kind === 'wild') finishWildPlay(); else finishPlay();
+  if (G.phase === 'postPlay') archivePlay();   // onto the Replays list
 }
 
 // --------------------------------------------------------------- practice ----
@@ -10146,7 +10221,7 @@ function launch(ev, la, spray, origin, q, byUser) {
   const fc = fieldCtrl(), rc = runCtrl();
   G.play = new Play({
     bb, fielders: G.fielders, runners, outs: G.outs,
-    field: fc === 'cpu' ? null : { lock: G.lock, manual: settings.manual },
+    field: fieldOpts(fc),
     run: rc === 'cpu' ? null : { lock: G.lock },
   });
   // Player Lock: you field the balls that are yours (hit your way); the CPU plays the rest
@@ -10297,7 +10372,7 @@ function endGame(walkoff) {
   setPhase('final');
   const rec = recordGame();
   if (G.mode === 'season' && rec) seasonGameDone(rec);
-  if (G.mode === 'online') h2hResult();
+  if (G.mode === 'online') { h2hResult(); eloResult(); }
   if (canSave()) clearSave();
   setTimeout(() => { if (G.phase === 'final') showScreen('final'); }, walkoff ? 3200 : 1500);
 }
@@ -10824,6 +10899,67 @@ function h2hResult() {
   if (sub) sub.textContent = `${sub.textContent} You're ${rec.w}-${rec.l} against ${opp.name}.`.trim();
 }
 
+// ---------------------------------------------------------------- rating ----
+// Elo for online 1v1. Everyone starts at 1000; beat a higher-rated player and you gain more
+// than for beating a lower one (K = 40 for your first 10 games, then 24). Quitting a game in
+// progress is a loss, and the player left gets the win. Kept for your account (or for this
+// device when you aren't signed in) and on your public profile, for friends and the leaderboard.
+const ELO_KEY = 'fullcount.elo', ELO_START = 1000;
+const eloNum = (v) => (v != null && v !== '' && Number.isFinite(+v) ? clamp(Math.round(+v), 100, 4000) : null);
+function eloAll() { try { return JSON.parse(localStorage.getItem(ELO_KEY) || '{}') || {}; } catch (e) { return {}; } }
+function eloWho() { return typeof Cloud !== 'undefined' && Cloud.profile ? Cloud.profile.uid : 'local'; }
+function eloMine() {
+  const e = eloAll()[eloWho()];
+  return e && eloNum(e.r) ? e : { r: ELO_START, n: 0, w: 0, l: 0, peak: ELO_START, hist: [] };
+}
+function eloSave(e) {
+  const all = eloAll(); all[eloWho()] = e;
+  try { localStorage.setItem(ELO_KEY, JSON.stringify(all)); } catch (x) { /* blocked */ }
+  if (typeof Cloud !== 'undefined') Cloud.saveElo(e);
+}
+const eloExpect = (r, o) => 1 / (1 + 10 ** ((o - r) / 400));
+// book this game (once): won, against G.eloOpp, the opponent's rating when it started
+function eloApply(won, why = '') {
+  if (G.eloOpp == null || G.eloDone === G.gameId) return null;
+  G.eloDone = G.gameId;
+  const e = eloMine(), before = e.r, k = e.n < 10 ? 40 : 24;
+  e.r = Math.max(100, Math.round(before + k * ((won ? 1 : 0) - eloExpect(before, G.eloOpp))));
+  e.n++; if (won) e.w++; else e.l++;
+  e.peak = Math.max(e.peak || ELO_START, e.r);
+  e.hist = [...(e.hist || []), { at: Date.now(), r: e.r, d: e.r - before, won, opp: NET.opp ? NET.opp.name : '', oppR: G.eloOpp, why }].slice(-30);
+  eloSave(e);
+  G.eloRes = { before, after: e.r, d: e.r - before };
+  const el = $('finalElo'); if (el) el.innerHTML = eloLine(G.eloRes);
+  return G.eloRes;
+}
+function eloResult() { const me = mySide(); if (me >= 0) eloApply(G.score[me] > G.score[1 - me]); }
+const eloSigned = (d) => `<span class="${d >= 0 ? 'good' : 'bad'}">${d >= 0 ? '+' : ''}${d}</span>`;
+const eloLine = (r) => `RATING <b>${r.before}</b> &rarr; <b>${r.after}</b> ${eloSigned(r.d)}`;
+// the Rating tab: your rating, your last games, and the top players (signed in)
+const LB = { list: null, at: 0, err: '' };
+function renderRating() {
+  const e = eloMine(), signed = typeof Cloud !== 'undefined' && Cloud.user;
+  const card = (v, l) => `<div><b>${v}</b><small>${l}</small></div>`;
+  const hist = (e.hist || []).slice().reverse().map((h) => `<tr><td class="who">${new Date(h.at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</td><td class="who">${esc(h.opp || 'Opponent')}${h.oppR ? ` <small>(${h.oppR})</small>` : ''}</td>`
+    + `<td>${h.won ? '<b class="good">W</b>' : '<b class="bad">L</b>'}${h.why === 'quit' ? ' <small>quit</small>' : h.why === 'forfeit' ? ' <small>they left</small>' : ''}</td><td>${eloSigned(h.d)}</td><td><b>${h.r}</b></td></tr>`).join('');
+  let lb = '';
+  if (!signed) lb = '<p class="fr-note">Sign in with Google to keep your rating with your account and see the leaderboard.</p>';
+  else {
+    if (!LB.list && !LB.busy && Date.now() - LB.at > 30000) {
+      LB.busy = true;
+      Cloud.topElo().then((l) => { LB.list = l; LB.err = ''; }).catch((x) => { LB.err = 'The leaderboard needs the latest Firestore rules (firestore.rules) published.'; console.warn('[cloud] leaderboard', x); })
+        .finally(() => { LB.busy = false; LB.at = Date.now(); renderStats(); });
+    }
+    const me = Cloud.user.uid;
+    lb = LB.list ? (LB.list.length ? `<div class="rs-scroll"><table class="rs-table st-table"><thead><tr><th>#</th><th>PLAYER</th><th>RATING</th><th>W-L</th></tr></thead><tbody>${LB.list.map((p, i) => `<tr class="${p.uid === me ? 'sel' : ''}"><td>${i + 1}</td><td class="who">${esc(p.name || 'Player')}</td><td><b>${eloNum(p.elo) ?? ''}</b></td><td>${p.eloW | 0}-${p.eloL | 0}</td></tr>`).join('')}</tbody></table></div>` : '<p class="fr-note">Nobody is rated yet. Play an online game to get on the board.</p>')
+      : `<p class="fr-note">${LB.err ? esc(LB.err) : 'Loading the leaderboard…'}</p>`;
+  }
+  return `<div class="st-cards four">${card(e.r, 'RATING')}${card(e.peak || e.r, 'BEST')}${card(`${e.w | 0}-${e.l | 0}`, 'ONLINE W-L')}${card(e.n | 0, e.n < 10 ? 'GAMES (PROVISIONAL)' : 'GAMES')}</div>
+    <p class="fr-note">Your Elo rating from online 1v1 games${signed ? ', kept with your account' : ' on this device'}. Everyone starts at ${ELO_START}. Beat a higher-rated player and you gain more; lose to a lower-rated one and you drop more. Your first 10 games move it faster. Quitting a game in progress counts as a loss.</p>
+    ${hist ? `<h3>YOUR LAST GAMES</h3><div class="rs-scroll"><table class="rs-table st-table"><thead><tr><th>DATE</th><th>OPPONENT</th><th>RESULT</th><th>+/-</th><th>RATING</th></tr></thead><tbody>${hist}</tbody></table></div>` : ''}
+    <h3>LEADERBOARD</h3>${lb}`;
+}
+
 // ------------------------------------------------------------- your stats ----
 // Your numbers are your team's, game by game (in Player Lock, just your player's): your record,
 // your hitting and your pitching, against everyone or against one friend in particular.
@@ -10944,6 +11080,7 @@ function renderStats() {
   const games = gamesList();
   for (const b of $('stTabs').querySelectorAll('button')) b.classList.toggle('on', b.dataset.t === ST.tab);
   $('stSub').textContent = games.length ? `${games.length} game${games.length === 1 ? '' : 's'}${typeof Cloud !== 'undefined' && Cloud.user ? ' · saved to your account' : ' · on this device'}` : '';
+  if (ST.tab === 'elo') { $('stBody').innerHTML = renderRating(); return; }
   if (!games.length) { $('stBody').innerHTML = '<p class="fr-note">Finish a game (Play Ball, Player Lock, Online or Season) and your record, your hitting and pitching, and every box score start adding up here.</p>'; return; }
   if (ST.tab === 'you') { $('stBody').innerHTML = renderYou(); return; }
   if (ST.tab === 'h2h') { $('stBody').innerHTML = renderH2H(); return; }
@@ -11220,6 +11357,13 @@ function startSeason(o) {
   seasonSave();
 }
 function seasonStarter(ti) { const r = TEAMS[ti].rotation; return r[SEASON.rot[ti] % r.length]; }
+// you can start anyone in your rotation; the rotation goes on from him
+function seasonPickStarter(i) {
+  const S = seasonLoad(), r = S && TEAMS[S.team].rotation;
+  if (!r || !Number.isInteger(i) || !r[i]) return;
+  S.rot[S.team] += (i - (S.rot[S.team] % r.length) + r.length) % r.length;
+  seasonSave(); renderSeasonPanel();
+}
 const isMine = (g) => g[0] === SEASON.team || g[1] === SEASON.team;
 // regular-season numbers, for the standings and the leaders
 function seasonAddLines(rec, tix) {
@@ -11453,7 +11597,9 @@ function renderSeasonPanel() {
   if (nx) {
     const [a, h] = nx.g, home = h === S.team, opp = TEAMS[home ? a : h];
     const label = nx.kind === 'po' ? `${ROUND_NAME[S.po.series[nx.s].r]}, game ${nx.n + 1}` : `Game ${S.day + 1} of ${S.len}`;
-    next = `<div class="sea-next"><small>${label}</small><b>${home ? 'vs' : 'at'} ${esc(opp.city)} ${esc(opp.name)}</b><span>${esc((PARKS[TEAMS[h].key] || PARKS.FC).name)} &middot; ${esc(seasonStarter(a).name)} vs ${esc(seasonStarter(h).name)}</span></div>`;
+    const rot = t.rotation, cur = S.rot[S.team] % rot.length, oppSP = seasonStarter(home ? a : h);
+    const pick = `<label class="sea-sp"><small>YOUR STARTER</small><select data-sea-sp aria-label="Your starting pitcher">${rot.map((p, i) => `<option value="${i}" ${i === cur ? 'selected' : ''}>${i + 1}. ${esc(p.name)} (${p.throws}HP) &middot; ${pitcherOvr(p)}</option>`).join('')}</select></label>`;
+    next = `<div class="sea-next"><small>${label}</small><b>${home ? 'vs' : 'at'} ${esc(opp.city)} ${esc(opp.name)}</b><span>${esc((PARKS[TEAMS[h].key] || PARKS.FC).name)} &middot; they start ${esc(oppSP.name)}</span>${pick}</div>`;
   } else if (S.po && S.po.champ != null) next = `<div class="sea-next"><small>THE SEASON IS OVER</small><b>${esc(TEAMS[S.po.champ].city)} ${esc(TEAMS[S.po.champ].name)} win the World Series</b></div>`;
   else if (S.po) next = `<div class="sea-next"><small>POSTSEASON</small><b>${esc(ROUND_NAME[S.po.round])}</b><span>Your team isn't playing: sim ahead to see who wins it all.</span></div>`;
   const done = S.po && S.po.champ != null;
@@ -11540,6 +11686,7 @@ function seasonAct(a) {
 }
 function buildSeasonUI() {
   $('seasonPanel').addEventListener('click', (e) => { const b = e.target.closest('[data-sea]'); if (b && !b.disabled) seasonAct(b.dataset.sea); });
+  $('seasonPanel').addEventListener('change', (e) => { const sp = e.target.closest('[data-sea-sp]'); if (sp) seasonPickStarter(+sp.value); });
   $('seaClose').addEventListener('click', closeSeasonHub);
   $('seaTabs').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) { SEA.tab = b.dataset.t; renderSeasonHub(); } });
   $('seaBody').addEventListener('click', (e) => { const b = e.target.closest('[data-g]'); if (!b) return; const g = gamesList().find((x) => x.id === b.dataset.g); if (g) openBox(g); });
@@ -11567,7 +11714,7 @@ const NET = {
   mcache: new Map(), lastAbLen: 0, remoteInAt: 0, off: 0, rtt: 0, pings: [], pingT: 0, guestSpec: null, guestSp: 0,
   pid: 0, bb: null, ball: null, pclock: { pid: -1, t: 0 }, pred: { m: null, key: null, on: false, v: 0, lastIn: -9, hold: 0 },
   invited: null, pendingInvite: null,
-  specs: [], specSnapT: 0, tok: null, waiting: 0, waitHint: 0, pausedForDrop: false, rejoin: null, bye: false, opp: null,
+  specs: [], specSnapT: 0, tok: null, waiting: 0, waitHint: 0, pausedForDrop: false, rejoin: null, bye: false, opp: null, oppElo: null,
 };
 const SPEC_MSGS = new Set(['start', 'gs', 'ev', 'screen', 'pitch', 'bb', 'pause', 'bye']);
 const PEER_PREFIX = 'fullcount26-';
@@ -11652,7 +11799,7 @@ function netBind(conn) {
   conn.on('open', () => {
     if (NET.conn !== conn) return;
     netAttach(conn);
-    conn.send({ t: 'hello', ver: BUILD_ID, me: meId(), tok: NET.tok || undefined, spec: NET.role === 'spec' ? 1 : undefined });
+    conn.send({ t: 'hello', ver: BUILD_ID, me: meId(), elo: eloMine().r, tok: NET.tok || undefined, spec: NET.role === 'spec' ? 1 : undefined });
     if (NET.rejoin) { NET.rejoin = null; setHint(''); hudBanner('RECONNECTED', 'Back to the game', ''); }
     else netStatus(NET.role === 'spec' ? 'Connected. You\'ll see the game as soon as it starts.' : 'Connected! Pick your team. The host starts the game.', 'good');
     renderMenu(); cloudRender();
@@ -11692,8 +11839,9 @@ function hostIncoming(conn) {
     netAttach(conn);
     NET.opp = cleanOpp(m.me);
     if (rejoin) { netRejoined(); return; }
+    NET.oppElo = eloNum(m.elo) ?? ELO_START;
     const rec = NET.opp ? h2hGet(NET.opp.uid) : null;
-    netStatus(`${NET.opp ? NET.opp.name : 'Your friend'} is here!${rec ? ` You're ${rec.w}-${rec.l} against each other.` : ''} Pick your team and press Start.`, 'good');
+    netStatus(`${NET.opp ? NET.opp.name : 'Your friend'} (rated ${NET.oppElo}) is here!${rec ? ` You're ${rec.w}-${rec.l} against each other.` : ''} Pick your team and press Start.`, 'good');
     netSendLobby(); renderMenu(); cloudRender();
   });
   conn.on('close', () => { if (role === 'guest' && NET.conn === conn) netLost(); });
@@ -11715,6 +11863,7 @@ function netRejoinTick() {
   if (G.mode !== 'online') { NET.rejoin = null; return; }
   if (now > R.until) {
     NET.rejoin = null;
+    G.eloDone = G.gameId;   // the host is gone and we can't tell whose fault it was: no rating change
     hudBanner('DISCONNECTED', 'Could not get back to the game', ''); setHint('');
     setTimeout(() => { if (G.mode === 'online' && !NET.open) toMenu(); }, 3000);
     return;
@@ -11732,7 +11881,8 @@ function netWaitTick() {
   const left = Math.ceil(90 - (Date.now() - NET.waiting) / 1000);
   if (left <= 0) {
     NET.waiting = 0; G.paused = false; NET.pausedForDrop = false;
-    hudBanner('DISCONNECTED', 'Your opponent did not come back', ''); setHint('');
+    const r = eloApply(true, 'forfeit');
+    hudBanner('DISCONNECTED', 'Your opponent did not come back' + (r ? ` · rating ${r.after} (+${r.d})` : ''), ''); setHint('');
     setTimeout(() => { if (G.mode === 'online' && !NET.open) toMenu(); }, 3000);
   } else if (left !== NET.waitHint) { NET.waitHint = left; setHint(`Your opponent lost their connection. Waiting for them to come back&hellip; ${left}s`); }
 }
@@ -11771,18 +11921,25 @@ function netLost() {
   }
   if (G.mode === 'online') {
     G.paused = false; $('pause').classList.add('hidden');
-    hudBanner('DISCONNECTED', 'Your opponent left the game', '');
+    const r = NET.role !== 'spec' && G.phase !== 'final' ? eloApply(true, 'forfeit') : null;   // they quit: the win is yours
+    hudBanner('DISCONNECTED', 'Your opponent left the game' + (r ? ` · rating ${r.after} (+${r.d})` : ''), '');
     setTimeout(() => { if (G.mode === 'online') toMenu(); }, 3500);
   }
   netStatus('The connection closed. Host or join again to play.', 'bad');
   renderMenu(); cloudRender();
 }
+// closing the tab in the middle of an online game is quitting it
+window.addEventListener('pagehide', () => {
+  if (G.mode !== 'online' || NET.role === 'spec' || G.phase === 'final' || !NET.open) return;
+  eloApply(false, 'quit');
+  try { NET.conn.send({ t: 'bye' }); } catch (e) { /* closing */ }
+});
 function netClose() {
   const { conn, peer, fast, specs, open } = NET;
   // say goodbye first, so the other side knows it wasn't a dropped connection
   if (open && conn) try { conn.send({ t: 'bye' }); } catch (e) { /* closing */ }
   for (const c of specs) try { c.send({ t: 'bye' }); } catch (e) { /* closing */ }
-  Object.assign(NET, { role: null, peer: null, conn: null, fast: null, fastOK: false, open: false, peerOpen: false, code: null, lobby: null, lobbySent: '', blockShown: '', snap: null, guestSpec: null, guestSp: 0, bb: null, ball: null, invited: null, pendingInvite: null, specs: [], tok: null, waiting: 0, rejoin: null, bye: false, opp: null, pausedForDrop: false });
+  Object.assign(NET, { role: null, peer: null, conn: null, fast: null, fastOK: false, open: false, peerOpen: false, code: null, lobby: null, lobbySent: '', blockShown: '', snap: null, guestSpec: null, guestSp: 0, bb: null, ball: null, invited: null, pendingInvite: null, specs: [], tok: null, waiting: 0, rejoin: null, bye: false, opp: null, oppElo: null, pausedForDrop: false });
   setTimeout(() => {
     try { if (fast) fast.close(); } catch (e) { /* ignore */ }
     try { if (conn) conn.close(); } catch (e) { /* ignore */ }
@@ -11815,7 +11972,7 @@ function netSendFast(m) {
 // Custom rosters travel as data, so your friend doesn't need them saved.
 function netSendLobby() {
   if (NET.role !== 'host' || !NET.open) return;
-  const m = { t: 'lobby', ver: BUILD_ID, me: meId(), side: menu.side, innings: menu.innings, diff: menu.diff, pdiff: menu.pdiff, ump: menu.ump, park: menu.park || '', hostSpec: teamSpec(menuTeam(menu.side ? 'home' : 'away')), hostSp: menuSP(menu.side ? 'home' : 'away') };
+  const m = { t: 'lobby', ver: BUILD_ID, me: meId(), elo: eloMine().r, side: menu.side, innings: menu.innings, diff: menu.diff, pdiff: menu.pdiff, ump: menu.ump, park: menu.park || '', hostSpec: teamSpec(menuTeam(menu.side ? 'home' : 'away')), hostSp: menuSP(menu.side ? 'home' : 'away') };
   const s = JSON.stringify(m);
   if (s !== NET.lobbySent) { NET.lobbySent = s; netSend(m); }
 }
@@ -11891,10 +12048,11 @@ function guestOnMsg(m) {
     case 'lobby': {
       if (m.ver !== BUILD_ID) { netStatus(VERSION_MSG, 'bad'); netClose(); renderMenu(); break; }
       const first = !NET.lobby; NET.lobby = { ...m, hostSpec: specOK(m.hostSpec) }; NET.opp = cleanOpp(m.me);
+      if (NET.role === 'guest') NET.oppElo = eloNum(m.elo) ?? ELO_START;
       if (first) {
         netSendPick();
         const rec = NET.opp ? h2hGet(NET.opp.uid) : null;
-        if (NET.opp) netStatus(`Connected to ${NET.opp.name}'s game.${rec ? ` You're ${rec.w}-${rec.l} against each other.` : ''} Pick your team. The host starts the game.`, 'good');
+        if (NET.opp) netStatus(`Connected to ${NET.opp.name}'s game (rated ${NET.oppElo}).${rec ? ` You're ${rec.w}-${rec.l} against each other.` : ''} Pick your team. The host starts the game.`, 'good');
       }
       renderMenu(); break;
     }
@@ -12134,12 +12292,13 @@ function netApplySnap(s) {
   }
 }
 function guestPhase(ph) {
+  if (G.phase === 'postPlay' && ph !== 'postPlay') archivePlay();   // the play that just ended, onto the Replays list
   G.phase = ph; G.pt = 0;
   if (ph !== 'pitch') G.localPitch = false;
   switch (ph) {
     case 'prePitch':
       G.swing = null; G.P = null; pitchGuide.visible = false; trailReset(); hideFeedback();
-      prePitchUI(); G.rec = []; G.recOn = true; G.bb = null;
+      prePitchUI(); G.rec = []; G.recOn = true; G.bb = null; G.lastCallText = ''; G.scoreAtPitch = G.score[0] + G.score[1];
       break;
     case 'windup': reticle.visible = false; break;
     case 'live':
@@ -12206,8 +12365,9 @@ function guestScreen(m) {
   const d = m.d || {};
   if (m.id === 'breakCard') { $('breakTitle').textContent = String(d.title || ''); $('breakSub').textContent = String(d.sub || ''); $('breakLS').innerHTML = linescoreHTML(); }
   if (m.id === 'final') {
+    if (G.phase === 'postPlay') archivePlay();
     setPhase('final');
-    if (NET.role === 'guest') { recordGame(); h2hResult(); }
+    if (NET.role === 'guest') { recordGame(); h2hResult(); eloResult(); }
     $('finalTitle').textContent = String(d.title || 'FINAL'); $('finalSub').textContent = String(d.sub || '');
     $('finalLS').innerHTML = linescoreHTML(); $('potg').innerHTML = d.potg ? potgHTML(d.potg) : '';
   }
@@ -12779,7 +12939,7 @@ function mergeRosters(list) {
 // and rosters stay on this device. Setup steps are in the README.
 //
 // Firestore layout (rules in firestore.rules):
-//   users/{uid}                 public profile: name, photo, friend code, lastSeen
+//   users/{uid}                 public profile: name, photo, friend code, lastSeen, online rating (elo...)
 //   users/{uid}/rosters/{id}    your rosters (only you can read them)
 //   users/{uid}/friends/{uid}   your friends list
 //   users/{uid}/inbox/{fromUid} friend requests and game invites sent to you
@@ -12837,6 +12997,7 @@ const Cloud = {
     await F.setDoc(me, { name, photo, code, lastSeen: F.serverTimestamp() }, { merge: true });
     if (this.user !== u) return;
     this.profile = { uid: u.uid, name, photo, code };
+    this.syncElo(u.uid, snap.exists() ? snap.data() : null);
     this.beat = setInterval(() => F.setDoc(me, { lastSeen: F.serverTimestamp() }, { merge: true }).catch(() => {}), 60000);
     // rosters: keep the newest copy of each between this device and the account
     const rs = await F.getDocs(F.collection(db, 'users', u.uid, 'rosters'));
@@ -12873,6 +13034,25 @@ const Cloud = {
       try { await F.setDoc(F.doc(db, 'codes', code), { uid }); return code; } catch (e) { /* taken: the rules won't let anyone overwrite a code */ }
     }
     throw new Error('Could not make a friend code. Try again.');
+  },
+  // the rating: whichever copy (here or the account) has more games wins
+  syncElo(uid, d) {
+    const all = eloAll(), loc = all[uid], cn = d && Number.isFinite(d.eloN) ? d.eloN : 0;
+    if (cn > ((loc && loc.n) | 0) && eloNum(d.elo)) {
+      all[uid] = { r: eloNum(d.elo), n: cn, w: d.eloW | 0, l: d.eloL | 0, peak: eloNum(d.eloPeak) || eloNum(d.elo), hist: (loc && loc.hist) || [] };
+      try { localStorage.setItem(ELO_KEY, JSON.stringify(all)); } catch (e) { /* blocked */ }
+    } else if (loc && loc.n) this.saveElo(loc);
+  },
+  saveElo(e) {
+    if (!this.user) return;
+    const { F, db } = this;
+    F.setDoc(F.doc(db, 'users', this.user.uid), { elo: e.r, eloN: e.n | 0, eloW: e.w | 0, eloL: e.l | 0, eloPeak: e.peak || e.r }, { merge: true })
+      .catch((x) => console.warn('[cloud] rating (publish the latest firestore.rules to keep it in your account)', x));
+  },
+  async topElo() {
+    const { F, db } = this;
+    const qs = await F.getDocs(F.query(F.collection(db, 'users'), F.orderBy('elo', 'desc'), F.limit(25)));
+    return qs.docs.map((d) => ({ uid: d.id, ...d.data() }));
   },
   saveRoster(d) {
     if (!this.user) return;
@@ -12982,7 +13162,7 @@ const signInBtn = (label = 'Sign in with Google') => `<button class="gbtn" data-
 function renderAccount() {
   const el = $('acct'); if (!el) return;
   const C = Cloud;
-  if (C.state === 'ready' && C.user) el.innerHTML = `${avatar(C.user.photoURL)}<span class="who">${esc(C.user.displayName || 'Signed in')}</span><button class="ghost fr-mini" data-act="signout">Sign out</button>`;
+  if (C.state === 'ready' && C.user) el.innerHTML = `${avatar(C.user.photoURL)}<span class="who">${esc(C.user.displayName || 'Signed in')}</span>${C.profile ? `<span class="elo-chip" title="Your online rating">${eloMine().r}</span>` : ''}<button class="ghost fr-mini" data-act="signout">Sign out</button>`;
   else if (C.state === 'ready') el.innerHTML = signInBtn();
   else el.innerHTML = '';
   const n = C.inbox.filter((m) => m.type !== 'invite' || inviteFresh(m)).length;
@@ -13013,6 +13193,7 @@ function renderFriends() {
   const friends = sorted.map((f) => {
     const p = C.fprof.get(f.uid) || f, live = friendOnline(f.uid), hh = h2hGet(f.uid);
     return `<div class="fr-row"><i class="fr-on ${live ? 'live' : ''}"></i>${avatar(p.photo)}<span class="nm">${esc(p.name || 'Player')}<small>${live ? 'Online now' : ago(tsMs(p.lastSeen))}</small></span>`
+      + (eloNum(p.elo) ? `<span class="fr-elo" title="Online rating">${eloNum(p.elo)}</span>` : '')
       + (hh ? `<span class="fr-h2h" title="Your record against ${esc(p.name || 'them')} online"><b>${hh.w}-${hh.l}</b><small>vs you</small></span>` : '')
       + `<button class="cta fr-mini" data-act="invite" data-uid="${esc(f.uid)}">INVITE TO 1V1</button><button class="ghost fr-mini" data-act="remove" data-uid="${esc(f.uid)}" title="Remove friend">&times;</button></div>`;
   }).join('');
@@ -13668,8 +13849,9 @@ function hudLock() {
   else if (s && s.pa) line = statLine(s);
   $('lockLine').textContent = line;
 }
-function hudCall(text, cls) { const el = $('call'); el.className = ''; el.textContent = text; void el.offsetWidth; el.className = 'show ' + cls; }
+function hudCall(text, cls) { G.lastCallText = text; const el = $('call'); el.className = ''; el.textContent = text; void el.offsetWidth; el.className = 'show ' + cls; }
 function hudBanner(main, sub, cls) {
+  G.lastCallText = main;
   const el = $('banner'); el.className = '';
   el.querySelector('.b-main').textContent = main; el.querySelector('.b-sub').textContent = sub || '';
   void el.offsetWidth; el.className = 'show ' + (cls || '');
@@ -14143,71 +14325,279 @@ function onPlayEvent(e) {
 }
 
 // ---------------------------------------------------------------- replay ----
+// Every frame of a play is taped (recFrame). When the play is over it's packed into a clip
+// (packClip: 30 frames a second in typed arrays, played back smoothly in between) and kept for
+// the rest of the game: the Replays list (pause menu, final screen) plays any of them, and R
+// replays the one that just happened. Playback has its own controls: pause, slow motion,
+// scrubbing, frame steps and eight cameras; closing it puts the game back exactly as it was.
 function recFrame() {
   const fr = { t: G.now, b: [ballMesh.position.x, ballMesh.position.y, ballMesh.position.z, ballMesh.visible ? 1 : 0], m: [] };
   for (const m of MODELS) {
     if (!m.root.visible) continue;
     const prm = m.prm && m.prm.glove ? { glove: m.prm.glove.clone() } : m.prm;
-    fr.m.push([m.idx, m.root.position.x, m.root.position.y, m.root.position.z, m.root.rotation.y, m.anim, G.now - m.t0, prm, m.phase]);
+    fr.m.push([m.idx, m.root.position.x, m.root.position.y, m.root.position.z, m.root.rotation.y, m.anim, G.now - m.t0, prm, m.phase, m.j.helmet && m.j.helmet.visible ? 1 : 0]);
   }
   G.rec.push(fr);
   if (G.rec.length > 3000) G.rec.shift();
 }
-function applyFrame(fr) {
+// a packed clip: per frame its time, the ball (x, y, z, shown) and every visible model as
+// REC_W floats: model, x, y, z, facing, anim, anim time, run phase, anim params, helmet
+const REC_W = 10;
+function clonePrm(p) { const o = {}; for (const k in p) o[k] = p[k] && p[k].isVector3 ? p[k].clone() : p[k]; return o; }
+function packClip(rec, t0, t1 = Infinity) {
+  const keep = [];
+  let last = -Infinity;
+  rec.forEach((f, i) => { if (f.t >= t0 && f.t <= t1 && (f.t - last >= 1 / 30 - 1e-4 || i === rec.length - 1)) { keep.push(f); last = f.t; } });
+  if (keep.length < 2) return null;
+  const n = keep.length, tot = keep.reduce((s, f) => s + f.m.length, 0);
+  const C = { n, t: new Float64Array(n), ball: new Float32Array(n * 4), off: new Uint32Array(n + 1), d: new Float32Array(tot * REC_W), anims: [], prms: [] };
+  const ai = new Map(), pi = new Map();
+  let o = 0;
+  keep.forEach((f, k) => {
+    C.t[k] = f.t; C.ball.set(f.b, k * 4); C.off[k] = o;
+    for (const e of f.m) {
+      let a = ai.get(e[5]); if (a == null) { a = C.anims.length; C.anims.push(e[5]); ai.set(e[5], a); }
+      let q = -1;
+      if (e[7]) { q = pi.get(e[7]); if (q == null) { q = C.prms.length; C.prms.push(clonePrm(e[7])); pi.set(e[7], q); } }
+      C.d.set([e[0], e[1], e[2], e[3], e[4], a, e[6], e[8] || 0, q, e[9] ? 1 : 0], o * REC_W);
+      o++;
+    }
+  });
+  C.off[n] = o; C.t0 = C.t[0]; C.t1 = C.t[n - 1];
+  return C;
+}
+// the play that just ended goes on the Replays list (the list keeps 40; the best ones stay)
+const HL_SCORE = { 'GRAND SLAM': 12, 'HOME RUN': 10, 'INSIDE THE PARK': 10, TRIPLE: 8, ROBBED: 8, 'WHAT A CATCH': 7, 'STEAL OF HOME': 7, 'DOUBLE PLAY': 6, 'DOUBLE STEAL': 5, 'PICKED OFF': 5, DOUBLE: 5, 'GROUND RULE DOUBLE': 5, 'CAUGHT STEALING': 4, 'STOLEN BASE': 3, SINGLE: 3, 'WILD PITCH': 2, 'PASSED BALL': 2, ERROR: 2, 'THROWING ERROR': 2, 'SAC FLY': 2, "FIELDER'S CHOICE": 2, OUT: 1 };
+function archivePlay() {
+  if (!G.rec.length || G.mode === 'derby' || G.mode === 'tutorial' || G.drill) return;
+  const pl = isGuest() ? null : G.play, title = G.lastCallText || '';
+  if (!(title in HL_SCORE)) return;   // nothing came of it (a pickoff throw, a pitch blocked in the dirt)
+  const hit = pl ? pl.kind === 'hit' : !!G.bb, ct = hit && G.contactT ? G.contactT : pl ? pl.at : G.rec[0].t;
+  const C = packClip(G.rec, ct - 1.2); if (!C) return;
+  const runs = Math.max(0, G.score[0] + G.score[1] - (G.scoreAtPitch ?? 0)), score = (HL_SCORE[title] ?? 1) + runs * 1.5;
+  const clip = { C, ct, style: G.bb && (G.bb.hr || G.bb.la > 22) ? 'low' : 'side', title, desc: $('caption').textContent || '', inning: G.inning, half: G.half, bat: G.teams[G.half].id, score, star: score >= 5, n: (G.clipN = (G.clipN || 0) + 1) };
+  G.clips.push(clip); G.lastClip = clip;
+  if (G.clips.length > 40) { const i = G.clips.findIndex((c) => !c.star); G.clips.splice(i >= 0 ? i : 0, 1); }
+}
+function clipIndex(C, t, hint) {
+  let k = clamp(hint | 0, 0, C.n - 1);
+  if (C.t[k] > t) k = 0;
+  while (k < C.n - 1 && C.t[k + 1] <= t) k++;
+  return k;
+}
+// put the field the way it was at time t, in between the two nearest frames
+function showClipAt(R, t) {
+  const C = R.C, W = REC_W, d = C.d, k = (R.k = clipIndex(C, t, R.k)), k2 = Math.min(C.n - 1, k + 1);
+  const span = C.t[k2] - C.t[k], u = span > 0 ? clamp((t - C.t[k]) / span, 0, 1) : 0;
   for (const m of MODELS) m.root.visible = false;
-  for (const e of fr.m) {
-    const m = MODELS[e[0]]; m.root.visible = true;
-    m.root.position.set(e[1], e[2], e[3]); m.root.rotation.y = e[4];
-    applyPose(m, e[5], e[6], e[7], e[8]);
+  const a1 = C.off[k + 1], b0 = C.off[k2], b1 = C.off[k2 + 1];
+  for (let o = C.off[k], j = b0; o < a1; o++, j++) {
+    const x = o * W, m = MODELS[d[x]];
+    if (!m) continue;
+    let y = -1;
+    if (j < b1 && d[j * W] === d[x]) y = j * W;
+    else for (let q = b0; q < b1; q++) if (d[q * W] === d[x]) { y = q * W; break; }
+    let px = d[x + 1], py = d[x + 2], pz = d[x + 3], ry = d[x + 4], at = d[x + 6], ph = d[x + 7];
+    if (y >= 0 && u > 0) {
+      px += (d[y + 1] - px) * u; py += (d[y + 2] - py) * u; pz += (d[y + 3] - pz) * u; ry += angDiff(ry, d[y + 4]) * u;
+      if (d[y + 5] === d[x + 5]) { at += (d[y + 6] - at) * u; ph += (d[y + 7] - ph) * u; }
+    }
+    m.root.visible = true; m.root.position.set(px, py, pz); m.root.rotation.y = ry;
+    if (m.kind === 'player' && m.j.helmet) { m.j.helmet.visible = !!d[x + 9]; if (m.j.cap) m.j.cap.visible = !d[x + 9]; }
+    if (m.fade !== 1) setFade(m, 1);
+    applyPose(m, C.anims[d[x + 5]], at, d[x + 8] >= 0 ? C.prms[d[x + 8]] : null, ph);
   }
-  ballMesh.position.set(fr.b[0], fr.b[1], fr.b[2]); ballMesh.visible = !!fr.b[3];
+  const B = C.ball, i = k * 4, i2 = k2 * 4;
+  ballMesh.position.set(B[i] + (B[i2] - B[i]) * u, B[i + 1] + (B[i2 + 1] - B[i + 1]) * u, B[i + 2] + (B[i2 + 2] - B[i + 2]) * u);
+  ballMesh.visible = !!B[i + 3];
+}
+// what's on screen right now, to put back when the replay closes
+const replayOverlays = () => [pci, reticle, mitt, zoneGroup, pitchMark, pitchGuide, ctrlRing, landMark, baseMark, ballShadow, selRing];
+function liveSnap() {
+  const s = { m: [], ball: ballMesh.position.clone(), bv: ballMesh.visible, ov: replayOverlays().map((o) => o.visible),
+    cam: { pos: camRig.pos.clone(), look: camRig.look.clone(), fov: camRig.fov, tp: camRig.tp.clone(), tl: camRig.tl.clone(), tf: camRig.tf, rate: camRig.rate } };
+  for (const m of MODELS) if (m.root.visible) s.m.push([m, m.root.position.clone(), m.root.rotation.y, m.j.helmet ? m.j.helmet.visible : null, m.j.cap ? m.j.cap.visible : null]);
+  return s;
+}
+function restoreSnap(s) {
+  for (const m of MODELS) m.root.visible = false;
+  for (const [m, p, ry, hv, cv] of s.m) {
+    m.root.visible = true; m.root.position.copy(p); m.root.rotation.y = ry;
+    if (hv != null) m.j.helmet.visible = hv; if (cv != null) m.j.cap.visible = cv;
+    updateModel(m, G.now);
+  }
+  ballMesh.position.copy(s.ball); ballMesh.visible = s.bv;
+  replayOverlays().forEach((o, i) => { o.visible = s.ov[i]; });
+  const c = s.cam; Object.assign(camRig, { fov: c.fov, tf: c.tf, rate: c.rate }); camRig.pos.copy(c.pos); camRig.look.copy(c.look); camRig.tp.copy(c.tp); camRig.tl.copy(c.tl);
+}
+const RP_CAMS = [['auto', 'Auto'], ['tv', 'Broadcast'], ['plate', 'Behind the plate'], ['side', 'First-base side'], ['third', 'Third-base side'], ['high', 'Overhead'], ['ball', 'Follow the ball'], ['orbit', 'Free: drag to orbit']];
+const RP_SPEEDS = [0.1, 0.25, 0.5, 1, 2];
+// o: { C: clip frames, t: where to start, ct: contact (or the start of the play), style, title,
+//      theater: watching from the Replays list, list: clips to step through, li: which one, reel }
+function openReplay(o) {
+  const R = (G.replay = { k: 0, speed: o.theater ? 1 : 0.55, paused: false, cam: G.replayCam || 'auto', snap: true, pre: true, touched: false, prevB: new V3(), bv: new V3(), orb: { yaw: 0.6, pitch: 0.35, dist: 70 }, ...o });
+  R.t = clamp(o.t ?? R.C.t0, R.C.t0, R.C.t1);
+  if (!R.restore) R.restore = liveSnap();
+  for (const ov of replayOverlays()) ov.visible = false;
+  document.body.classList.add('letterbox'); $('replayTag').classList.remove('hidden'); $('hud').classList.add('replaying');
+  $('replayTag').textContent = R.review ? 'REPLAY' : R.title ? `REPLAY · ${R.title}` : 'REPLAY';
+  $('replayBar').classList.toggle('hidden', !!R.review);
+  hideFeedback(); trailReset(); ballShadow.visible = false;
+  showClipAt(R, R.t); R.prevB.copy(ballMesh.position);
+  replayBarSync(true);
 }
 function startReplay() {
-  if (G.replay || !G.bb || !G.rec.length || !['postPlay', 'derbyResult'].includes(G.phase)) return;
-  if (G.mode === 'derby' && !G.bb.hr) return;
-  let i0 = G.rec.findIndex((f) => f.t >= G.contactT - 0.9); if (i0 < 0) i0 = 0;
-  G.replay = { i: i0, t: G.rec[i0].t, style: G.bb.hr || G.bb.la > 22 ? 'low' : 'side', pre: true, snap: true };
-  document.body.classList.add('letterbox'); $('replayTag').classList.remove('hidden'); $('hud').classList.add('replaying');
-  hideFeedback(); trailReset(); ballShadow.visible = false;
-}
-function updateReplay(dt) {
-  const R = G.replay, rec = G.rec;
-  R.t += dt * 0.55;
-  while (R.i < rec.length - 1 && rec[R.i + 1].t <= R.t) R.i++;
-  applyFrame(rec[R.i]);
-  const b = ballMesh.position;
-  if (R.review) {
-    const B = BASES[R.base], c = REVIEW_CAMS[R.base];
-    camTo(_c1.set(c[0], c[1], c[2]), _c2.set(B.x, 2.5, B.z), 26, 4, R.snap); R.snap = false;
-    if (R.t >= R.until || R.i >= rec.length - 1) endReplay();
-    return;
-  }
-  if (R.t < G.contactT) { cfCam(R.snap); R.snap = false; }
-  else {
-    const first = R.pre; R.pre = false;
-    if (R.style === 'low') camTo(_c1.set(b.x * 0.12, 4.5, 26), b, 40, 3.5, first);
-    else camTo(_c1.set(118, 16, 34), b, 30, 3.5, first);
-  }
-  if (R.i >= rec.length - 1) endReplay();
+  if (G.replay || !['postPlay', 'derbyResult'].includes(G.phase)) return;
+  if (G.mode === 'derby' && !(G.bb && G.bb.hr)) return;
+  const c = G.lastClip;
+  if (c) { openReplay({ C: c.C, t: c.ct - 0.9, ct: c.ct, style: c.style, title: c.title }); return; }
+  if (!G.bb || !G.rec.length) return;
+  const C = packClip(G.rec, G.contactT - 1.2);
+  if (C) openReplay({ C, t: G.contactT - 0.9, ct: G.contactT, style: G.bb.hr || G.bb.la > 22 ? 'low' : 'side' });
 }
 // replay review: the play at the bag again, slowed down, from a camera on that bag.
 // Returns how long it runs (0 if there's no tape).
 const REVIEW_CAMS = { 1: [96, 6, -76], 2: [26, 6, -150], 3: [-96, 6, -76], 4: [-28, 5, -18] };
 function startReviewReplay(c) {
-  const rec = G.rec, i0 = rec.findIndex((f) => f.t >= c.now - 1.3);
-  if (G.replay || i0 < 0 || rec.length - i0 < 10) return 0;
-  G.replay = { i: i0, t: rec[i0].t, review: true, base: c.base, until: c.now + 0.6, snap: true };
-  document.body.classList.add('letterbox'); $('replayTag').classList.remove('hidden'); $('hud').classList.add('replaying');
-  hideFeedback(); trailReset(); ballShadow.visible = false;
-  return (Math.min(rec[rec.length - 1].t, c.now + 0.6) - rec[i0].t) / 0.55;
+  if (G.replay) return 0;
+  const C = packClip(G.rec, c.now - 1.3);
+  if (!C || C.n < 6) return 0;
+  openReplay({ C, review: true, base: c.base, until: c.now + 0.6, t: C.t0, ct: C.t0 });
+  return (Math.min(C.t1, c.now + 0.6) - C.t0) / 0.55;
+}
+function updateReplay(dt) {
+  const R = G.replay, C = R.C;
+  if (!R.paused) R.t = Math.min(C.t1, R.t + dt * R.speed);
+  showClipAt(R, R.t);
+  replayCam(R, dt);
+  if (R.review) { if (R.t >= R.until || R.t >= C.t1) endReplay(); return; }
+  if (R.t >= C.t1 && !R.paused) {
+    if (R.reel && R.li < R.list.length - 1) { replayGo(1); return; }
+    if (!R.touched && !R.theater) { endReplay(); return; }
+    R.paused = true;
+  }
+  replayBarSync();
+}
+function replayCam(R, dt) {
+  const b = ballMesh.position, snap = R.snap; R.snap = false;
+  if (R.review) { const B = BASES[R.base], c = REVIEW_CAMS[R.base]; camTo(_c1.set(c[0], c[1], c[2]), _c2.set(B.x, 2.5, B.z), 26, 4, snap); return; }
+  // the ball's speed, smoothed, for the chase camera
+  if (dt > 0 && !R.paused) { R.bv.lerp(_c2.copy(b).sub(R.prevB).divideScalar(Math.max(dt * R.speed, 1e-3)), 0.15); }
+  R.prevB.copy(b);
+  const live = ballMesh.visible && R.t >= R.ct - 0.05;
+  switch (R.cam) {
+    case 'tv': {
+      const fx = live ? b.x : 0, fz = live ? b.z : -20, fy = live ? b.y : 0, r = Math.hypot(fx, fz);
+      camTo(_c1.set(fx * 0.28, 34 + r * 0.17 + Math.min(fy, 150) * 0.12, 54 - r * 0.1), _c2.set(fx * 0.92, Math.min(fy * 0.35, 35), fz * 0.92 + 4), 48, 2.6, snap); break;
+    }
+    case 'plate': camTo(_c1.set(0, 9, 34), live ? b : _c2.set(0, 3, -60), live ? 34 : 24, 4, snap); break;
+    case 'side': camTo(_c1.set(118, 16, 34), live ? b : _c2.set(0, 3, -30), 30, 3.5, snap); break;
+    case 'third': camTo(_c1.set(-118, 16, 34), live ? b : _c2.set(0, 3, -30), 30, 3.5, snap); break;
+    case 'high': { const cx = live ? b.x * 0.5 : 0, cz = live ? b.z * 0.5 - 50 : -90; camTo(_c1.set(cx, 300, cz + 140), _c2.set(cx, 0, cz), 46, 2.2, snap); break; }
+    case 'ball': {
+      const h = Math.hypot(R.bv.x, R.bv.z);
+      if (live && h > 8) { const ux = R.bv.x / h, uz = R.bv.z / h; camTo(_c1.set(b.x - ux * 18, b.y + 5, b.z - uz * 18), _c2.set(b.x + ux * 10, b.y, b.z + uz * 10), 50, 6, snap); }
+      else camTo(_c1.set(b.x * 0.9, b.y + 9, b.z + 26), live ? b : _c2.set(0, 3, -60), 44, 4, snap);
+      break;
+    }
+    case 'orbit': {
+      const f = live ? b : _c2.set(0, 3, -40), O = R.orb, cp = Math.cos(O.pitch);
+      camTo(_c1.set(f.x + Math.sin(O.yaw) * cp * O.dist, Math.max(2, f.y + Math.sin(O.pitch) * O.dist), f.z + Math.cos(O.yaw) * cp * O.dist), f, 42, 10, snap); break;
+    }
+    default:
+      if (R.t < R.ct) { cfCam(snap); break; }
+      { const first = R.pre || snap; R.pre = false;
+        if (R.style === 'low') camTo(_c1.set(b.x * 0.12, 4.5, 26), b, 40, 3.5, first);
+        else camTo(_c1.set(118, 16, 34), b, 30, 3.5, first); }
+  }
 }
 function endReplay() {
-  if (!G.replay) return;
-  applyFrame(G.rec[G.rec.length - 1]);
+  const R = G.replay;
+  if (!R) return;
   G.replay = null;
-  document.body.classList.remove('letterbox'); $('replayTag').classList.add('hidden'); $('hud').classList.remove('replaying');
+  restoreSnap(R.restore);
+  document.body.classList.remove('letterbox'); $('replayTag').classList.add('hidden'); $('hud').classList.remove('replaying'); $('replayBar').classList.add('hidden');
+  if (R.theater) { if (R.back) $(R.back).classList.remove('hidden'); openReplays(); return; }
   G.pt = Math.max(0, Math.min(G.pt, G.dur - 1.2));
-  for (const m of MODELS) if (m.root.visible) updateModel(m, G.now);
+}
+// ---- replay controls (the bar along the bottom, and keys while a replay is up)
+function replaySeek(t) { const R = G.replay; if (!R) return; R.t = clamp(t, R.C.t0, R.C.t1); R.k = 0; R.touched = true; }
+function replayToggle() { const R = G.replay; if (!R) return; R.touched = true; if (R.paused && R.t >= R.C.t1 - 1e-3) R.t = R.C.t0; R.paused = !R.paused; replayBarSync(true); }
+function replaySpeed(d) { const R = G.replay; if (!R) return; const i = RP_SPEEDS.indexOf(R.speed); R.speed = RP_SPEEDS[clamp((i < 0 ? 2 : i) + d, 0, RP_SPEEDS.length - 1)]; R.touched = true; replayBarSync(true); }
+function replayCamSet(cam) { const R = G.replay; if (!R) return; R.cam = G.replayCam = cam; R.snap = true; R.pre = true; R.touched = true; replayBarSync(true); }
+function replayStep(dir) { const R = G.replay; if (!R) return; R.paused = true; replaySeek(R.t + dir / 30); replayBarSync(true); }
+// the next or previous clip on the list
+function replayGo(d) {
+  const R = G.replay; if (!R || !R.list) return;
+  const li = R.li + d, c = R.list[li]; if (!c) return;
+  openReplay({ C: c.C, t: c.C.t0, ct: c.ct, style: c.style, title: c.title, theater: true, list: R.list, li, reel: R.reel, back: R.back, restore: R.restore, speed: R.speed, cam: R.cam });
+}
+function replayKey(k, e) {
+  const R = G.replay; if (!R || R.review) return false;
+  const map = {
+    ' ': replayToggle, k: replayToggle, v: () => replayCamSet(RP_CAMS[(RP_CAMS.findIndex((c) => c[0] === R.cam) + 1) % RP_CAMS.length][0]),
+    arrowleft: () => (R.paused ? replayStep(-1) : replaySeek(R.t - 1)), arrowright: () => (R.paused ? replayStep(1) : replaySeek(R.t + 1)),
+    ',': () => replayStep(-1), '.': () => replayStep(1), arrowup: () => replaySpeed(1), arrowdown: () => replaySpeed(-1),
+    home: () => replaySeek(R.C.t0), ']': () => replayGo(1), '[': () => replayGo(-1), n: () => replayGo(1), p: () => replayGo(-1),
+    escape: endReplay, enter: endReplay, r: endReplay, backspace: endReplay,
+  };
+  const f = map[k]; if (!f) return false;
+  e.preventDefault(); f(); return true;
+}
+let rpSeeking = false;
+function replayBarSync(force) {
+  const R = G.replay; if (!R || R.review) return;
+  const C = R.C, dur = C.t1 - C.t0, pos = R.t - C.t0;
+  if (!rpSeeking) $('rpSeek').value = String(Math.round((pos / Math.max(dur, 1e-3)) * 1000));
+  const tt = `${pos.toFixed(1)} / ${dur.toFixed(1)}s`; if ($('rpTime').textContent !== tt) $('rpTime').textContent = tt;
+  if (!force) return;
+  $('rpPlay').innerHTML = R.paused ? '&#9654;' : '&#10074;&#10074;';
+  $('rpPlay').title = R.paused ? 'Play (Space)' : 'Pause (Space)';
+  for (const b of $('rpSpeed').querySelectorAll('button')) b.classList.toggle('on', +b.dataset.s === R.speed);
+  $('rpCam').value = R.cam;
+  const many = !!(R.list && R.list.length > 1);
+  $('rpPrev').classList.toggle('hidden', !many); $('rpNext').classList.toggle('hidden', !many);
+  $('rpPrev').disabled = !many || R.li <= 0; $('rpNext').disabled = !many || R.li >= R.list.length - 1;
+  $('rpCount').textContent = many ? `${R.li + 1} / ${R.list.length}` : '';
+}
+// ---- the Replays list: every play this game, best ones starred
+function openReplays() {
+  const el = $('replaysScreen'), clips = G.clips || [];
+  const row = (c, i) => `<button class="rp-row" data-clip="${i}"><span class="rp-inn">${c.half ? 'BOT' : 'TOP'} ${c.inning}</span><span class="rp-title">${c.star ? '<i class="rp-star">&#9733;</i>' : ''}${esc(c.title)}<small>${esc(c.desc)}</small></span><span class="rp-go">&#9654;</span></button>`;
+  const stars = clips.filter((c) => c.star).length;
+  $('rpListBody').innerHTML = clips.length
+    ? `<div class="row-actions"><button class="cta" data-reel="1" ${stars ? '' : 'disabled'}>PLAY HIGHLIGHTS${stars ? ` (${stars})` : ''}</button><button class="ghost" data-reel="all">Play them all</button></div><div class="rp-list">${clips.map(row).reverse().join('')}</div>
+       <p class="fr-note">Space pauses, &larr; &rarr; skip (frame by frame when paused), &uarr; &darr; change the speed, V changes the camera, [ ] go to the previous or next play, Esc closes.</p>`
+    : '<p class="fr-note">Every ball in play, steal and pickoff this game shows up here once it happens.</p>';
+  el.classList.remove('hidden');
+}
+function closeReplays() { $('replaysScreen').classList.add('hidden'); }
+function playClips(list, li, reel) {
+  const c = list[li]; if (!c) return;
+  const back = !$('final').classList.contains('hidden') ? 'final' : !$('pause').classList.contains('hidden') ? 'pause' : null;
+  closeReplays(); if (back) $(back).classList.add('hidden');
+  openReplay({ C: c.C, t: c.C.t0, ct: c.ct, style: c.style, title: c.title, theater: true, list, li, reel, back });
+}
+function buildReplayUI() {
+  $('rpPlay').addEventListener('click', replayToggle);
+  $('rpRestart').addEventListener('click', () => { const R = G.replay; if (R) { replaySeek(R.C.t0); R.paused = false; replayBarSync(true); } });
+  $('rpClose').addEventListener('click', endReplay);
+  $('rpPrev').addEventListener('click', () => replayGo(-1));
+  $('rpNext').addEventListener('click', () => replayGo(1));
+  $('rpCam').innerHTML = RP_CAMS.map(([v, l]) => `<option value="${v}">${l}</option>`).join('');
+  $('rpCam').addEventListener('change', (e) => { replayCamSet(e.target.value); e.target.blur(); });
+  $('rpSpeed').innerHTML = RP_SPEEDS.map((v) => `<button data-s="${v}">${v === 0.1 ? '0.1' : v === 0.25 ? '&frac14;' : v === 0.5 ? '&frac12;' : v}&times;</button>`).join('');
+  $('rpSpeed').addEventListener('click', (e) => { const b = e.target.closest('button'); const R = G.replay; if (b && R) { R.speed = +b.dataset.s; R.touched = true; replayBarSync(true); } });
+  const seek = $('rpSeek');
+  seek.addEventListener('input', () => { const R = G.replay; if (!R) return; rpSeeking = true; replaySeek(R.C.t0 + (+seek.value / 1000) * (R.C.t1 - R.C.t0)); replayBarSync(); });
+  seek.addEventListener('change', () => { rpSeeking = false; seek.blur(); });
+  for (const id of ['btnReplays', 'btnFinalReplays']) $(id).addEventListener('click', openReplays);
+  $('rpListClose').addEventListener('click', closeReplays);
+  $('rpListBody').addEventListener('click', (e) => {
+    const r = e.target.closest('[data-clip]'), reel = e.target.closest('[data-reel]'), clips = G.clips || [];
+    if (r) playClips(clips, +r.dataset.clip, false);
+    else if (reel) { const list = reel.dataset.reel === 'all' ? clips : clips.filter((c) => c.star); playClips(list, 0, true); }
+  });
 }
 
 // ------------------------------------------------------------------ input ----
@@ -14217,6 +14607,7 @@ const raycaster = new THREE.Raycaster(), platePlane = new THREE.Plane(new V3(0, 
 const keys = new Set();
 function setMouse(e) { mouseNDC.set((e.clientX / window.innerWidth) * 2 - 1, -(e.clientY / window.innerHeight) * 2 + 1); mouseMoved = true; lastPointer = e.pointerType || 'mouse'; }
 canvasEl.addEventListener('pointermove', (e) => {
+  if (G.replay && G.replay.cam === 'orbit' && e.buttons) { const O = G.replay.orb; O.yaw -= (e.movementX || 0) * 0.006; O.pitch = clamp(O.pitch + (e.movementY || 0) * 0.005, 0.03, 1.45); return; }
   setMouse(e);
   mouseIn = e.pointerType === 'mouse';
   if (!fpvOn || G.paused) return;
@@ -14227,8 +14618,11 @@ canvasEl.addEventListener('pointermove', (e) => {
 });
 canvasEl.addEventListener('pointerleave', () => { mouseIn = false; });
 canvasEl.addEventListener('contextmenu', (e) => e.preventDefault());
+canvasEl.addEventListener('wheel', (e) => { if (G.replay && G.replay.cam === 'orbit') { e.preventDefault(); const O = G.replay.orb; O.dist = clamp(O.dist * (e.deltaY > 0 ? 1.12 : 0.89), 12, 400); } }, { passive: false });
 canvasEl.addEventListener('pointerdown', (e) => {
-  SND.init(); setMouse(e);
+  SND.init();
+  if (G.replay) { e.preventDefault(); if (!G.replay.review && G.replay.cam !== 'orbit') replayToggle(); return; }   // orbit: drag to look around
+  setMouse(e);
   // running the bases during a play: a click picks the runner under it
   if (G.phase === 'live' && userRuns() && !G.lock && !trotOn() && !G.paused) { e.preventDefault(); pickRunnerAt(e.clientX, e.clientY); return; }
   // first person: grab the mouse for looking around; right-click re-centers on the play
@@ -14285,6 +14679,8 @@ window.addEventListener('keydown', (e) => {
   if (k === 'escape' && !$('statsScreen').classList.contains('hidden')) { closeStats(); return; }
   if (k === 'escape' && !$('seasonScreen').classList.contains('hidden')) { closeSeasonHub(); return; }
   if (k === 'escape' && !$('optionsScreen').classList.contains('hidden')) { closeOptions(); return; }
+  if (G.replay && !(e.target && /^(INPUT|SELECT|TEXTAREA)$/.test(e.target.tagName) && e.target.type !== 'range') && replayKey(raw, e)) return;
+  if (k === 'escape' && !$('replaysScreen').classList.contains('hidden')) { closeReplays(); return; }
   if (!k) return;   // a key whose control moved to another key
   if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA')) return;
   if (k === 'escape' || (k === 'p' && G.phase !== 'menu')) { togglePause(); return; }
@@ -14431,7 +14827,7 @@ function aimUpdate(dt, snap = false) {
 }
 function primaryAction(kind) {
   if (G.paused) return;
-  if (G.replay) { endReplay(); return; }
+  if (G.replay) { if (!G.replay.review) replayToggle(); return; }
   const ph = G.phase;
   if (ph === 'menu' || ph === 'boot' || ph === 'final' || ph === 'wait') return;
   if (ph === 'prePitch' || ph === 'windup' || ph === 'pitch') {
@@ -14470,6 +14866,7 @@ function togglePause(force, remote) {
   const me = localSide();
   const teamOK = me >= 0 && G.mode !== 'lock' && G.mode !== 'derby' && !G.drill;
   $('btnTeam').classList.toggle('hidden', !teamOK);
+  $('btnReplays').classList.toggle('hidden', G.mode === 'online' || G.mode === 'derby' || !!G.drill);
   try { if (G.paused) speechSynthesis.pause(); else speechSynthesis.resume(); } catch (e) { /* none */ }
 }
 
@@ -14547,10 +14944,12 @@ function renderMenu() {
   $('netOr').classList.toggle('hidden', online && (NET.open || host));
   $('netJoinRow').classList.toggle('hidden', online && (NET.open || host));
   $('matchup').classList.toggle('hidden', !showTeams);
+  const myElo = eloMine();
+  $('netElo').innerHTML = online ? `YOUR RATING <b>${myElo.r}</b>${myElo.n ? ` &middot; ${myElo.w | 0}-${myElo.l | 0} online` : ' &middot; new player'}` : '';
   if (online && showTeams) {
-    const P = onlinePicks();
-    $('pickA').innerHTML = teamPickHTML(P.mySide === 0 ? 'AWAY · YOU' : 'AWAY · FRIEND', P.teams[0], 'away', P.mySide === 0, P.sp[0]);
-    $('pickH').innerHTML = teamPickHTML(P.mySide === 1 ? 'HOME · YOU' : 'HOME · FRIEND', P.teams[1], 'home', P.mySide === 1, P.sp[1]);
+    const P = onlinePicks(), you = `YOU · ${myElo.r}`, them = NET.oppElo != null ? `FRIEND · ${NET.oppElo}` : 'FRIEND';
+    $('pickA').innerHTML = teamPickHTML(`AWAY · ${P.mySide === 0 ? you : them}`, P.teams[0], 'away', P.mySide === 0, P.sp[0]);
+    $('pickH').innerHTML = teamPickHTML(`HOME · ${P.mySide === 1 ? you : them}`, P.teams[1], 'home', P.mySide === 1, P.sp[1]);
   } else if (showTeams) {
     $('pickA').innerHTML = teamPickHTML(derby ? 'BP PITCHER FROM' : prac ? 'OPPONENT' : 'AWAY', menuTeam('away'), 'away', true, menuSP('away'));
     $('pickH').innerHTML = teamPickHTML(derby || prac || season ? 'YOUR TEAM' : 'HOME', menuTeam('home'), 'home', true, menuSP('home'));
@@ -14736,7 +15135,10 @@ function buildMenu() {
 function toMenu() {
   try { speechSynthesis.cancel(); } catch (e) { /* none */ }
   if (TUT.on) tutEnd();
+  if (G.mode === 'online' && NET.role !== 'spec' && G.phase !== 'final') eloApply(false, 'quit');   // quitting a game in progress is a loss
   if (G.mode === 'online') netClose();
+  if (G.replay) endReplay();
+  $('replayBar').classList.add('hidden'); closeReplays();
   G.mode = 'menu'; G.paused = false; G.replay = null; G.play = null; G.lock = null; G.ctrl = ['cpu', 'cpu']; G.localPitch = false;
   setPhase('menu');
   $('hud').classList.add('hidden'); $('pause').classList.add('hidden');
@@ -14852,7 +15254,8 @@ function frame(ts) {
 }
 function frameStep(dt) {
   G.stick = pollGamepad();
-  if (!G.paused && !G.hold) {
+  if (G.replay && (G.replay.theater || G.paused)) updateReplay(dt);
+  else if (!G.paused && !G.hold) {
     if (isGuest()) guestUpdate(dt);
     else if (G.beat > 0) G.beat -= dt;   // a beat to get your bearings when a skip lands you in a play
     else if (G.mode === 'lock') {
@@ -14885,6 +15288,7 @@ function boot() {
   buildOptionsUI();
   $('btnRosters').addEventListener('click', openRosters);
   buildMenu();
+  buildReplayUI();
   buildCloudUI();
   ballMesh.visible = false;
   setPhase('menu'); G.mode = 'menu';
@@ -14902,7 +15306,7 @@ function boot() {
 }
 // Debug handle: lets a test harness advance the simulation without waiting on animation frames.
 window.__fullcount = {
-  G, TEAMS, settings, NET, keys, BAT_CAMS, Play, Runner, BASES, simBatted, umpCallsStrike, inZone, V3, getModel, ballMesh, startPickoff, stealCmd, camTo, setPark, PARKS, fenceDist, fenceH, gameRecord, gamesList, loadSave, openLiveBox, openStats, toMenu, simGame, SIMK, seasonLoad, startSeason, seasonSimNext, seasonSimMany, seasonPlayNext, seasonNextGame, standings, openSeasonHub, renderMenu, menu, TUT, tutStart, rosterCost, teamToDef, cleanRoster, buildCustomTeam, Cloud, cloudRender, inviteToast, get ROSTERS() { return ROSTERS; },
+  G, TEAMS, settings, NET, keys, BAT_CAMS, Play, Runner, BASES, simBatted, umpCallsStrike, inZone, eloApply, eloMine, V3, getModel, ballMesh, startPickoff, stealCmd, camTo, setPark, PARKS, fenceDist, fenceH, gameRecord, gamesList, loadSave, openLiveBox, openStats, toMenu, simGame, SIMK, seasonLoad, startSeason, seasonSimNext, seasonSimMany, seasonPlayNext, seasonNextGame, standings, openSeasonHub, renderMenu, menu, TUT, tutStart, rosterCost, teamToDef, cleanRoster, buildCustomTeam, Cloud, cloudRender, inviteToast, get ROSTERS() { return ROSTERS; },
   step(sec, dt = 1 / 60) {
     const n = Math.round(sec / dt);
     for (let i = 0; i < n && !G.paused; i++) { if (isGuest()) guestUpdate(dt); else update(dt); netTick(); }

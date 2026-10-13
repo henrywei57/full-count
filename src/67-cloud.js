@@ -4,7 +4,7 @@
 // and rosters stay on this device. Setup steps are in the README.
 //
 // Firestore layout (rules in firestore.rules):
-//   users/{uid}                 public profile: name, photo, friend code, lastSeen
+//   users/{uid}                 public profile: name, photo, friend code, lastSeen, online rating (elo...)
 //   users/{uid}/rosters/{id}    your rosters (only you can read them)
 //   users/{uid}/friends/{uid}   your friends list
 //   users/{uid}/inbox/{fromUid} friend requests and game invites sent to you
@@ -62,6 +62,7 @@ const Cloud = {
     await F.setDoc(me, { name, photo, code, lastSeen: F.serverTimestamp() }, { merge: true });
     if (this.user !== u) return;
     this.profile = { uid: u.uid, name, photo, code };
+    this.syncElo(u.uid, snap.exists() ? snap.data() : null);
     this.beat = setInterval(() => F.setDoc(me, { lastSeen: F.serverTimestamp() }, { merge: true }).catch(() => {}), 60000);
     // rosters: keep the newest copy of each between this device and the account
     const rs = await F.getDocs(F.collection(db, 'users', u.uid, 'rosters'));
@@ -98,6 +99,25 @@ const Cloud = {
       try { await F.setDoc(F.doc(db, 'codes', code), { uid }); return code; } catch (e) { /* taken: the rules won't let anyone overwrite a code */ }
     }
     throw new Error('Could not make a friend code. Try again.');
+  },
+  // the rating: whichever copy (here or the account) has more games wins
+  syncElo(uid, d) {
+    const all = eloAll(), loc = all[uid], cn = d && Number.isFinite(d.eloN) ? d.eloN : 0;
+    if (cn > ((loc && loc.n) | 0) && eloNum(d.elo)) {
+      all[uid] = { r: eloNum(d.elo), n: cn, w: d.eloW | 0, l: d.eloL | 0, peak: eloNum(d.eloPeak) || eloNum(d.elo), hist: (loc && loc.hist) || [] };
+      try { localStorage.setItem(ELO_KEY, JSON.stringify(all)); } catch (e) { /* blocked */ }
+    } else if (loc && loc.n) this.saveElo(loc);
+  },
+  saveElo(e) {
+    if (!this.user) return;
+    const { F, db } = this;
+    F.setDoc(F.doc(db, 'users', this.user.uid), { elo: e.r, eloN: e.n | 0, eloW: e.w | 0, eloL: e.l | 0, eloPeak: e.peak || e.r }, { merge: true })
+      .catch((x) => console.warn('[cloud] rating (publish the latest firestore.rules to keep it in your account)', x));
+  },
+  async topElo() {
+    const { F, db } = this;
+    const qs = await F.getDocs(F.query(F.collection(db, 'users'), F.orderBy('elo', 'desc'), F.limit(25)));
+    return qs.docs.map((d) => ({ uid: d.id, ...d.data() }));
   },
   saveRoster(d) {
     if (!this.user) return;
@@ -207,7 +227,7 @@ const signInBtn = (label = 'Sign in with Google') => `<button class="gbtn" data-
 function renderAccount() {
   const el = $('acct'); if (!el) return;
   const C = Cloud;
-  if (C.state === 'ready' && C.user) el.innerHTML = `${avatar(C.user.photoURL)}<span class="who">${esc(C.user.displayName || 'Signed in')}</span><button class="ghost fr-mini" data-act="signout">Sign out</button>`;
+  if (C.state === 'ready' && C.user) el.innerHTML = `${avatar(C.user.photoURL)}<span class="who">${esc(C.user.displayName || 'Signed in')}</span>${C.profile ? `<span class="elo-chip" title="Your online rating">${eloMine().r}</span>` : ''}<button class="ghost fr-mini" data-act="signout">Sign out</button>`;
   else if (C.state === 'ready') el.innerHTML = signInBtn();
   else el.innerHTML = '';
   const n = C.inbox.filter((m) => m.type !== 'invite' || inviteFresh(m)).length;
@@ -238,6 +258,7 @@ function renderFriends() {
   const friends = sorted.map((f) => {
     const p = C.fprof.get(f.uid) || f, live = friendOnline(f.uid), hh = h2hGet(f.uid);
     return `<div class="fr-row"><i class="fr-on ${live ? 'live' : ''}"></i>${avatar(p.photo)}<span class="nm">${esc(p.name || 'Player')}<small>${live ? 'Online now' : ago(tsMs(p.lastSeen))}</small></span>`
+      + (eloNum(p.elo) ? `<span class="fr-elo" title="Online rating">${eloNum(p.elo)}</span>` : '')
       + (hh ? `<span class="fr-h2h" title="Your record against ${esc(p.name || 'them')} online"><b>${hh.w}-${hh.l}</b><small>vs you</small></span>` : '')
       + `<button class="cta fr-mini" data-act="invite" data-uid="${esc(f.uid)}">INVITE TO 1V1</button><button class="ghost fr-mini" data-act="remove" data-uid="${esc(f.uid)}" title="Remove friend">&times;</button></div>`;
   }).join('');

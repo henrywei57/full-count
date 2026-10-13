@@ -6,12 +6,18 @@ service cloud.firestore {
     function isMe(uid) { return signedIn() && request.auth.uid == uid; }
     function shortStr(v, n) { return v is string && v.size() <= n; }
 
-    // public profile: anyone signed in can see your name, picture, friend code and when you were last on
+    function count(d, k) { return !(k in d) || (d[k] is int && d[k] >= 0 && d[k] <= 100000); }
+    function rating(d, k) { return !(k in d) || (d[k] is int && d[k] >= 100 && d[k] <= 4000); }
+
+    // public profile: anyone signed in can see your name, picture, friend code, when you were
+    // last on and your online rating (for friends and the leaderboard)
     match /users/{uid} {
       allow read: if signedIn();
       allow write: if isMe(uid)
-        && request.resource.data.keys().hasOnly(['name', 'photo', 'code', 'lastSeen'])
-        && shortStr(request.resource.data.name, 40) && shortStr(request.resource.data.photo, 500) && shortStr(request.resource.data.code, 8);
+        && request.resource.data.keys().hasOnly(['name', 'photo', 'code', 'lastSeen', 'elo', 'eloN', 'eloW', 'eloL', 'eloPeak'])
+        && shortStr(request.resource.data.name, 40) && shortStr(request.resource.data.photo, 500) && shortStr(request.resource.data.code, 8)
+        && rating(request.resource.data, 'elo') && rating(request.resource.data, 'eloPeak')
+        && count(request.resource.data, 'eloN') && count(request.resource.data, 'eloW') && count(request.resource.data, 'eloL');
 
       // your rosters and friends list: only you
       match /rosters/{rid} {

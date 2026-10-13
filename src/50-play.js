@@ -99,7 +99,8 @@ class Runner {
 }
 
 class Play {
-  // o.field: null for a CPU defense, else { lock: playerId|null, manual: bool } for a human defense
+  // o.field: null for a CPU defense, else { lock: playerId|null, manual: bool, near: bool } for a human
+  //          defense (near: you only ever steer a fielder, never the pitcher or catcher; see pickUF)
   // o.run:   null for CPU baserunning, else { lock: playerId|null } (AI still assists unless told otherwise;
   //          in Player Lock your runner goes only where you send him: see lockRunners)
   // o.kind:  'hit' (a batted ball, o.bb), 'steal' (the catcher has the pitch), 'pick' (pickoff to o.pickBase)
@@ -110,7 +111,7 @@ class Play {
     this.outs = o.outs; this.startOuts = o.outs;
     this.hf = o.field || null; this.hrun = o.run || null;
     this.userDef = !!(this.hf && this.hf.manual);
-    this.t = 0; this.done = false; this.endAt = null;
+    this.t = 0; this.done = false; this.endAt = null; this.at = G.now;
     this.ball = { mode: 'flight', pos: new V3(), holder: null, thr: null, si: 0 };
     this.runs = []; this.outEvents = []; this.error = false; this.caught = false; this.firstFielder = null; this.firstAir = false;
     this.fairKnown = false; this.foul = false; this.hr = !!(o.bb && o.bb.hr); this.awarded = false; this.thirdOutForce = false;
@@ -179,7 +180,12 @@ class Play {
     const holder = this.kind === 'steal' ? C : P;
     this.ball.mode = 'held'; this.ball.holder = holder;
     holder.m.root.updateMatrixWorld(true); handWorld(holder.m, holder.m.lefty ? 'R' : 'L', this.ball.pos);
-    if (this.hf) this.uf = this.hf.lock ? this.F.find((f) => f.pl.id === this.hf.lock) || null : holder;
+    if (this.hf) {
+      const lead = this.R.filter((r) => r.state === 'run').sort((a, b) => heading(b) - heading(a))[0];
+      const tgt = this.kind === 'pick' ? o.pickBase : lead ? heading(lead) : 2;
+      const cov = this.cover[tgt];
+      this.uf = this.hf.lock ? this.F.find((f) => f.pl.id === this.hf.lock) || null : this.hf.near ? (cov && !this.isBattery(cov) ? cov : this.pickUF(holder)) : holder;
+    }
     if (this.kind === 'steal') {
       // pop time: the transfer is quicker for a strong arm
       holder.readyAt = 0.1; holder.decideAt = clamp(0.68 - ((holder.pl.arm ?? 60) - 50) * 0.004 + rand(-0.06, 0.06), 0.4, 0.85);
@@ -252,7 +258,17 @@ class Play {
     }
     this.chaser = best ? best.f : null;
     this.assignTasks();
-    if (this.hf && !this.hf.lock && !this.ufManual && this.chaser) this.uf = this.chaser;
+    if (this.hf && !this.hf.lock && !this.ufManual && this.chaser) this.uf = this.pickUF(this.chaser);
+  }
+  // online 1v1: never the pitcher or catcher. When one of them is playing the ball you get the
+  // fielder nearest to where it's going (the throw is still yours: press a base)
+  isBattery(f) { return f && (f.role === 'P' || f.role === 'C'); }
+  pickUF(f) {
+    if (!this.hf || !this.hf.near || !this.isBattery(f)) return f;
+    const p = this.chaser && this.chaser.plan && this.ball.mode === 'flight' ? this.chaser.plan : this.ball.pos;
+    let best = null, bd = Infinity;
+    for (const g of this.F) { if (this.isBattery(g)) continue; const d = Math.hypot(g.pos.x - p.x, g.pos.z - p.z); if (d < bd) { bd = d; best = g; } }
+    return best || f;
   }
   assignTasks() {
     const ch = this.chaser, by = (r) => this.F.find((f) => f.role === r);
@@ -314,7 +330,7 @@ class Play {
     if (!this.hf || this.hf.lock || this.done) return;
     const bp = this.ball.mode === 'flight' && this.chaser && this.chaser.plan ? new V3(this.chaser.plan.x, 0, this.chaser.plan.z) : this.ball.pos;
     let best = null, bd = 1e9;
-    for (const f of this.F) { if (f === this.uf) continue; const d = Math.hypot(f.pos.x - bp.x, f.pos.z - bp.z); if (d < bd) { bd = d; best = f; } }
+    for (const f of this.F) { if (f === this.uf || (this.hf.near && this.isBattery(f))) continue; const d = Math.hypot(f.pos.x - bp.x, f.pos.z - bp.z); if (d < bd) { bd = d; best = f; } }
     if (best) { this.uf = best; this.ufManual = false; }
   }
   userDive() {
@@ -451,7 +467,7 @@ class Play {
         if (this.hf.lock && this.chaser === f && f.plan && b.mode === 'flight' && t > f.plan.t + 0.5) { this.ufMissed = true; this.replan(); }
         // the ball got past you: hand control to the fielder now playing it
         if (b.mode === 'flight' && !this.hf.lock && this.chaser && this.chaser !== f && this.chaser.plan && Math.hypot(this.chaser.pos.x - b.pos.x, this.chaser.pos.z - b.pos.z) < Math.hypot(f.pos.x - b.pos.x, f.pos.z - b.pos.z) - 15) {
-          this.uf = this.chaser; this.ufManual = false; this.replan();
+          this.uf = this.pickUF(this.chaser); this.ufManual = false; this.replan();
         }
         continue;
       }
@@ -589,7 +605,7 @@ class Play {
     b.mode = 'held'; b.holder = f; f.holding = false; f.touched = 0; f.readyAt = this.t + bobble + 0.12;
     if (!this.firstFielder) { this.firstFielder = f; this.firstAir = air; }
     if (!dove) { f.anim(air ? 'catchHigh' : 'fieldLow'); f.animHold = this.t + 0.3; }
-    if (this.hf && !this.hf.lock) { if (this.uf !== f) this.ufManual = false; this.uf = f; }
+    if (this.hf && !this.hf.lock && !(this.hf.near && this.isBattery(f))) { if (this.uf !== f) this.ufManual = false; this.uf = f; }
     if (!this.fairKnown && !air) {
       const r = Math.hypot(b.pos.x, b.pos.z);
       if (r < 95) { this.fairKnown = true; this.foul = !isFairAngle(sprayOf(f.pos.x, f.pos.z)); if (this.foul) { this.deadBall('foul'); return; } }
@@ -637,7 +653,7 @@ class Play {
       return;
     }
     const human = this.humanHolder(f) && f === this.uf;
-    if (human && this.queuedThrow != null && t >= Math.max(f.quickAt, f.readyAt - 0.12)) {
+    if ((human || (this.hf && this.hf.near && this.isBattery(f))) && this.queuedThrow != null && t >= Math.max(f.quickAt, f.readyAt - 0.12)) {
       const base = this.queuedThrow; this.queuedThrow = null; this.prompt = false; f.holding = false; this.humanThrow(f, base); tutNote('throw'); return;
     }
     if (t < f.animHold) return;
@@ -810,7 +826,7 @@ class Play {
     const recv = th.recv || this.receiverFor(base, th.by);
     this.ball.mode = 'held'; this.ball.holder = recv; recv.holding = false; recv.task = 'hold'; recv.recvAt = null; recv.aimBase = null;
     recv.anim('catchHigh'); recv.animHold = this.t + 0.22; recv.promptStart = null; recv.readyAt = this.t + (th.err ? 1.1 : 0.1); recv.quickAt = this.t + (th.err ? 1.1 : 0.15);
-    if (this.hf && !this.hf.lock) { this.uf = recv; this.ufManual = false; }
+    if (this.hf && !this.hf.lock && !(this.hf.near && this.isBattery(recv))) { this.uf = recv; this.ufManual = false; }
     SND.pop(0.55);
     if (th.err) { this.error = true; this.events.push('throwError'); recv.decideAt = this.t + 1.1; return; }
     if (th.relay) {

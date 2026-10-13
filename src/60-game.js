@@ -44,6 +44,9 @@ function fieldCtrl() {
   if (c === 'cpu' || (G.lock && (G.lockFieldSim || !(G.fielders || []).some((f) => f.pl.id === G.lock)))) return 'cpu';
   return c;
 }
+// a human defense: Player Lock narrows it to your one player; online 1v1 always gives you the
+// fielder nearest the ball, never the pitcher or catcher (they still field it and throw on your keys)
+function fieldOpts(fc) { return fc === 'cpu' ? null : { lock: G.lock, manual: settings.manual, near: G.mode === 'online' }; }
 function runCtrl() { if (!G.teams || G.mode === 'derby' || G.drill === 'pitch' || G.drill === 'field') return 'cpu'; return sideCtrl(G.half); }
 const userBats = () => batCtrl() === 'local';
 const userPitches = () => pitchCtrl() === 'local';
@@ -197,6 +200,8 @@ function startGame(cfg) {
     G.lock = pick[0] === 'p' ? G.pitcher[cfg.side].id : team.lineup[+pick.slice(1)].id;
   }
   G.gameId = 'g' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  G.clips = []; G.lastClip = null; G.clipN = 0;   // this game's replays (70-ui.js)
+  G.eloOpp = cfg.mode === 'online' && !cfg.spec ? NET.oppElo ?? ELO_START : null; G.eloRes = null; $('finalElo').innerHTML = '';
   G.dec = null; G.decIds = null; G.enterLead = {};
   const resumed = !!cfg.resume && restoreSave(cfg.resume);
   for (const m of MODELS) m.root.visible = false;
@@ -303,6 +308,7 @@ function newBatter() {
 function enterPrePitch() {
   setPhase('prePitch');
   G.P = null; G.swing = null; G.cpu = null; G.play = null; G.bb = null; G.call = null; G.remoteTake = false; G.challengeable = null; G.cpuPick = null;
+  G.lastClip = null; G.lastCallText = ''; G.scoreAtPitch = G.score[0] + G.score[1];
   if ((G.drill === 'run' || G.tutRunners) && !G.abPitches.length && !G.bases[1] && !G.bases[2] && !G.bases[3]) practiceRunners();
   placeForPitch();
   ballMesh.visible = false; ballShadow.visible = false; trailReset(); pitchGuide.visible = false;
@@ -776,7 +782,7 @@ function stealAfterPitch() {
   if (G.outs >= 3) { cancelSteals(); return false; }
   const fc = fieldCtrl(), rc = runCtrl();
   G.recOn = true;   // for a replay review of the tag
-  const pl = (G.play = new Play({ kind: 'steal', fielders: G.fielders, runners: G.baseRunners, outs: G.outs, field: fc === 'cpu' ? null : { lock: G.lock, manual: settings.manual }, run: rc === 'cpu' ? null : { lock: G.lock } }));
+  const pl = (G.play = new Play({ kind: 'steal', fielders: G.fielders, runners: G.baseRunners, outs: G.outs, field: fieldOpts(fc), run: rc === 'cpu' ? null : { lock: G.lock } }));
   lockPlayFor(pl);
   netPlayOut();
   setPhase('live');
@@ -839,7 +845,7 @@ function startPickoff(base) {
   G.abPicks++; G.cpuPick = null; G.recOn = true;
   pci.visible = false; reticle.visible = false; zoneGroup.visible = false; $('meter').classList.add('hidden');
   const fc = fieldCtrl(), rc = runCtrl();
-  const pl = (G.play = new Play({ kind: 'pick', pickBase: base, fielders: G.fielders, runners: G.baseRunners, outs: G.outs, field: fc === 'cpu' ? null : { lock: G.lock, manual: settings.manual }, run: rc === 'cpu' ? null : { lock: G.lock } }));
+  const pl = (G.play = new Play({ kind: 'pick', pickBase: base, fielders: G.fielders, runners: G.baseRunners, outs: G.outs, field: fieldOpts(fc), run: rc === 'cpu' ? null : { lock: G.lock } }));
   lockPlayFor(pl);
   netPlayOut();
   ballMesh.visible = true;
@@ -920,7 +926,7 @@ function wildPitch() {
   if (d3) { const br = new Runner(G.batter, G.batterModel, 0); br.from0 = G.batterModel.root.position.clone(); runners.unshift(br); }
   const side = Math.abs(c.x) > 0.4 ? Math.sign(c.x) : Math.random() < 0.5 ? -1 : 1;
   const fc = fieldCtrl(), rc = runCtrl();
-  const pl = (G.play = new Play({ kind: 'wild', bb: looseBall(G.glove, side), fielders: G.fielders, runners, outs: G.outs, field: fc === 'cpu' ? null : { lock: G.lock, manual: settings.manual }, run: rc === 'cpu' ? null : { lock: G.lock } }));
+  const pl = (G.play = new Play({ kind: 'wild', bb: looseBall(G.glove, side), fielders: G.fielders, runners, outs: G.outs, field: fieldOpts(fc), run: rc === 'cpu' ? null : { lock: G.lock } }));
   pl.wildKind = kind; pl.d3 = d3;
   lockPlayFor(pl);
   netPlayOut();
@@ -1058,6 +1064,7 @@ function finishLive(pl, reviewed) {
   G.recOn = false;
   if (!reviewed && setupReview(pl)) return;
   if (pl.kind === 'steal') finishStealPlay(); else if (pl.kind === 'pick') finishPickPlay(); else if (pl.kind === 'wild') finishWildPlay(); else finishPlay();
+  if (G.phase === 'postPlay') archivePlay();   // onto the Replays list
 }
 
 // --------------------------------------------------------------- practice ----
@@ -1311,7 +1318,7 @@ function launch(ev, la, spray, origin, q, byUser) {
   const fc = fieldCtrl(), rc = runCtrl();
   G.play = new Play({
     bb, fielders: G.fielders, runners, outs: G.outs,
-    field: fc === 'cpu' ? null : { lock: G.lock, manual: settings.manual },
+    field: fieldOpts(fc),
     run: rc === 'cpu' ? null : { lock: G.lock },
   });
   // Player Lock: you field the balls that are yours (hit your way); the CPU plays the rest
@@ -1462,7 +1469,7 @@ function endGame(walkoff) {
   setPhase('final');
   const rec = recordGame();
   if (G.mode === 'season' && rec) seasonGameDone(rec);
-  if (G.mode === 'online') h2hResult();
+  if (G.mode === 'online') { h2hResult(); eloResult(); }
   if (canSave()) clearSave();
   setTimeout(() => { if (G.phase === 'final') showScreen('final'); }, walkoff ? 3200 : 1500);
 }
