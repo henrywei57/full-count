@@ -1100,7 +1100,18 @@ function eraSelect(t, key, mine) {
   const opts = [[club, `${MLB_SEASON} roster`], ...list.slice().reverse().map((k) => [k, `${CLASSIC.get(k)[2]}s ${CLASSIC.get(k)[5]}`])];
   return `<select class="tp-era" data-k="${key}" aria-label="Era" ${mine ? '' : 'disabled'}>${opts.map(([v, l]) => `<option value="${esc(v)}" ${v === t.key ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select>`;
 }
-function teamPickHTML(label, t, key, mine = true) {
+// which team cards get a starting pitcher pick: practice only needs the side that pitches in the drill
+function spShown(key) {
+  const m = menu.mode;
+  if (m === 'practice') { const d = ['bat', 'pitch', 'run', 'field'][menu.drill] || 'bat'; return d === 'pitch' ? key === 'home' : d !== 'field' && key === 'away'; }
+  return ['exhibition', 'lock', 'spectate', 'online'].includes(m);
+}
+function starterSelect(t, key, sp, mine) {
+  if (!t.rotation || !t.rotation.length || !spShown(key)) return '';
+  const opts = t.rotation.map((p, i) => `<option value="${i}" ${i === sp ? 'selected' : ''}>${i + 1}. ${esc(p.name)} (${p.throws}HP) &middot; ${pitcherOvr(p)}</option>`).join('');
+  return `<label class="tp-sp"><small>STARTING PITCHER</small><select class="tp-spsel" data-k="${key}" aria-label="Starting pitcher" ${mine ? '' : 'disabled'}>${opts}</select></label>`;
+}
+function teamPickHTML(label, t, key, mine = true, sp = 0) {
   if (!t) return `<div class="tp-label">${label}</div><div class="tp-row"><div class="badge wait">?</div></div><div class="team-name"><small>WAITING</small>Your friend picks</div>`;
   const tag = t.custom ? `<span class="tp-custom" title="Custom roster">CUSTOM${t.cost > ROSTER_BUDGET ? ' &middot; OVER CAP' : ''}</span>` : '';
   return `<div class="tp-label">${label}</div>
@@ -1108,19 +1119,21 @@ function teamPickHTML(label, t, key, mine = true) {
   <div class="badge" style="background:${t.c1};color:${t.c2};border-color:${t.c2}">${esc(t.id)}</div>
   <button class="arrow" data-k="${key}" data-d="1" aria-label="Next team" ${mine ? '' : 'style="visibility:hidden"'}>&rsaquo;</button></div>
   <div class="team-name"><small>${t.era ? `${t.era}s &middot; ` : ''}${esc(t.city.toUpperCase())}</small>${esc(t.name)}</div>${eraSelect(t, key, mine)}
-  <div class="team-ovr"><span>BAT <b>${t.ovr.bat}</b></span><span>PIT <b>${t.ovr.pit}</b></span><span>DEF <b>${t.ovr.def}</b></span></div>${tag}`;
+  <div class="team-ovr"><span>BAT <b>${t.ovr.bat}</b></span><span>PIT <b>${t.ovr.pit}</b></span><span>DEF <b>${t.ovr.def}</b></span></div>${tag}${starterSelect(t, key, sp, mine)}`;
 }
-function lockOptions(team) {
-  return [...team.lineup.map((h, i) => [`h${i}`, `${h.name} · ${h.pos} · ${i + 1}${['st', 'nd', 'rd'][i] || 'th'} in the order`]), ['p0', `${team.pitchers[0].name} · Starting pitcher`]];
+function lockOptions(team, sp) {
+  return [...team.lineup.map((h, i) => [`h${i}`, `${h.name} · ${h.pos} · ${i + 1}${['st', 'nd', 'rd'][i] || 'th'} in the order`]), ['p0', `${starterOf(team, sp).name} · Starting pitcher`]];
 }
 // online: the two picks shown in the matchup, as [away, home] teams plus which one is mine to change
 function onlinePicks() {
   if (NET.role === 'guest') {
     const L = NET.lobby, mySide = L ? 1 - L.side : 1, mine = menuTeam('netTeam'), theirs = L && L.hostSpec ? teamFromSpec(L.hostSpec) : null;
-    return { teams: mySide ? [theirs, mine] : [mine, theirs], mySide };
+    const sp = [menuSP('netTeam'), spIndex(theirs, L && L.hostSp)];
+    return { teams: mySide ? [theirs, mine] : [mine, theirs], mySide, sp: mySide ? sp.reverse() : sp };
   }
-  const mySide = menu.side, mine = menuTeam(mySide ? 'home' : 'away'), theirs = NET.guestSpec ? teamFromSpec(NET.guestSpec) : null;
-  return { teams: mySide ? [theirs, mine] : [mine, theirs], mySide };
+  const mySide = menu.side, mk = mySide ? 'home' : 'away', mine = menuTeam(mk), theirs = NET.guestSpec ? teamFromSpec(NET.guestSpec) : null;
+  const sp = [menuSP(mk), spIndex(theirs, NET.guestSp)];
+  return { teams: mySide ? [theirs, mine] : [mine, theirs], mySide, sp: mySide ? sp.reverse() : sp };
 }
 function renderMenu() {
   const m = menu.mode, derby = m === 'derby', spec = m === 'spectate', lock = m === 'lock', online = m === 'online', tut = m === 'tutorial', prac = m === 'practice' || tut;
@@ -1137,11 +1150,11 @@ function renderMenu() {
   $('matchup').classList.toggle('hidden', !showTeams);
   if (online && showTeams) {
     const P = onlinePicks();
-    $('pickA').innerHTML = teamPickHTML(P.mySide === 0 ? 'AWAY · YOU' : 'AWAY · FRIEND', P.teams[0], 'away', P.mySide === 0);
-    $('pickH').innerHTML = teamPickHTML(P.mySide === 1 ? 'HOME · YOU' : 'HOME · FRIEND', P.teams[1], 'home', P.mySide === 1);
+    $('pickA').innerHTML = teamPickHTML(P.mySide === 0 ? 'AWAY · YOU' : 'AWAY · FRIEND', P.teams[0], 'away', P.mySide === 0, P.sp[0]);
+    $('pickH').innerHTML = teamPickHTML(P.mySide === 1 ? 'HOME · YOU' : 'HOME · FRIEND', P.teams[1], 'home', P.mySide === 1, P.sp[1]);
   } else if (showTeams) {
-    $('pickA').innerHTML = teamPickHTML(derby ? 'BP PITCHER FROM' : prac ? 'OPPONENT' : 'AWAY', menuTeam('away'), 'away');
-    $('pickH').innerHTML = teamPickHTML(derby || prac || season ? 'YOUR TEAM' : 'HOME', menuTeam('home'), 'home');
+    $('pickA').innerHTML = teamPickHTML(derby ? 'BP PITCHER FROM' : prac ? 'OPPONENT' : 'AWAY', menuTeam('away'), 'away', true, menuSP('away'));
+    $('pickH').innerHTML = teamPickHTML(derby || prac || season ? 'YOUR TEAM' : 'HOME', menuTeam('home'), 'home', true, menuSP('home'));
   }
   $('pickA').classList.toggle('hidden', derby || season); $('vsLabel').classList.toggle('hidden', derby || season);
   $('optSide').classList.toggle('hidden', derby || spec || prac || season || !showTeams);
@@ -1181,8 +1194,8 @@ function renderMenu() {
   sel.innerHTML = menuTeam('home').lineup.map((h, i) => `<option value="${i}">${esc(h.name)} · ${h.pos} · POW ${h.pow}</option>`).join('');
   sel.value = String(menu.batter);
   if (lock) {
-    const team = menuTeam(menu.side === 1 ? 'home' : 'away');
-    $('lockPick').innerHTML = lockOptions(team).map(([v, t]) => `<option value="${v}">${esc(t)}</option>`).join('');
+    const k = menu.side === 1 ? 'home' : 'away', team = menuTeam(k);
+    $('lockPick').innerHTML = lockOptions(team, menuSP(k)).map(([v, t]) => `<option value="${v}">${esc(t)}</option>`).join('');
     $('lockPick').value = menu.lockPick;
     if ($('lockPick').value !== menu.lockPick) { menu.lockPick = 'h3'; $('lockPick').value = 'h3'; }
   }
@@ -1207,10 +1220,15 @@ function onlineBlock() {
   return '';
 }
 function lockName() {
-  const team = menuTeam(menu.side === 1 ? 'home' : 'away');
-  const p = menu.lockPick[0] === 'p' ? team.pitchers[0] : team.lineup[+menu.lockPick.slice(1)] || team.lineup[3];
+  const k = menu.side === 1 ? 'home' : 'away', team = menuTeam(k);
+  const p = menu.lockPick[0] === 'p' ? starterOf(team, menuSP(k)) : team.lineup[+menu.lockPick.slice(1)] || team.lineup[3];
   return lastName(p.name).toUpperCase();
 }
+// the starting pitcher picked for a menu team, as his place in its rotation (menu.sp[k] = [team key, index]);
+// a newly picked team starts its ace
+function menuSP(k) { const t = menuTeam(k), s = menu.sp && menu.sp[k]; return Array.isArray(s) && s[0] === t.key && t.rotation && t.rotation[s[1]] ? s[1] : 0; }
+const spIndex = (t, i) => (t && t.rotation && Number.isInteger(i) && t.rotation[i] ? i : 0);
+function starterOf(t, i) { return t.rotation ? t.rotation[spIndex(t, i)] : t.pitchers[0]; }
 function derbyBatterDefault() { const lu = menuTeam('home').lineup; menu.batter = lu.indexOf(lu.reduce((a, c) => (c.pow > a.pow ? c : a))); }
 function buildMenu() {
   if (menu.home === menu.away) cycleTeam('away', 1, menu.home);
@@ -1228,8 +1246,21 @@ function buildMenu() {
     if (k === 'home') derbyBatterDefault();
     renderMenu();
   });
-  // pick a decade
+  // pick a starting pitcher, or a decade
   $('matchup').addEventListener('change', (e) => {
+    const sp = e.target.closest('.tp-spsel');
+    if (sp) {
+      let k = sp.dataset.k;
+      if (menu.mode === 'online') {
+        const P = onlinePicks();
+        if ((k === 'home' ? 1 : 0) !== P.mySide) return;
+        if (NET.role === 'guest') k = 'netTeam';
+      }
+      const t = menuTeam(k);
+      menu.sp = { ...menu.sp, [k]: [t.key, spIndex(t, +sp.value)] };
+      if (k === 'netTeam') netSendPick();
+      renderMenu(); return;
+    }
     const s = e.target.closest('.tp-era'); if (!s) return;
     const k = s.dataset.k, v = CLASSIC.has(s.value) || TEAMS.some((t) => t.key === s.value) ? s.value : null;
     if (!v) return;
@@ -1277,7 +1308,7 @@ function buildMenu() {
     if (menu.mode === 'tutorial') { tutStart(menu.tutLesson >= 0 ? menu.tutLesson : null); return; }
     if (menu.mode === 'season') { startSeason({ team: menuTeam('home').key, len: SEASON_LENS.includes(menu.seasonLen) ? menu.seasonLen : 30, innings: menu.innings, diff: menu.diff, pdiff: menu.pdiff, ump: menu.ump, manual: menu.manual }); renderMenu(); return; }
     const teams = [teamSpec(menuTeam('away')), teamSpec(menuTeam('home'))];
-    startGame({ mode: menu.mode, teams, drill: ['bat', 'pitch', 'run', 'field'][menu.drill] || 'bat', side: menu.side, innings: menu.innings, diff: menu.diff, pdiff: menu.pdiff, manual: menu.manual, batter: menu.batter, lockPick: menu.lockPick, ump: menu.ump, view: menu.view, lockField: menu.lockField, lockSkip: menu.lockSkip, park: menu.park || '' });
+    startGame({ mode: menu.mode, teams, starters: ['away', 'home'].map((k) => (spShown(k) ? menuSP(k) : 0)), drill: ['bat', 'pitch', 'run', 'field'][menu.drill] || 'bat', side: menu.side, innings: menu.innings, diff: menu.diff, pdiff: menu.pdiff, manual: menu.manual, batter: menu.batter, lockPick: menu.lockPick, ump: menu.ump, view: menu.view, lockField: menu.lockField, lockSkip: menu.lockSkip, park: menu.park || '' });
   });
   const openHelp = () => { $('help').classList.remove('hidden'); };
   $('btnHow').addEventListener('click', openHelp);

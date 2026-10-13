@@ -175,10 +175,6 @@ function startGame(cfg) {
   else if (cfg.mode === 'online') { G.ctrl = ['remote', 'remote']; if (!cfg.spec) G.ctrl[cfg.guest ? 1 - cfg.side : cfg.side] = 'local'; }   // a spectator controls nothing
   else if (G.drill) G.ctrl = youBat ? ['local', 'cpu'] : ['cpu', 'local'];
   else G.ctrl = ['cpu', 'cpu'];
-  if (cfg.mode === 'lock') {
-    const team = G.teams[cfg.side], pick = cfg.lockPick || 'h3';
-    G.lock = pick[0] === 'p' ? team.pitchers[0].id : team.lineup[+pick.slice(1)].id;
-  }
   settings.manual = cfg.manual == null ? true : !!cfg.manual;
   G.ump = cfg.ump ?? 1; G.challenges = [2, 2]; G.challengeable = null; G.challenge = null; G.cpuChallengeAt = 0;
   G.reviews = [1, 1]; G.review = null;   // replay review of calls on the bases: one a game, kept if you win it
@@ -190,7 +186,15 @@ function startGame(cfg) {
   // each side's game roster: batting order, positions, bench and bullpen (61-manager.js)
   G.lu = []; G.pos = []; G.bench = []; G.bullpen = []; G.gone = []; G.played = []; G.pitched = [];
   G.pitcher = [];
-  for (let ti = 0; ti < 2; ti++) { const st = cfg.starters && cfg.starters[ti]; initGameRoster(ti, typeof st === 'string' ? PBYID[st] : st); }
+  // cfg.starters: the [away, home] starting pitchers, by player id or by place in the rotation
+  for (let ti = 0; ti < 2; ti++) {
+    const t = G.teams[ti], st = cfg.starters && cfg.starters[t === away ? 0 : 1];
+    initGameRoster(ti, typeof st === 'number' ? t.rotation && t.rotation[st] : typeof st === 'string' ? PBYID[st] : st);
+  }
+  if (cfg.mode === 'lock') {
+    const team = G.teams[cfg.side], pick = cfg.lockPick || 'h3';
+    G.lock = pick[0] === 'p' ? G.pitcher[cfg.side].id : team.lineup[+pick.slice(1)].id;
+  }
   G.gameId = 'g' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
   G.dec = null; G.decIds = null; G.enterLead = {};
   const resumed = !!cfg.resume && restoreSave(cfg.resume);
@@ -1374,7 +1378,7 @@ function endGame(walkoff) {
   $('finalSub').textContent = `${winner.city} ${winner.name} win ${Math.max(...G.score)}–${Math.min(...G.score)}${extra}.`;
   // player of the game
   let best = null, bestScore = -1;
-  for (const pl of [...winner.hitters, ...winner.pitchers]) {
+  for (const pl of [...winner.hitters, ...G.pitched[winner === h ? 1 : 0]]) {
     const s = G.stats.get(pl.id), p = G.pstats.get(pl.id);
     let sc = 0, line = '';
     if (s) { sc = s.h + s.d + 2 * s.t + 3 * s.hr + s.rbi * 1.2 + s.bb * 0.5 + s.r * 0.6; line = `${s.h}-for-${s.ab}` + (s.hr ? `, ${s.hr} HR` : '') + (s.rbi ? `, ${s.rbi} RBI` : ''); }
