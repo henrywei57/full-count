@@ -229,6 +229,13 @@ function startSeason(o) {
   seasonSave();
 }
 function seasonStarter(ti) { const r = TEAMS[ti].rotation; return r[SEASON.rot[ti] % r.length]; }
+// you can start anyone in your rotation; the rotation goes on from him
+function seasonPickStarter(i) {
+  const S = seasonLoad(), r = S && TEAMS[S.team].rotation;
+  if (!r || !Number.isInteger(i) || !r[i]) return;
+  S.rot[S.team] += (i - (S.rot[S.team] % r.length) + r.length) % r.length;
+  seasonSave(); renderSeasonPanel();
+}
 const isMine = (g) => g[0] === SEASON.team || g[1] === SEASON.team;
 // regular-season numbers, for the standings and the leaders
 function seasonAddLines(rec, tix) {
@@ -462,7 +469,9 @@ function renderSeasonPanel() {
   if (nx) {
     const [a, h] = nx.g, home = h === S.team, opp = TEAMS[home ? a : h];
     const label = nx.kind === 'po' ? `${ROUND_NAME[S.po.series[nx.s].r]}, game ${nx.n + 1}` : `Game ${S.day + 1} of ${S.len}`;
-    next = `<div class="sea-next"><small>${label}</small><b>${home ? 'vs' : 'at'} ${esc(opp.city)} ${esc(opp.name)}</b><span>${esc((PARKS[TEAMS[h].key] || PARKS.FC).name)} &middot; ${esc(seasonStarter(a).name)} vs ${esc(seasonStarter(h).name)}</span></div>`;
+    const rot = t.rotation, cur = S.rot[S.team] % rot.length, oppSP = seasonStarter(home ? a : h);
+    const pick = `<label class="sea-sp"><small>YOUR STARTER</small><select data-sea-sp aria-label="Your starting pitcher">${rot.map((p, i) => `<option value="${i}" ${i === cur ? 'selected' : ''}>${i + 1}. ${esc(p.name)} (${p.throws}HP) &middot; ${pitcherOvr(p)}</option>`).join('')}</select></label>`;
+    next = `<div class="sea-next"><small>${label}</small><b>${home ? 'vs' : 'at'} ${esc(opp.city)} ${esc(opp.name)}</b><span>${esc((PARKS[TEAMS[h].key] || PARKS.FC).name)} &middot; they start ${esc(oppSP.name)}</span>${pick}</div>`;
   } else if (S.po && S.po.champ != null) next = `<div class="sea-next"><small>THE SEASON IS OVER</small><b>${esc(TEAMS[S.po.champ].city)} ${esc(TEAMS[S.po.champ].name)} win the World Series</b></div>`;
   else if (S.po) next = `<div class="sea-next"><small>POSTSEASON</small><b>${esc(ROUND_NAME[S.po.round])}</b><span>Your team isn't playing: sim ahead to see who wins it all.</span></div>`;
   const done = S.po && S.po.champ != null;
@@ -549,6 +558,7 @@ function seasonAct(a) {
 }
 function buildSeasonUI() {
   $('seasonPanel').addEventListener('click', (e) => { const b = e.target.closest('[data-sea]'); if (b && !b.disabled) seasonAct(b.dataset.sea); });
+  $('seasonPanel').addEventListener('change', (e) => { const sp = e.target.closest('[data-sea-sp]'); if (sp) seasonPickStarter(+sp.value); });
   $('seaClose').addEventListener('click', closeSeasonHub);
   $('seaTabs').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) { SEA.tab = b.dataset.t; renderSeasonHub(); } });
   $('seaBody').addEventListener('click', (e) => { const b = e.target.closest('[data-g]'); if (!b) return; const g = gamesList().find((x) => x.id === b.dataset.g); if (g) openBox(g); });

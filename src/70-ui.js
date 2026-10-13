@@ -305,8 +305,9 @@ function hudLock() {
   else if (s && s.pa) line = statLine(s);
   $('lockLine').textContent = line;
 }
-function hudCall(text, cls) { const el = $('call'); el.className = ''; el.textContent = text; void el.offsetWidth; el.className = 'show ' + cls; }
+function hudCall(text, cls) { G.lastCallText = text; const el = $('call'); el.className = ''; el.textContent = text; void el.offsetWidth; el.className = 'show ' + cls; }
 function hudBanner(main, sub, cls) {
+  G.lastCallText = main;
   const el = $('banner'); el.className = '';
   el.querySelector('.b-main').textContent = main; el.querySelector('.b-sub').textContent = sub || '';
   void el.offsetWidth; el.className = 'show ' + (cls || '');
@@ -780,71 +781,279 @@ function onPlayEvent(e) {
 }
 
 // ---------------------------------------------------------------- replay ----
+// Every frame of a play is taped (recFrame). When the play is over it's packed into a clip
+// (packClip: 30 frames a second in typed arrays, played back smoothly in between) and kept for
+// the rest of the game: the Replays list (pause menu, final screen) plays any of them, and R
+// replays the one that just happened. Playback has its own controls: pause, slow motion,
+// scrubbing, frame steps and eight cameras; closing it puts the game back exactly as it was.
 function recFrame() {
   const fr = { t: G.now, b: [ballMesh.position.x, ballMesh.position.y, ballMesh.position.z, ballMesh.visible ? 1 : 0], m: [] };
   for (const m of MODELS) {
     if (!m.root.visible) continue;
     const prm = m.prm && m.prm.glove ? { glove: m.prm.glove.clone() } : m.prm;
-    fr.m.push([m.idx, m.root.position.x, m.root.position.y, m.root.position.z, m.root.rotation.y, m.anim, G.now - m.t0, prm, m.phase]);
+    fr.m.push([m.idx, m.root.position.x, m.root.position.y, m.root.position.z, m.root.rotation.y, m.anim, G.now - m.t0, prm, m.phase, m.j.helmet && m.j.helmet.visible ? 1 : 0]);
   }
   G.rec.push(fr);
   if (G.rec.length > 3000) G.rec.shift();
 }
-function applyFrame(fr) {
+// a packed clip: per frame its time, the ball (x, y, z, shown) and every visible model as
+// REC_W floats: model, x, y, z, facing, anim, anim time, run phase, anim params, helmet
+const REC_W = 10;
+function clonePrm(p) { const o = {}; for (const k in p) o[k] = p[k] && p[k].isVector3 ? p[k].clone() : p[k]; return o; }
+function packClip(rec, t0, t1 = Infinity) {
+  const keep = [];
+  let last = -Infinity;
+  rec.forEach((f, i) => { if (f.t >= t0 && f.t <= t1 && (f.t - last >= 1 / 30 - 1e-4 || i === rec.length - 1)) { keep.push(f); last = f.t; } });
+  if (keep.length < 2) return null;
+  const n = keep.length, tot = keep.reduce((s, f) => s + f.m.length, 0);
+  const C = { n, t: new Float64Array(n), ball: new Float32Array(n * 4), off: new Uint32Array(n + 1), d: new Float32Array(tot * REC_W), anims: [], prms: [] };
+  const ai = new Map(), pi = new Map();
+  let o = 0;
+  keep.forEach((f, k) => {
+    C.t[k] = f.t; C.ball.set(f.b, k * 4); C.off[k] = o;
+    for (const e of f.m) {
+      let a = ai.get(e[5]); if (a == null) { a = C.anims.length; C.anims.push(e[5]); ai.set(e[5], a); }
+      let q = -1;
+      if (e[7]) { q = pi.get(e[7]); if (q == null) { q = C.prms.length; C.prms.push(clonePrm(e[7])); pi.set(e[7], q); } }
+      C.d.set([e[0], e[1], e[2], e[3], e[4], a, e[6], e[8] || 0, q, e[9] ? 1 : 0], o * REC_W);
+      o++;
+    }
+  });
+  C.off[n] = o; C.t0 = C.t[0]; C.t1 = C.t[n - 1];
+  return C;
+}
+// the play that just ended goes on the Replays list (the list keeps 40; the best ones stay)
+const HL_SCORE = { 'GRAND SLAM': 12, 'HOME RUN': 10, 'INSIDE THE PARK': 10, TRIPLE: 8, ROBBED: 8, 'WHAT A CATCH': 7, 'STEAL OF HOME': 7, 'DOUBLE PLAY': 6, 'DOUBLE STEAL': 5, 'PICKED OFF': 5, DOUBLE: 5, 'GROUND RULE DOUBLE': 5, 'CAUGHT STEALING': 4, 'STOLEN BASE': 3, SINGLE: 3, 'WILD PITCH': 2, 'PASSED BALL': 2, ERROR: 2, 'THROWING ERROR': 2, 'SAC FLY': 2, "FIELDER'S CHOICE": 2, OUT: 1 };
+function archivePlay() {
+  if (!G.rec.length || G.mode === 'derby' || G.mode === 'tutorial' || G.drill) return;
+  const pl = isGuest() ? null : G.play, title = G.lastCallText || '';
+  if (!(title in HL_SCORE)) return;   // nothing came of it (a pickoff throw, a pitch blocked in the dirt)
+  const hit = pl ? pl.kind === 'hit' : !!G.bb, ct = hit && G.contactT ? G.contactT : pl ? pl.at : G.rec[0].t;
+  const C = packClip(G.rec, ct - 1.2); if (!C) return;
+  const runs = Math.max(0, G.score[0] + G.score[1] - (G.scoreAtPitch ?? 0)), score = (HL_SCORE[title] ?? 1) + runs * 1.5;
+  const clip = { C, ct, style: G.bb && (G.bb.hr || G.bb.la > 22) ? 'low' : 'side', title, desc: $('caption').textContent || '', inning: G.inning, half: G.half, bat: G.teams[G.half].id, score, star: score >= 5, n: (G.clipN = (G.clipN || 0) + 1) };
+  G.clips.push(clip); G.lastClip = clip;
+  if (G.clips.length > 40) { const i = G.clips.findIndex((c) => !c.star); G.clips.splice(i >= 0 ? i : 0, 1); }
+}
+function clipIndex(C, t, hint) {
+  let k = clamp(hint | 0, 0, C.n - 1);
+  if (C.t[k] > t) k = 0;
+  while (k < C.n - 1 && C.t[k + 1] <= t) k++;
+  return k;
+}
+// put the field the way it was at time t, in between the two nearest frames
+function showClipAt(R, t) {
+  const C = R.C, W = REC_W, d = C.d, k = (R.k = clipIndex(C, t, R.k)), k2 = Math.min(C.n - 1, k + 1);
+  const span = C.t[k2] - C.t[k], u = span > 0 ? clamp((t - C.t[k]) / span, 0, 1) : 0;
   for (const m of MODELS) m.root.visible = false;
-  for (const e of fr.m) {
-    const m = MODELS[e[0]]; m.root.visible = true;
-    m.root.position.set(e[1], e[2], e[3]); m.root.rotation.y = e[4];
-    applyPose(m, e[5], e[6], e[7], e[8]);
+  const a1 = C.off[k + 1], b0 = C.off[k2], b1 = C.off[k2 + 1];
+  for (let o = C.off[k], j = b0; o < a1; o++, j++) {
+    const x = o * W, m = MODELS[d[x]];
+    if (!m) continue;
+    let y = -1;
+    if (j < b1 && d[j * W] === d[x]) y = j * W;
+    else for (let q = b0; q < b1; q++) if (d[q * W] === d[x]) { y = q * W; break; }
+    let px = d[x + 1], py = d[x + 2], pz = d[x + 3], ry = d[x + 4], at = d[x + 6], ph = d[x + 7];
+    if (y >= 0 && u > 0) {
+      px += (d[y + 1] - px) * u; py += (d[y + 2] - py) * u; pz += (d[y + 3] - pz) * u; ry += angDiff(ry, d[y + 4]) * u;
+      if (d[y + 5] === d[x + 5]) { at += (d[y + 6] - at) * u; ph += (d[y + 7] - ph) * u; }
+    }
+    m.root.visible = true; m.root.position.set(px, py, pz); m.root.rotation.y = ry;
+    if (m.kind === 'player' && m.j.helmet) { m.j.helmet.visible = !!d[x + 9]; if (m.j.cap) m.j.cap.visible = !d[x + 9]; }
+    if (m.fade !== 1) setFade(m, 1);
+    applyPose(m, C.anims[d[x + 5]], at, d[x + 8] >= 0 ? C.prms[d[x + 8]] : null, ph);
   }
-  ballMesh.position.set(fr.b[0], fr.b[1], fr.b[2]); ballMesh.visible = !!fr.b[3];
+  const B = C.ball, i = k * 4, i2 = k2 * 4;
+  ballMesh.position.set(B[i] + (B[i2] - B[i]) * u, B[i + 1] + (B[i2 + 1] - B[i + 1]) * u, B[i + 2] + (B[i2 + 2] - B[i + 2]) * u);
+  ballMesh.visible = !!B[i + 3];
+}
+// what's on screen right now, to put back when the replay closes
+const replayOverlays = () => [pci, reticle, mitt, zoneGroup, pitchMark, pitchGuide, ctrlRing, landMark, baseMark, ballShadow, selRing];
+function liveSnap() {
+  const s = { m: [], ball: ballMesh.position.clone(), bv: ballMesh.visible, ov: replayOverlays().map((o) => o.visible),
+    cam: { pos: camRig.pos.clone(), look: camRig.look.clone(), fov: camRig.fov, tp: camRig.tp.clone(), tl: camRig.tl.clone(), tf: camRig.tf, rate: camRig.rate } };
+  for (const m of MODELS) if (m.root.visible) s.m.push([m, m.root.position.clone(), m.root.rotation.y, m.j.helmet ? m.j.helmet.visible : null, m.j.cap ? m.j.cap.visible : null]);
+  return s;
+}
+function restoreSnap(s) {
+  for (const m of MODELS) m.root.visible = false;
+  for (const [m, p, ry, hv, cv] of s.m) {
+    m.root.visible = true; m.root.position.copy(p); m.root.rotation.y = ry;
+    if (hv != null) m.j.helmet.visible = hv; if (cv != null) m.j.cap.visible = cv;
+    updateModel(m, G.now);
+  }
+  ballMesh.position.copy(s.ball); ballMesh.visible = s.bv;
+  replayOverlays().forEach((o, i) => { o.visible = s.ov[i]; });
+  const c = s.cam; Object.assign(camRig, { fov: c.fov, tf: c.tf, rate: c.rate }); camRig.pos.copy(c.pos); camRig.look.copy(c.look); camRig.tp.copy(c.tp); camRig.tl.copy(c.tl);
+}
+const RP_CAMS = [['auto', 'Auto'], ['tv', 'Broadcast'], ['plate', 'Behind the plate'], ['side', 'First-base side'], ['third', 'Third-base side'], ['high', 'Overhead'], ['ball', 'Follow the ball'], ['orbit', 'Free: drag to orbit']];
+const RP_SPEEDS = [0.1, 0.25, 0.5, 1, 2];
+// o: { C: clip frames, t: where to start, ct: contact (or the start of the play), style, title,
+//      theater: watching from the Replays list, list: clips to step through, li: which one, reel }
+function openReplay(o) {
+  const R = (G.replay = { k: 0, speed: o.theater ? 1 : 0.55, paused: false, cam: G.replayCam || 'auto', snap: true, pre: true, touched: false, prevB: new V3(), bv: new V3(), orb: { yaw: 0.6, pitch: 0.35, dist: 70 }, ...o });
+  R.t = clamp(o.t ?? R.C.t0, R.C.t0, R.C.t1);
+  if (!R.restore) R.restore = liveSnap();
+  for (const ov of replayOverlays()) ov.visible = false;
+  document.body.classList.add('letterbox'); $('replayTag').classList.remove('hidden'); $('hud').classList.add('replaying');
+  $('replayTag').textContent = R.review ? 'REPLAY' : R.title ? `REPLAY · ${R.title}` : 'REPLAY';
+  $('replayBar').classList.toggle('hidden', !!R.review);
+  hideFeedback(); trailReset(); ballShadow.visible = false;
+  showClipAt(R, R.t); R.prevB.copy(ballMesh.position);
+  replayBarSync(true);
 }
 function startReplay() {
-  if (G.replay || !G.bb || !G.rec.length || !['postPlay', 'derbyResult'].includes(G.phase)) return;
-  if (G.mode === 'derby' && !G.bb.hr) return;
-  let i0 = G.rec.findIndex((f) => f.t >= G.contactT - 0.9); if (i0 < 0) i0 = 0;
-  G.replay = { i: i0, t: G.rec[i0].t, style: G.bb.hr || G.bb.la > 22 ? 'low' : 'side', pre: true, snap: true };
-  document.body.classList.add('letterbox'); $('replayTag').classList.remove('hidden'); $('hud').classList.add('replaying');
-  hideFeedback(); trailReset(); ballShadow.visible = false;
-}
-function updateReplay(dt) {
-  const R = G.replay, rec = G.rec;
-  R.t += dt * 0.55;
-  while (R.i < rec.length - 1 && rec[R.i + 1].t <= R.t) R.i++;
-  applyFrame(rec[R.i]);
-  const b = ballMesh.position;
-  if (R.review) {
-    const B = BASES[R.base], c = REVIEW_CAMS[R.base];
-    camTo(_c1.set(c[0], c[1], c[2]), _c2.set(B.x, 2.5, B.z), 26, 4, R.snap); R.snap = false;
-    if (R.t >= R.until || R.i >= rec.length - 1) endReplay();
-    return;
-  }
-  if (R.t < G.contactT) { cfCam(R.snap); R.snap = false; }
-  else {
-    const first = R.pre; R.pre = false;
-    if (R.style === 'low') camTo(_c1.set(b.x * 0.12, 4.5, 26), b, 40, 3.5, first);
-    else camTo(_c1.set(118, 16, 34), b, 30, 3.5, first);
-  }
-  if (R.i >= rec.length - 1) endReplay();
+  if (G.replay || !['postPlay', 'derbyResult'].includes(G.phase)) return;
+  if (G.mode === 'derby' && !(G.bb && G.bb.hr)) return;
+  const c = G.lastClip;
+  if (c) { openReplay({ C: c.C, t: c.ct - 0.9, ct: c.ct, style: c.style, title: c.title }); return; }
+  if (!G.bb || !G.rec.length) return;
+  const C = packClip(G.rec, G.contactT - 1.2);
+  if (C) openReplay({ C, t: G.contactT - 0.9, ct: G.contactT, style: G.bb.hr || G.bb.la > 22 ? 'low' : 'side' });
 }
 // replay review: the play at the bag again, slowed down, from a camera on that bag.
 // Returns how long it runs (0 if there's no tape).
 const REVIEW_CAMS = { 1: [96, 6, -76], 2: [26, 6, -150], 3: [-96, 6, -76], 4: [-28, 5, -18] };
 function startReviewReplay(c) {
-  const rec = G.rec, i0 = rec.findIndex((f) => f.t >= c.now - 1.3);
-  if (G.replay || i0 < 0 || rec.length - i0 < 10) return 0;
-  G.replay = { i: i0, t: rec[i0].t, review: true, base: c.base, until: c.now + 0.6, snap: true };
-  document.body.classList.add('letterbox'); $('replayTag').classList.remove('hidden'); $('hud').classList.add('replaying');
-  hideFeedback(); trailReset(); ballShadow.visible = false;
-  return (Math.min(rec[rec.length - 1].t, c.now + 0.6) - rec[i0].t) / 0.55;
+  if (G.replay) return 0;
+  const C = packClip(G.rec, c.now - 1.3);
+  if (!C || C.n < 6) return 0;
+  openReplay({ C, review: true, base: c.base, until: c.now + 0.6, t: C.t0, ct: C.t0 });
+  return (Math.min(C.t1, c.now + 0.6) - C.t0) / 0.55;
+}
+function updateReplay(dt) {
+  const R = G.replay, C = R.C;
+  if (!R.paused) R.t = Math.min(C.t1, R.t + dt * R.speed);
+  showClipAt(R, R.t);
+  replayCam(R, dt);
+  if (R.review) { if (R.t >= R.until || R.t >= C.t1) endReplay(); return; }
+  if (R.t >= C.t1 && !R.paused) {
+    if (R.reel && R.li < R.list.length - 1) { replayGo(1); return; }
+    if (!R.touched && !R.theater) { endReplay(); return; }
+    R.paused = true;
+  }
+  replayBarSync();
+}
+function replayCam(R, dt) {
+  const b = ballMesh.position, snap = R.snap; R.snap = false;
+  if (R.review) { const B = BASES[R.base], c = REVIEW_CAMS[R.base]; camTo(_c1.set(c[0], c[1], c[2]), _c2.set(B.x, 2.5, B.z), 26, 4, snap); return; }
+  // the ball's speed, smoothed, for the chase camera
+  if (dt > 0 && !R.paused) { R.bv.lerp(_c2.copy(b).sub(R.prevB).divideScalar(Math.max(dt * R.speed, 1e-3)), 0.15); }
+  R.prevB.copy(b);
+  const live = ballMesh.visible && R.t >= R.ct - 0.05;
+  switch (R.cam) {
+    case 'tv': {
+      const fx = live ? b.x : 0, fz = live ? b.z : -20, fy = live ? b.y : 0, r = Math.hypot(fx, fz);
+      camTo(_c1.set(fx * 0.28, 34 + r * 0.17 + Math.min(fy, 150) * 0.12, 54 - r * 0.1), _c2.set(fx * 0.92, Math.min(fy * 0.35, 35), fz * 0.92 + 4), 48, 2.6, snap); break;
+    }
+    case 'plate': camTo(_c1.set(0, 9, 34), live ? b : _c2.set(0, 3, -60), live ? 34 : 24, 4, snap); break;
+    case 'side': camTo(_c1.set(118, 16, 34), live ? b : _c2.set(0, 3, -30), 30, 3.5, snap); break;
+    case 'third': camTo(_c1.set(-118, 16, 34), live ? b : _c2.set(0, 3, -30), 30, 3.5, snap); break;
+    case 'high': { const cx = live ? b.x * 0.5 : 0, cz = live ? b.z * 0.5 - 50 : -90; camTo(_c1.set(cx, 300, cz + 140), _c2.set(cx, 0, cz), 46, 2.2, snap); break; }
+    case 'ball': {
+      const h = Math.hypot(R.bv.x, R.bv.z);
+      if (live && h > 8) { const ux = R.bv.x / h, uz = R.bv.z / h; camTo(_c1.set(b.x - ux * 18, b.y + 5, b.z - uz * 18), _c2.set(b.x + ux * 10, b.y, b.z + uz * 10), 50, 6, snap); }
+      else camTo(_c1.set(b.x * 0.9, b.y + 9, b.z + 26), live ? b : _c2.set(0, 3, -60), 44, 4, snap);
+      break;
+    }
+    case 'orbit': {
+      const f = live ? b : _c2.set(0, 3, -40), O = R.orb, cp = Math.cos(O.pitch);
+      camTo(_c1.set(f.x + Math.sin(O.yaw) * cp * O.dist, Math.max(2, f.y + Math.sin(O.pitch) * O.dist), f.z + Math.cos(O.yaw) * cp * O.dist), f, 42, 10, snap); break;
+    }
+    default:
+      if (R.t < R.ct) { cfCam(snap); break; }
+      { const first = R.pre || snap; R.pre = false;
+        if (R.style === 'low') camTo(_c1.set(b.x * 0.12, 4.5, 26), b, 40, 3.5, first);
+        else camTo(_c1.set(118, 16, 34), b, 30, 3.5, first); }
+  }
 }
 function endReplay() {
-  if (!G.replay) return;
-  applyFrame(G.rec[G.rec.length - 1]);
+  const R = G.replay;
+  if (!R) return;
   G.replay = null;
-  document.body.classList.remove('letterbox'); $('replayTag').classList.add('hidden'); $('hud').classList.remove('replaying');
+  restoreSnap(R.restore);
+  document.body.classList.remove('letterbox'); $('replayTag').classList.add('hidden'); $('hud').classList.remove('replaying'); $('replayBar').classList.add('hidden');
+  if (R.theater) { if (R.back) $(R.back).classList.remove('hidden'); openReplays(); return; }
   G.pt = Math.max(0, Math.min(G.pt, G.dur - 1.2));
-  for (const m of MODELS) if (m.root.visible) updateModel(m, G.now);
+}
+// ---- replay controls (the bar along the bottom, and keys while a replay is up)
+function replaySeek(t) { const R = G.replay; if (!R) return; R.t = clamp(t, R.C.t0, R.C.t1); R.k = 0; R.touched = true; }
+function replayToggle() { const R = G.replay; if (!R) return; R.touched = true; if (R.paused && R.t >= R.C.t1 - 1e-3) R.t = R.C.t0; R.paused = !R.paused; replayBarSync(true); }
+function replaySpeed(d) { const R = G.replay; if (!R) return; const i = RP_SPEEDS.indexOf(R.speed); R.speed = RP_SPEEDS[clamp((i < 0 ? 2 : i) + d, 0, RP_SPEEDS.length - 1)]; R.touched = true; replayBarSync(true); }
+function replayCamSet(cam) { const R = G.replay; if (!R) return; R.cam = G.replayCam = cam; R.snap = true; R.pre = true; R.touched = true; replayBarSync(true); }
+function replayStep(dir) { const R = G.replay; if (!R) return; R.paused = true; replaySeek(R.t + dir / 30); replayBarSync(true); }
+// the next or previous clip on the list
+function replayGo(d) {
+  const R = G.replay; if (!R || !R.list) return;
+  const li = R.li + d, c = R.list[li]; if (!c) return;
+  openReplay({ C: c.C, t: c.C.t0, ct: c.ct, style: c.style, title: c.title, theater: true, list: R.list, li, reel: R.reel, back: R.back, restore: R.restore, speed: R.speed, cam: R.cam });
+}
+function replayKey(k, e) {
+  const R = G.replay; if (!R || R.review) return false;
+  const map = {
+    ' ': replayToggle, k: replayToggle, v: () => replayCamSet(RP_CAMS[(RP_CAMS.findIndex((c) => c[0] === R.cam) + 1) % RP_CAMS.length][0]),
+    arrowleft: () => (R.paused ? replayStep(-1) : replaySeek(R.t - 1)), arrowright: () => (R.paused ? replayStep(1) : replaySeek(R.t + 1)),
+    ',': () => replayStep(-1), '.': () => replayStep(1), arrowup: () => replaySpeed(1), arrowdown: () => replaySpeed(-1),
+    home: () => replaySeek(R.C.t0), ']': () => replayGo(1), '[': () => replayGo(-1), n: () => replayGo(1), p: () => replayGo(-1),
+    escape: endReplay, enter: endReplay, r: endReplay, backspace: endReplay,
+  };
+  const f = map[k]; if (!f) return false;
+  e.preventDefault(); f(); return true;
+}
+let rpSeeking = false;
+function replayBarSync(force) {
+  const R = G.replay; if (!R || R.review) return;
+  const C = R.C, dur = C.t1 - C.t0, pos = R.t - C.t0;
+  if (!rpSeeking) $('rpSeek').value = String(Math.round((pos / Math.max(dur, 1e-3)) * 1000));
+  const tt = `${pos.toFixed(1)} / ${dur.toFixed(1)}s`; if ($('rpTime').textContent !== tt) $('rpTime').textContent = tt;
+  if (!force) return;
+  $('rpPlay').innerHTML = R.paused ? '&#9654;' : '&#10074;&#10074;';
+  $('rpPlay').title = R.paused ? 'Play (Space)' : 'Pause (Space)';
+  for (const b of $('rpSpeed').querySelectorAll('button')) b.classList.toggle('on', +b.dataset.s === R.speed);
+  $('rpCam').value = R.cam;
+  const many = !!(R.list && R.list.length > 1);
+  $('rpPrev').classList.toggle('hidden', !many); $('rpNext').classList.toggle('hidden', !many);
+  $('rpPrev').disabled = !many || R.li <= 0; $('rpNext').disabled = !many || R.li >= R.list.length - 1;
+  $('rpCount').textContent = many ? `${R.li + 1} / ${R.list.length}` : '';
+}
+// ---- the Replays list: every play this game, best ones starred
+function openReplays() {
+  const el = $('replaysScreen'), clips = G.clips || [];
+  const row = (c, i) => `<button class="rp-row" data-clip="${i}"><span class="rp-inn">${c.half ? 'BOT' : 'TOP'} ${c.inning}</span><span class="rp-title">${c.star ? '<i class="rp-star">&#9733;</i>' : ''}${esc(c.title)}<small>${esc(c.desc)}</small></span><span class="rp-go">&#9654;</span></button>`;
+  const stars = clips.filter((c) => c.star).length;
+  $('rpListBody').innerHTML = clips.length
+    ? `<div class="row-actions"><button class="cta" data-reel="1" ${stars ? '' : 'disabled'}>PLAY HIGHLIGHTS${stars ? ` (${stars})` : ''}</button><button class="ghost" data-reel="all">Play them all</button></div><div class="rp-list">${clips.map(row).reverse().join('')}</div>
+       <p class="fr-note">Space pauses, &larr; &rarr; skip (frame by frame when paused), &uarr; &darr; change the speed, V changes the camera, [ ] go to the previous or next play, Esc closes.</p>`
+    : '<p class="fr-note">Every ball in play, steal and pickoff this game shows up here once it happens.</p>';
+  el.classList.remove('hidden');
+}
+function closeReplays() { $('replaysScreen').classList.add('hidden'); }
+function playClips(list, li, reel) {
+  const c = list[li]; if (!c) return;
+  const back = !$('final').classList.contains('hidden') ? 'final' : !$('pause').classList.contains('hidden') ? 'pause' : null;
+  closeReplays(); if (back) $(back).classList.add('hidden');
+  openReplay({ C: c.C, t: c.C.t0, ct: c.ct, style: c.style, title: c.title, theater: true, list, li, reel, back });
+}
+function buildReplayUI() {
+  $('rpPlay').addEventListener('click', replayToggle);
+  $('rpRestart').addEventListener('click', () => { const R = G.replay; if (R) { replaySeek(R.C.t0); R.paused = false; replayBarSync(true); } });
+  $('rpClose').addEventListener('click', endReplay);
+  $('rpPrev').addEventListener('click', () => replayGo(-1));
+  $('rpNext').addEventListener('click', () => replayGo(1));
+  $('rpCam').innerHTML = RP_CAMS.map(([v, l]) => `<option value="${v}">${l}</option>`).join('');
+  $('rpCam').addEventListener('change', (e) => { replayCamSet(e.target.value); e.target.blur(); });
+  $('rpSpeed').innerHTML = RP_SPEEDS.map((v) => `<button data-s="${v}">${v === 0.1 ? '0.1' : v === 0.25 ? '&frac14;' : v === 0.5 ? '&frac12;' : v}&times;</button>`).join('');
+  $('rpSpeed').addEventListener('click', (e) => { const b = e.target.closest('button'); const R = G.replay; if (b && R) { R.speed = +b.dataset.s; R.touched = true; replayBarSync(true); } });
+  const seek = $('rpSeek');
+  seek.addEventListener('input', () => { const R = G.replay; if (!R) return; rpSeeking = true; replaySeek(R.C.t0 + (+seek.value / 1000) * (R.C.t1 - R.C.t0)); replayBarSync(); });
+  seek.addEventListener('change', () => { rpSeeking = false; seek.blur(); });
+  for (const id of ['btnReplays', 'btnFinalReplays']) $(id).addEventListener('click', openReplays);
+  $('rpListClose').addEventListener('click', closeReplays);
+  $('rpListBody').addEventListener('click', (e) => {
+    const r = e.target.closest('[data-clip]'), reel = e.target.closest('[data-reel]'), clips = G.clips || [];
+    if (r) playClips(clips, +r.dataset.clip, false);
+    else if (reel) { const list = reel.dataset.reel === 'all' ? clips : clips.filter((c) => c.star); playClips(list, 0, true); }
+  });
 }
 
 // ------------------------------------------------------------------ input ----
@@ -854,6 +1063,7 @@ const raycaster = new THREE.Raycaster(), platePlane = new THREE.Plane(new V3(0, 
 const keys = new Set();
 function setMouse(e) { mouseNDC.set((e.clientX / window.innerWidth) * 2 - 1, -(e.clientY / window.innerHeight) * 2 + 1); mouseMoved = true; lastPointer = e.pointerType || 'mouse'; }
 canvasEl.addEventListener('pointermove', (e) => {
+  if (G.replay && G.replay.cam === 'orbit' && e.buttons) { const O = G.replay.orb; O.yaw -= (e.movementX || 0) * 0.006; O.pitch = clamp(O.pitch + (e.movementY || 0) * 0.005, 0.03, 1.45); return; }
   setMouse(e);
   mouseIn = e.pointerType === 'mouse';
   if (!fpvOn || G.paused) return;
@@ -864,8 +1074,11 @@ canvasEl.addEventListener('pointermove', (e) => {
 });
 canvasEl.addEventListener('pointerleave', () => { mouseIn = false; });
 canvasEl.addEventListener('contextmenu', (e) => e.preventDefault());
+canvasEl.addEventListener('wheel', (e) => { if (G.replay && G.replay.cam === 'orbit') { e.preventDefault(); const O = G.replay.orb; O.dist = clamp(O.dist * (e.deltaY > 0 ? 1.12 : 0.89), 12, 400); } }, { passive: false });
 canvasEl.addEventListener('pointerdown', (e) => {
-  SND.init(); setMouse(e);
+  SND.init();
+  if (G.replay) { e.preventDefault(); if (!G.replay.review && G.replay.cam !== 'orbit') replayToggle(); return; }   // orbit: drag to look around
+  setMouse(e);
   // running the bases during a play: a click picks the runner under it
   if (G.phase === 'live' && userRuns() && !G.lock && !trotOn() && !G.paused) { e.preventDefault(); pickRunnerAt(e.clientX, e.clientY); return; }
   // first person: grab the mouse for looking around; right-click re-centers on the play
@@ -922,6 +1135,8 @@ window.addEventListener('keydown', (e) => {
   if (k === 'escape' && !$('statsScreen').classList.contains('hidden')) { closeStats(); return; }
   if (k === 'escape' && !$('seasonScreen').classList.contains('hidden')) { closeSeasonHub(); return; }
   if (k === 'escape' && !$('optionsScreen').classList.contains('hidden')) { closeOptions(); return; }
+  if (G.replay && !(e.target && /^(INPUT|SELECT|TEXTAREA)$/.test(e.target.tagName) && e.target.type !== 'range') && replayKey(raw, e)) return;
+  if (k === 'escape' && !$('replaysScreen').classList.contains('hidden')) { closeReplays(); return; }
   if (!k) return;   // a key whose control moved to another key
   if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA')) return;
   if (k === 'escape' || (k === 'p' && G.phase !== 'menu')) { togglePause(); return; }
@@ -1068,7 +1283,7 @@ function aimUpdate(dt, snap = false) {
 }
 function primaryAction(kind) {
   if (G.paused) return;
-  if (G.replay) { endReplay(); return; }
+  if (G.replay) { if (!G.replay.review) replayToggle(); return; }
   const ph = G.phase;
   if (ph === 'menu' || ph === 'boot' || ph === 'final' || ph === 'wait') return;
   if (ph === 'prePitch' || ph === 'windup' || ph === 'pitch') {
@@ -1107,6 +1322,7 @@ function togglePause(force, remote) {
   const me = localSide();
   const teamOK = me >= 0 && G.mode !== 'lock' && G.mode !== 'derby' && !G.drill;
   $('btnTeam').classList.toggle('hidden', !teamOK);
+  $('btnReplays').classList.toggle('hidden', G.mode === 'online' || G.mode === 'derby' || !!G.drill);
   try { if (G.paused) speechSynthesis.pause(); else speechSynthesis.resume(); } catch (e) { /* none */ }
 }
 
@@ -1184,10 +1400,12 @@ function renderMenu() {
   $('netOr').classList.toggle('hidden', online && (NET.open || host));
   $('netJoinRow').classList.toggle('hidden', online && (NET.open || host));
   $('matchup').classList.toggle('hidden', !showTeams);
+  const myElo = eloMine();
+  $('netElo').innerHTML = online ? `YOUR RATING <b>${myElo.r}</b>${myElo.n ? ` &middot; ${myElo.w | 0}-${myElo.l | 0} online` : ' &middot; new player'}` : '';
   if (online && showTeams) {
-    const P = onlinePicks();
-    $('pickA').innerHTML = teamPickHTML(P.mySide === 0 ? 'AWAY · YOU' : 'AWAY · FRIEND', P.teams[0], 'away', P.mySide === 0, P.sp[0]);
-    $('pickH').innerHTML = teamPickHTML(P.mySide === 1 ? 'HOME · YOU' : 'HOME · FRIEND', P.teams[1], 'home', P.mySide === 1, P.sp[1]);
+    const P = onlinePicks(), you = `YOU · ${myElo.r}`, them = NET.oppElo != null ? `FRIEND · ${NET.oppElo}` : 'FRIEND';
+    $('pickA').innerHTML = teamPickHTML(`AWAY · ${P.mySide === 0 ? you : them}`, P.teams[0], 'away', P.mySide === 0, P.sp[0]);
+    $('pickH').innerHTML = teamPickHTML(`HOME · ${P.mySide === 1 ? you : them}`, P.teams[1], 'home', P.mySide === 1, P.sp[1]);
   } else if (showTeams) {
     $('pickA').innerHTML = teamPickHTML(derby ? 'BP PITCHER FROM' : prac ? 'OPPONENT' : 'AWAY', menuTeam('away'), 'away', true, menuSP('away'));
     $('pickH').innerHTML = teamPickHTML(derby || prac || season ? 'YOUR TEAM' : 'HOME', menuTeam('home'), 'home', true, menuSP('home'));
@@ -1373,7 +1591,10 @@ function buildMenu() {
 function toMenu() {
   try { speechSynthesis.cancel(); } catch (e) { /* none */ }
   if (TUT.on) tutEnd();
+  if (G.mode === 'online' && NET.role !== 'spec' && G.phase !== 'final') eloApply(false, 'quit');   // quitting a game in progress is a loss
   if (G.mode === 'online') netClose();
+  if (G.replay) endReplay();
+  $('replayBar').classList.add('hidden'); closeReplays();
   G.mode = 'menu'; G.paused = false; G.replay = null; G.play = null; G.lock = null; G.ctrl = ['cpu', 'cpu']; G.localPitch = false;
   setPhase('menu');
   $('hud').classList.add('hidden'); $('pause').classList.add('hidden');
@@ -1489,7 +1710,8 @@ function frame(ts) {
 }
 function frameStep(dt) {
   G.stick = pollGamepad();
-  if (!G.paused && !G.hold) {
+  if (G.replay && (G.replay.theater || G.paused)) updateReplay(dt);
+  else if (!G.paused && !G.hold) {
     if (isGuest()) guestUpdate(dt);
     else if (G.beat > 0) G.beat -= dt;   // a beat to get your bearings when a skip lands you in a play
     else if (G.mode === 'lock') {
@@ -1522,6 +1744,7 @@ function boot() {
   buildOptionsUI();
   $('btnRosters').addEventListener('click', openRosters);
   buildMenu();
+  buildReplayUI();
   buildCloudUI();
   ballMesh.visible = false;
   setPhase('menu'); G.mode = 'menu';
@@ -1539,7 +1762,7 @@ function boot() {
 }
 // Debug handle: lets a test harness advance the simulation without waiting on animation frames.
 window.__fullcount = {
-  G, TEAMS, settings, NET, keys, BAT_CAMS, Play, Runner, BASES, simBatted, umpCallsStrike, inZone, V3, getModel, ballMesh, startPickoff, stealCmd, camTo, setPark, PARKS, fenceDist, fenceH, gameRecord, gamesList, loadSave, openLiveBox, openStats, toMenu, simGame, SIMK, seasonLoad, startSeason, seasonSimNext, seasonSimMany, seasonPlayNext, seasonNextGame, standings, openSeasonHub, renderMenu, menu, TUT, tutStart, rosterCost, teamToDef, cleanRoster, buildCustomTeam, Cloud, cloudRender, inviteToast, get ROSTERS() { return ROSTERS; },
+  G, TEAMS, settings, NET, keys, BAT_CAMS, Play, Runner, BASES, simBatted, umpCallsStrike, inZone, eloApply, eloMine, V3, getModel, ballMesh, startPickoff, stealCmd, camTo, setPark, PARKS, fenceDist, fenceH, gameRecord, gamesList, loadSave, openLiveBox, openStats, toMenu, simGame, SIMK, seasonLoad, startSeason, seasonSimNext, seasonSimMany, seasonPlayNext, seasonNextGame, standings, openSeasonHub, renderMenu, menu, TUT, tutStart, rosterCost, teamToDef, cleanRoster, buildCustomTeam, Cloud, cloudRender, inviteToast, get ROSTERS() { return ROSTERS; },
   step(sec, dt = 1 / 60) {
     const n = Math.round(sec / dt);
     for (let i = 0; i < n && !G.paused; i++) { if (isGuest()) guestUpdate(dt); else update(dt); netTick(); }

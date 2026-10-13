@@ -156,6 +156,25 @@ button{font:inherit;color:inherit}
 #hud.replaying .plate,#hud.replaying #tracker,#hud.replaying #caption,#hud.replaying #hint,#hud.replaying #feedback,#hud.replaying #pitchInfo,#hud.replaying #bug,#hud.replaying #derbyHud,#hud.replaying #topbar,#hud.replaying #runHelp,#hud.replaying #runTags,#hud.replaying #pickHelp,#hud.replaying #pracHud{display:none}
 .letterbox::before,.letterbox::after{content:"";position:fixed;left:0;right:0;height:9vh;background:#000;z-index:4}
 .letterbox::before{top:0}.letterbox::after{bottom:0}
+#replayBar{position:fixed;left:50%;bottom:calc(9vh + 12px);transform:translateX(-50%);z-index:30;display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:center;width:min(1180px,calc(100vw - 32px));padding:8px 12px;background:rgba(8,14,26,.88);border:1px solid var(--line);border-radius:6px}
+#replayBar.hidden{display:none}
+#replayBar .rp-btn{width:36px;height:32px;border-radius:4px;border:1px solid var(--line);background:transparent;cursor:pointer;font-size:15px;line-height:1;padding:0}
+#replayBar .rp-btn:hover{background:var(--panel-hi)}
+#replayBar .rp-btn:disabled{opacity:.35;cursor:default}
+#rpSeek{flex:1 1 140px;min-width:100px;accent-color:var(--gold)}
+#rpTime,#rpCount{font-family:var(--f-display);font-weight:700;font-size:13px;color:var(--dust);min-width:64px;text-align:center;font-variant-numeric:tabular-nums}
+#rpCount:empty{display:none}
+#rpSpeed button{padding:5px 8px;font-size:13px}
+#rpCam{font-size:13px;padding:5px 8px}
+.rp-card{max-width:720px}
+.rp-list{display:flex;flex-direction:column;gap:6px;overflow:auto;max-height:min(60vh,560px);margin-top:10px}
+.rp-row{display:grid;grid-template-columns:64px 1fr 28px;align-items:center;gap:10px;text-align:left;padding:8px 10px;border:1px solid var(--line);border-radius:4px;background:rgba(255,255,255,.03);cursor:pointer;color:inherit;font:inherit}
+.rp-row:hover{background:var(--panel-hi)}
+.rp-inn{font-family:var(--f-display);font-weight:700;letter-spacing:.12em;font-size:12px;color:var(--dust)}
+.rp-title{font-family:var(--f-display);font-weight:800;font-size:16px;letter-spacing:.04em;min-width:0}
+.rp-title small{display:block;font-family:var(--f-body);font-weight:500;font-size:12px;letter-spacing:0;color:var(--dust);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rp-star{color:var(--gold);font-style:normal;margin-right:6px}
+.rp-go{color:var(--gold);font-size:14px}
 
 /* ---------- screens ---------- */
 .screen{position:fixed;inset:0;z-index:10;display:flex;align-items:center;justify-content:center;padding-inline:16px;padding-block:24px;overflow-y:auto}
@@ -218,6 +237,14 @@ button:focus-visible,select:focus-visible{outline:2px solid var(--gold);outline-
 .linescore .rhe{font-weight:800;background:rgba(255,255,255,.05)}
 .ls-wrap{overflow-x:auto}
 .final-sub{color:var(--dust);font-size:15px;line-height:1.5}
+.final-elo{font-family:var(--f-display);font-weight:700;letter-spacing:.14em;font-size:14px;color:var(--dust)}
+.final-elo:empty,.net-elo:empty{display:none}
+.final-elo b{color:var(--chalk);font-size:18px;letter-spacing:.04em}
+.final-elo .good,.st-table .good{color:var(--ball)}.final-elo .bad,.st-table .bad{color:var(--strike)}
+.net-elo{font-family:var(--f-display);font-weight:700;letter-spacing:.14em;font-size:12px;color:var(--dust);margin:-4px 0 4px}
+.net-elo b{color:var(--gold);font-size:15px;letter-spacing:.04em}
+.elo-chip{font-family:var(--f-display);font-weight:800;font-size:13px;color:#1a1205;background:var(--gold);border-radius:3px;padding:1px 6px}
+.fr-elo{font-family:var(--f-display);font-weight:800;font-size:13px;color:var(--gold);margin-right:6px}
 .potg{display:flex;gap:14px;align-items:center;padding:12px;background:var(--panel-hi);border-radius:4px}
 .potg b{font-family:var(--f-display);font-size:22px;text-transform:uppercase}
 .potg span{color:var(--dust);font-size:14px}
@@ -315,6 +342,7 @@ button:focus-visible,select:focus-visible{outline:2px solid var(--gold);outline-
 .st-table th[data-sort]{cursor:pointer}
 .st-cards{display:grid;grid-template-columns:repeat(8,1fr);gap:8px;margin:6px 0 12px}
 @media (max-width:860px){.st-cards{grid-template-columns:repeat(4,1fr)}}
+.st-cards.four{grid-template-columns:repeat(4,1fr)}
 .st-cards div{display:flex;flex-direction:column;align-items:center;padding:8px 4px;border:1px solid var(--line);border-radius:4px;background:rgba(255,255,255,.03)}
 .st-cards b{font-family:var(--f-display);font-size:24px;font-weight:800}
 .st-cards small{font-size:10px;letter-spacing:.12em;color:var(--dust)}
@@ -374,6 +402,9 @@ body.cb{--ball:#56B4E9;--strike:#E69F00}
 .sea-next small{font-family:var(--f-display);letter-spacing:.12em;color:var(--gold);font-size:12px}
 .sea-next b{font-size:17px}
 .sea-next span{color:var(--dust);font-size:12px}
+.sea-sp{display:flex;align-items:center;gap:8px;margin-top:6px;flex-wrap:wrap}
+.sea-sp small{font-family:var(--f-display);letter-spacing:.12em;color:var(--dust);font-size:11px}
+.sea-sp select{font-size:12px;padding:4px 8px;max-width:100%}
 .sea-panel .row-actions{margin-bottom:6px;flex-wrap:wrap}
 .tbadge{display:inline-block;min-width:44px;padding:4px 7px;border-radius:3px;border:1px solid;font-family:var(--f-display);font-weight:800;font-size:16px;letter-spacing:.04em;text-align:center}
 .tbadge.sm{min-width:30px;padding:0 4px;font-size:10px;vertical-align:1px}
@@ -700,6 +731,7 @@ span.chip{cursor:default}
       <div class="sea-panel hidden" id="seasonPanel"></div>
       <div id="netPanel" class="hidden">
         <h3>ONLINE 1V1</h3>
+        <div class="net-elo" id="netElo"></div>
         <div class="net-row" id="netHostRow"><button class="cta" id="btnHost">HOST A GAME</button></div>
         <div class="net-or" id="netOr">or join your friend's game with their room code</div>
         <div class="net-row" id="netJoinRow"><input id="joinCode" maxlength="5" placeholder="CODE" autocomplete="off" spellcheck="false" aria-label="Room code"><button class="ghost" id="btnJoin">Join</button><button class="ghost" id="btnWatch" title="Watch the game as a spectator">Watch</button></div>
@@ -777,6 +809,7 @@ span.chip{cursor:default}
       <button class="ghost" id="btnBatCam">Batting cam: Strike Zone</button>
       <button class="ghost" id="btnTeam">Team: lineup, bench &amp; bullpen</button>
       <button class="ghost" id="btnBox">Box score</button>
+      <button class="ghost" id="btnReplays">Replays &amp; highlights</button>
       <button class="ghost" id="btnQuit">Quit to menu</button>
     </div>
   </div>
@@ -826,7 +859,7 @@ span.chip{cursor:default}
         <dt>Batting cam</dt><dd>Strike Zone, Strike Zone 2 or Strike Zone High: pick it in the menu or the pause screen</dd>
         <dt>Tab / Back</dt><dd>Player Lock: skip this at-bat (the CPU plays your part, until the ball comes to you or you're on base when it's put in play)</dd>
         <dt>Catcher</dt><dd>Player Lock as the catcher: 1&ndash;5 pick the pitch, the mouse picks the spot, click puts the sign down. Then move the mitt to the ball to frame it; C challenges a ball that should've been a strike.</dd>
-        <dt>R</dt><dd>Instant replay after a play</dd>
+        <dt>R</dt><dd>Instant replay after a play. In a replay: Space pauses, &larr; &rarr; skip (a frame when paused), &uarr; &darr; speed, V camera, Esc closes. Every play this game is under Replays in the pause menu.</dd>
         <dt>Enter</dt><dd>Skip ahead</dd>
         <dt>F</dt><dd>Fast-forward (CPU vs CPU)</dd>
         <dt>Gamepad</dt><dd>Stick aims, A swing, X power, B contact</dd>
@@ -850,7 +883,26 @@ span.chip{cursor:default}
     <div class="ls-wrap"><table class="linescore" id="finalLS"></table></div>
     <div class="potg" id="potg"></div>
     <div class="final-sub" id="finalSub"></div>
-    <div class="row-actions"><button class="cta" id="btnAgain">PLAY AGAIN</button><button class="ghost" id="btnFinalBox">Box score</button><button class="ghost" id="btnMenu">Main menu</button></div>
+    <div class="final-elo" id="finalElo"></div>
+    <div class="row-actions"><button class="cta" id="btnAgain">PLAY AGAIN</button><button class="ghost" id="btnFinalBox">Box score</button><button class="ghost" id="btnFinalReplays">Highlights</button><button class="ghost" id="btnMenu">Main menu</button></div>
+  </div>
+</div>
+
+<div id="replayBar" class="hidden">
+  <button id="rpPlay" class="rp-btn" title="Pause (Space)">&#10074;&#10074;</button>
+  <button id="rpRestart" class="rp-btn" title="From the start (Home)">&#10226;</button>
+  <input type="range" id="rpSeek" min="0" max="1000" value="0" aria-label="Replay position">
+  <span id="rpTime"></span>
+  <div class="seg" id="rpSpeed" aria-label="Speed"></div>
+  <select id="rpCam" aria-label="Camera"></select>
+  <button id="rpPrev" class="rp-btn hidden" title="Previous play ([)">&lsaquo;</button><span id="rpCount"></span><button id="rpNext" class="rp-btn hidden" title="Next play (])">&rsaquo;</button>
+  <button id="rpClose" class="ghost" title="Close (Esc)">Close</button>
+</div>
+
+<div id="replaysScreen" class="screen modal hidden">
+  <div class="card tm-card rp-card">
+    <div class="fr-head"><h2>REPLAYS</h2><span class="tm-sub">Every play this game &middot; &#9733; highlights</span><button class="ghost" id="rpListClose">Back</button></div>
+    <div id="rpListBody"></div>
   </div>
 </div>
 
@@ -872,7 +924,7 @@ span.chip{cursor:default}
 <div id="statsScreen" class="screen modal hidden">
   <div class="card tm-card">
     <div class="fr-head"><h2>STATS</h2><span id="stSub" class="tm-sub"></span><button class="ghost" id="stClose">Back</button></div>
-    <div class="seg st-tabs" id="stTabs"><button data-t="you" class="on">You</button><button data-t="h2h">Head to head</button><button data-t="games">All games</button><button data-t="bat">Hitters</button><button data-t="pit">Pitchers</button></div>
+    <div class="seg st-tabs" id="stTabs"><button data-t="you" class="on">You</button><button data-t="h2h">Head to head</button><button data-t="elo">Rating</button><button data-t="games">All games</button><button data-t="bat">Hitters</button><button data-t="pit">Pitchers</button></div>
     <div id="stBody"></div>
   </div>
 </div>

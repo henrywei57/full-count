@@ -15,7 +15,7 @@ All 30 MLB clubs with their real current rosters. Every player's ratings come fr
 - **Season** – take a real club through a 12, 30, 60 or 162-game schedule, the standings and the playoffs (see [Season](#season)).
 - **Player Lock** – pick one player. You only play when he's involved: at bat, on base, or when the ball is hit his way (a ball to the outfield is only yours if you're the one playing it). Everything else is skipped behind a SIMULATING card (set Not Involved to Watch to see it fast-forwarded instead), and the skip drops you in the moment the ball comes to you. The AI never moves your player: in the field you run him to the ball and the bag yourself (your teammates back you up, and only go after your ball if you miss it), and on the bases he holds until you send him (forced runs and the batter's dash to first aside). Fielding and baserunning use a third-person camera behind your player, like Road to the Show: it faces home plate before the pitch, then follows the ball, the base you're running to, or the base you're about to throw to. Just move the mouse to look around. First person and broadcast cameras are also available, and V cycles between them. At-bats use the strike-zone view. Set Your Role to Bat only to sim all of your fielding, or press Tab to skip any single at-bat (it still stops if the ball comes to you, or you're on base when it's put in play).
   - **As the catcher** you're in every pitch, from the strike-zone view. **Call it**: the pitcher's idea comes up first; change the pitch (1–5) and the spot (mouse), then click to put the sign down, and he throws it with his own command. **Frame it**: move your mitt (the gold ring) to the ball as it comes in. Get there and a pitch on the edge goes your way; stab at it and a strike on the edge can be called a ball, and one in the dirt can get by you. With the ABS challenge umpire, press **C** to challenge a ball that should've been a strike. Pop-ups near the plate, bunts and dribblers are yours to run down, and base stealers yours to throw out.
-- **Online 1v1** – one player hosts and gets a 5-character room code (or invite link); the other joins with it. Each player picks their own team, custom rosters included. Signed in, you can invite a friend straight from your friends list. Works across devices and networks.
+- **Online 1v1** – one player hosts and gets a 5-character room code (or invite link); the other joins with it. Each player picks their own team and starting pitcher, custom rosters included. Signed in, you can invite a friend straight from your friends list. Works across devices and networks. Every game moves your [Elo rating](#rating). In the field you always control the fielder nearest the ball, never the pitcher or catcher: when one of them plays it, you get the closest fielder to it, and the throw is still yours (press a base).
 - **Practice** – endless drills with your team against any opponent:
   - **Batting**: live pitching, as many at-bats as you want, with contact rate, hits and average exit velocity tracked.
   - **Pitching**: work a full lineup; strike %, strikeouts, walks and hits tracked. Your pitcher never tires.
@@ -48,7 +48,8 @@ All 30 MLB clubs with their real current rosters. Every player's ratings come fr
 | Swing the camera (Player Lock) | Just move the mouse (rest it near the left or right edge to keep turning; click to lock the pointer), right-click or T to re-center | Right stick, R3 |
 | Cycle third person / first person / broadcast (Player Lock) | V | |
 | Skip this at-bat (Player Lock) | Tab or the Skip button | Back |
-| Replay, skip, pause | R, Enter, Esc | Back, A, Start |
+| Replay the last play, skip, pause | R, Enter, Esc | Back, A, Start |
+| During a replay: pause, skip / frame step, speed, camera, previous / next play, close | Space, ← →, ↑ ↓, V, [ ], Esc | |
 
 The AI moves your fielder until you touch the controls. Any ball that comes inside the gold ring (7.5 ft) around your fielder is yours. In Player Lock, W runs the way the camera faces. When you field the ball, the best throw is ringed in green and the camera turns toward it; press 1–4 to throw. A live mini diamond shows where every runner, fielder and the ball are.
 
@@ -87,11 +88,23 @@ When you're pitching with runners on, Shift + 1 / 2 / 3 throws over. The runner 
 
 Pick **Season** on the main menu, choose your club and a length (12, 30, 60 or the full 162), and play a schedule of three-game series against the other 29 real clubs. Everyone plays every day, and every team runs a five-man rotation, so you face whoever's turn it is.
 
-- **Play next game** plays it out like any other game, in the home team's park, with that day's starters. **Sim game**, **Sim 7 days** and **Sim to the playoffs** let the computer play it for you.
+- **Play next game** plays it out like any other game, in the home team's park, with that day's starters. Pick **Your starter** to start anyone in your rotation; the rotation goes on from him. **Sim game**, **Sim 7 days** and **Sim to the playoffs** let the computer play it for you.
 - Every other game in the league is played out by a quick plate-appearance sim: each batter against each pitcher from their ratings and the park, with pitching changes, steals, double plays and sac flies. Across a season it lands on big-league rates (about a .245 average, 22% strikeouts, 3% homers and 4 to 4.5 runs a team).
 - **Standings** by division (W, L, PCT, GB, runs, last 10, streak), **league leaders** (AVG, HR, RBI, OPS, SB, W, RA9, K, SV, WHIP) from every game in the league, and **your games**, each with its box score.
 - **Playoffs**, MLB style: six teams a league (three division winners and three wild cards), a wild-card round, the Division Series, the Championship Series and the World Series. A short season gets shorter series. If your club misses out, sim ahead to see who wins it all.
 - The season saves after every game, on this device and to your Google account. A season game you quit partway through resumes where you left it.
+
+## Replays
+
+Every ball in play, steal, pickoff and wild pitch is taped, and the whole game's plays are kept until the next game.
+
+- **R** right after a play replays it.
+- **Replays & highlights** (pause menu) or **Highlights** (final screen) lists every play this game, newest first, with the best ones starred (homers, triples, diving and wall catches, double plays, anything that scores runs). Click one to watch it, **Play highlights** to watch the starred ones back to back, or **Play them all**.
+- The replay bar: pause and play, scrub anywhere, step frame by frame, speeds from 0.1× to 2×, and eight cameras: Auto, Broadcast, Behind the plate, First-base side, Third-base side, Overhead, Follow the ball, and Free (drag to orbit, scroll to zoom). Keys: Space pauses, ← → skip a second (a frame when paused), ↑ ↓ change the speed, V changes the camera, [ ] go to the previous or next play, Esc closes.
+
+## Rating
+
+Online 1v1 games are rated with Elo. Everyone starts at 1000. Beat a higher-rated player and you gain more than for beating a lower-rated one, and the reverse when you lose; your first 10 games move it faster (K = 40, then 24). Quitting a game in progress, or closing the tab, counts as a loss, and the player left gets the win (a dropped connection that never comes back is a win for the host and no change for the guest). Both ratings show in the lobby and on the matchup, the change on the final screen, and the full picture in **Stats → Rating**: your rating, your best, your online record, your last games and, signed in, the leaderboard. Signed in, your rating is kept with your account and shows next to your name and on your friends' lists. (If you set up Firebase before this version, publish the updated `firestore.rules` so ratings can be saved to accounts and the leaderboard can load.)
 
 ## Box scores, saved games and stats
 
