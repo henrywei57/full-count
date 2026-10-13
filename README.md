@@ -199,6 +199,8 @@ Balls hit the wall or clear it according to its height where they get there, out
 - **Hitting guide**: on Rookie and Veteran, a ring shows where the pitch will cross once it's part-way in. The fly-ball landing spot shows on every level except Hall of Fame. One checkbox turns both off.
 - **Keys**: give any keyboard control a different key. Your key does everything the default one did (Space is the swing, the pitch meter and the dive), and the hints on screen show your keys. Reset puts them all back.
 
+The picture adjusts itself to your device: when frames start running slow, the game draws at a lower resolution until it's smooth again, and steps back up when there's room.
+
 **Difficulty** has four levels (Rookie, Veteran, All-Star and Hall of Fame), set separately for hitting and for pitching. For hitting, they change pitch speed, the PCI size, the timing windows, swing assist and the CPU pitcher's control. Rookie is the most forgiving (the biggest PCI, the most swing assist, the widest timing windows) and Hall of Fame the least (the smallest PCI, no swing assist, the tightest timing). For pitching, they change the meter (Rookie's is slowest, Hall of Fame's fastest), how well CPU hitters make contact, and how well they lay off bad pitches.
 
 ## Friends

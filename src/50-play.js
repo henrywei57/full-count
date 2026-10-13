@@ -54,7 +54,9 @@ class Fielder {
     this.m.root.position.copy(this.pos); this.m.root.position.y = groundY(this.pos.x, this.pos.z);
     // the body turns toward where he's facing over a few frames rather than snapping
     const r = this.m.root.rotation;
+    const before = r.y;
     if (this.snapYaw) { r.y = this.yaw; this.snapYaw = false; } else r.y += angDiff(r.y, this.yaw) * 0.3;
+    turnLean(this.m, before, this.v);
   }
   anim(name, prm) { setAnim(this.m, name, prm); }
 }
@@ -91,10 +93,14 @@ class Runner {
   sync(face) {
     this.updatePos();
     this.m.root.position.copy(this.pos);
+    const r = this.m.root.rotation, before = r.y;
     if (this.state === 'run') {
+      // he turns onto the next base path over a few strides rather than snapping (rounding the bag)
       const a = BASES[this.base], b = BASES[this.next];
-      this.m.root.rotation.y = this.rev ? Math.atan2(a.x - b.x, a.z - b.z) : Math.atan2(b.x - a.x, b.z - a.z);
-    } else if (face) this.m.root.rotation.y = Math.atan2(face.x - this.pos.x, face.z - this.pos.z);
+      const want = this.rev ? Math.atan2(a.x - b.x, a.z - b.z) : Math.atan2(b.x - a.x, b.z - a.z);
+      r.y = this.m.anim === 'run' || this.m.anim === 'jog' ? r.y + angDiff(r.y, want) * 0.25 : want;
+    } else if (face) r.y = Math.atan2(face.x - this.pos.x, face.z - this.pos.z);
+    turnLean(this.m, before, this.state === 'run' ? this.v : 0);
     this.m.phase = this.phase;
   }
 }
@@ -573,7 +579,7 @@ class Play {
       const step = Math.min(d, f.v * dt);
       f.pos.x += (dx / d) * step; f.pos.z += (dz / d) * step;
       const want = Math.atan2(dx, dz); f.yaw += angDiff(f.yaw, want) * Math.min(1, dt * 12);
-      f.m.phase += step * 0.42; f.anim(f.v > 9 ? 'run' : 'jog');
+      f.m.phase += step * STRIDE(f.v); f.anim(f.v > 9 ? 'run' : 'jog');
     } else {
       f.v = 0;
       const bp = this.ball.pos; const want = Math.atan2(bp.x - f.pos.x, bp.z - f.pos.z);
@@ -593,7 +599,7 @@ class Play {
       const nx = f.pos.x + dx * f.v * dt, nz = f.pos.z + dz * f.v * dt;
       if (inPoly(nx, nz) || Math.hypot(nx, nz) < Math.hypot(f.pos.x, f.pos.z)) { f.pos.x = nx; f.pos.z = nz; } else f.v *= 0.5;
       f.yaw += angDiff(f.yaw, Math.atan2(dx, dz)) * Math.min(1, dt * 14);
-      f.m.phase += f.v * dt * 0.42; f.anim(f.v > 9 ? 'run' : 'jog');
+      f.m.phase += f.v * dt * STRIDE(f.v); f.anim(f.v > 9 ? 'run' : 'jog');
     } else {
       f.v = Math.max(0, f.v - 45 * dt);
       if (!withBall) {
@@ -611,7 +617,7 @@ class Play {
     const nx = f.pos.x + dx, nz = f.pos.z + dz;
     if (inPoly(nx, nz) || Math.hypot(nx, nz) < Math.hypot(f.pos.x, f.pos.z)) { f.pos.x = nx; f.pos.z = nz; }
     f.yaw = rp.ry; f.v = rp.v;
-    f.m.phase += Math.hypot(dx, dz) * 0.42;
+    f.m.phase += Math.hypot(dx, dz) * STRIDE(f.v);
     f.anim(rp.v > 9 ? 'run' : rp.v > 0.5 ? 'jog' : 'ready');
   }
   tryHumanCatch(f) {
@@ -711,7 +717,7 @@ class Play {
     if (f.runTo) {
       const bp = BASES[f.runTo], dx = bp.x - f.pos.x, dz = bp.z - f.pos.z, d = Math.hypot(dx, dz);
       if (d < 1.4) { this.ballAtBase(f.runTo, f); f.touched = f.runTo; f.runTo = null; f.decideAt = t + 0.3; f.promptStart = null; f.anim('ready'); return; }
-      const step = Math.min(d, f.speed * dt); f.pos.x += (dx / d) * step; f.pos.z += (dz / d) * step; f.yaw = Math.atan2(dx, dz); f.m.phase += step * 0.42; f.anim('run');
+      const step = Math.min(d, f.speed * dt); f.pos.x += (dx / d) * step; f.pos.z += (dz / d) * step; f.yaw = Math.atan2(dx, dz); f.m.phase += step * STRIDE(f.speed); f.anim('run');
       return;
     }
     // c: the person steering this fielder; hc: whoever tells him where to throw (c, or a person
@@ -1050,7 +1056,7 @@ class Play {
       }
       const top = this.hr || this.awarded ? r.top * 0.68 : r.top;
       r.v = Math.min(top, r.v + RUN_ACC * dt);
-      r.phase += r.v * dt * 0.42;
+      r.phase += r.v * dt * STRIDE(r.v);
       if (r.rev) {
         r.d -= r.v * dt;
         if (r.d <= 0) {

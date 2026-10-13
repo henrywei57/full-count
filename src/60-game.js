@@ -69,17 +69,23 @@ function fatigue(p) { if (G.drill) return 0; const L = pitchLimit(p), pc = pstat
 
 // ---------------------------------------------------------------- models ----
 const modelOf = new Map();
+// the cap's letters: the city's initials (LA, NY, SF), or its first letter (B for Boston)
+function capLetters(team) {
+  const w = String(team.city || team.name || '').replace(/[^A-Za-z .]/g, '').split(/[ .]+/).filter(Boolean);
+  return (w.length > 1 ? w.slice(0, 2).map((x) => x[0]).join('') : (w[0] || '?')[0]).toUpperCase();
+}
 function kitFor(team, home) {
+  const script = String(team.name || ''), logo = capLetters(team);
   return home
-    ? { jersey: '#f2f2ee', pants: '#ecebe6', trim: team.c1, cap: team.c1, sock: team.c1, numFill: team.c1, numStroke: '#f2f2ee' }
-    : { jersey: team.c1, pants: '#a7acb5', trim: team.c1, cap: team.c1, sock: team.c1, numFill: team.c2, numStroke: team.c1 };
+    ? { jersey: '#f2f2ee', pants: '#ecebe6', trim: team.c1, cap: team.c1, sock: team.c1, numFill: team.c1, numStroke: '#f2f2ee', script, scriptFill: team.c1, scriptStroke: team.c2, logo, logoFill: '#f2f2ee', logoStroke: team.c2 }
+    : { jersey: team.c1, pants: '#a7acb5', trim: team.c1, cap: team.c1, sock: team.c1, numFill: team.c2, numStroke: team.c1, script, scriptFill: '#f2f2ee', scriptStroke: team.c2, logo, logoFill: '#f2f2ee', logoStroke: team.c2 };
 }
 function getModel(pl, kind) {
   const home = G.teams[1] === pl.team;
   // a custom roster can change between games (new number, new look), so its version is part of the key
   const key = pl.id + (home ? 'H' : 'A') + (kind || '') + (pl.team.ver || '');
   if (modelOf.has(key)) return modelOf.get(key);
-  const m = makePlayer({ ...kitFor(pl.team, home), skin: pl.skin, num: pl.num, lefty: pl.throws === 'L', kind });
+  const m = makePlayer({ ...kitFor(pl.team, home), skin: pl.skin, num: pl.num, name: String(pl.name || '').split(' ').slice(1).join(' ') || pl.name, lefty: pl.throws === 'L', kind });
   m.pl = pl; m.key = `${pl.id}|${home ? 'H' : 'A'}|${kind || ''}`;
   modelOf.set(key, m);
   return m;
@@ -765,13 +771,13 @@ function updateStealers(dt) {
       if (d < 3) continue;
       f.v = Math.min(f.speed * 0.85, f.v + f.acc * dt);
       const step = Math.min(d - 3, f.v * dt);
-      f.pos.x += (dx / d) * step; f.pos.z += (dz / d) * step; f.yaw = Math.atan2(dx, dz); f.m.phase += step * 0.42; f.anim('run'); f.sync();
+      f.pos.x += (dx / d) * step; f.pos.z += (dz / d) * step; f.yaw = Math.atan2(dx, dz); f.m.phase += step * STRIDE(f.speed); f.anim('run'); f.sync();
     }
   }
   for (const r of G.baseRunners) {
     if (!r.steal || !r.steal.went || r.state !== 'run') continue;
     if (r.delay > 0) { r.delay -= dt; continue; }
-    r.v = Math.min(r.top, r.v + RUN_ACC * dt); r.d += r.v * dt; r.phase += r.v * dt * 0.42;
+    r.v = Math.min(r.top, r.v + RUN_ACC * dt); r.d += r.v * dt; r.phase += r.v * dt * STRIDE(r.v);
     if (r.d >= 90) { r.base = r.next; r.next = null; r.d = 0; r.v = 0; r.state = 'base'; r.lead = 0; setAnim(r.m, 'ready'); }
     r.sync(BASES[0]);
   }
