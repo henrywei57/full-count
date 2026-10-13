@@ -188,6 +188,9 @@ button{font:inherit;color:inherit}
 .badge{width:120px;height:120px;border-radius:50%;display:grid;place-items:center;font-family:var(--f-display);font-weight:800;font-style:italic;font-size:42px;letter-spacing:.02em;border:5px solid;box-shadow:inset 0 0 0 4px rgba(0,0,0,.25),0 10px 30px rgba(0,0,0,.4)}
 .team-name{font-family:var(--f-display);font-weight:700;font-size:22px;text-align:center;line-height:1.05;text-transform:uppercase}
 .tp-era{display:block;margin:6px auto 0;font-size:12px;padding:4px 8px;max-width:180px}
+.tp-sp{display:flex;flex-direction:column;align-items:center;gap:3px;width:100%;max-width:240px}
+.tp-sp small{font-family:var(--f-display);font-weight:700;letter-spacing:.2em;font-size:11px;color:var(--dust)}
+.tp-sp select{width:100%;font-size:12px;padding:4px 8px;text-overflow:ellipsis}
 .team-name small{display:block;font-size:13px;letter-spacing:.2em;color:var(--dust);font-weight:600}
 .team-ovr{display:flex;gap:10px;font-size:12px;color:var(--dust);font-weight:600;letter-spacing:.06em}
 .team-ovr b{color:var(--chalk);font-family:var(--f-display);font-size:16px}
@@ -890,7 +893,7 @@ span.chip{cursor:default}
 <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"}}</script>
 <script type="module">
-const BUILD_ID = '3716312132';
+const BUILD_ID = '3302312232';
 import * as THREE from 'three';
 
 // ============================================================================
@@ -8976,10 +8979,6 @@ function startGame(cfg) {
   else if (cfg.mode === 'online') { G.ctrl = ['remote', 'remote']; if (!cfg.spec) G.ctrl[cfg.guest ? 1 - cfg.side : cfg.side] = 'local'; }   // a spectator controls nothing
   else if (G.drill) G.ctrl = youBat ? ['local', 'cpu'] : ['cpu', 'local'];
   else G.ctrl = ['cpu', 'cpu'];
-  if (cfg.mode === 'lock') {
-    const team = G.teams[cfg.side], pick = cfg.lockPick || 'h3';
-    G.lock = pick[0] === 'p' ? team.pitchers[0].id : team.lineup[+pick.slice(1)].id;
-  }
   settings.manual = cfg.manual == null ? true : !!cfg.manual;
   G.ump = cfg.ump ?? 1; G.challenges = [2, 2]; G.challengeable = null; G.challenge = null; G.cpuChallengeAt = 0;
   G.reviews = [1, 1]; G.review = null;   // replay review of calls on the bases: one a game, kept if you win it
@@ -8991,7 +8990,15 @@ function startGame(cfg) {
   // each side's game roster: batting order, positions, bench and bullpen (61-manager.js)
   G.lu = []; G.pos = []; G.bench = []; G.bullpen = []; G.gone = []; G.played = []; G.pitched = [];
   G.pitcher = [];
-  for (let ti = 0; ti < 2; ti++) { const st = cfg.starters && cfg.starters[ti]; initGameRoster(ti, typeof st === 'string' ? PBYID[st] : st); }
+  // cfg.starters: the [away, home] starting pitchers, by player id or by place in the rotation
+  for (let ti = 0; ti < 2; ti++) {
+    const t = G.teams[ti], st = cfg.starters && cfg.starters[t === away ? 0 : 1];
+    initGameRoster(ti, typeof st === 'number' ? t.rotation && t.rotation[st] : typeof st === 'string' ? PBYID[st] : st);
+  }
+  if (cfg.mode === 'lock') {
+    const team = G.teams[cfg.side], pick = cfg.lockPick || 'h3';
+    G.lock = pick[0] === 'p' ? G.pitcher[cfg.side].id : team.lineup[+pick.slice(1)].id;
+  }
   G.gameId = 'g' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
   G.dec = null; G.decIds = null; G.enterLead = {};
   const resumed = !!cfg.resume && restoreSave(cfg.resume);
@@ -10175,7 +10182,7 @@ function endGame(walkoff) {
   $('finalSub').textContent = `${winner.city} ${winner.name} win ${Math.max(...G.score)}–${Math.min(...G.score)}${extra}.`;
   // player of the game
   let best = null, bestScore = -1;
-  for (const pl of [...winner.hitters, ...winner.pitchers]) {
+  for (const pl of [...winner.hitters, ...G.pitched[winner === h ? 1 : 0]]) {
     const s = G.stats.get(pl.id), p = G.pstats.get(pl.id);
     let sc = 0, line = '';
     if (s) { sc = s.h + s.d + 2 * s.t + 3 * s.hr + s.rbi * 1.2 + s.bb * 0.5 + s.r * 0.6; line = `${s.h}-for-${s.ab}` + (s.hr ? `, ${s.hr} HR` : '') + (s.rbi ? `, ${s.rbi} RBI` : ''); }
@@ -11455,7 +11462,7 @@ function buildSeasonUI() {
 const NET = {
   role: null, peer: null, conn: null, fast: null, fastOK: false, hiT: 0, code: null, open: false, peerOpen: false, dirty: false,
   lastSnap: 0, seq: 0, lastSeq: -1, inSeq: 0, lastInSeq: -1, lastIn: 0, sentIn: '', lobby: null, lobbySent: '', snap: null, crackT: -9,
-  mcache: new Map(), lastAbLen: 0, remoteInAt: 0, off: 0, rtt: 0, pings: [], pingT: 0, guestSpec: null,
+  mcache: new Map(), lastAbLen: 0, remoteInAt: 0, off: 0, rtt: 0, pings: [], pingT: 0, guestSpec: null, guestSp: 0,
   pid: 0, bb: null, ball: null, pclock: { pid: -1, t: 0 }, pred: { m: null, key: null, on: false, v: 0, lastIn: -9, hold: 0 },
   invited: null, pendingInvite: null,
   specs: [], specSnapT: 0, tok: null, waiting: 0, waitHint: 0, pausedForDrop: false, rejoin: null, bye: false, opp: null,
@@ -11673,7 +11680,7 @@ function netClose() {
   // say goodbye first, so the other side knows it wasn't a dropped connection
   if (open && conn) try { conn.send({ t: 'bye' }); } catch (e) { /* closing */ }
   for (const c of specs) try { c.send({ t: 'bye' }); } catch (e) { /* closing */ }
-  Object.assign(NET, { role: null, peer: null, conn: null, fast: null, fastOK: false, open: false, peerOpen: false, code: null, lobby: null, lobbySent: '', blockShown: '', snap: null, guestSpec: null, bb: null, ball: null, invited: null, pendingInvite: null, specs: [], tok: null, waiting: 0, rejoin: null, bye: false, opp: null, pausedForDrop: false });
+  Object.assign(NET, { role: null, peer: null, conn: null, fast: null, fastOK: false, open: false, peerOpen: false, code: null, lobby: null, lobbySent: '', blockShown: '', snap: null, guestSpec: null, guestSp: 0, bb: null, ball: null, invited: null, pendingInvite: null, specs: [], tok: null, waiting: 0, rejoin: null, bye: false, opp: null, pausedForDrop: false });
   setTimeout(() => {
     try { if (fast) fast.close(); } catch (e) { /* ignore */ }
     try { if (conn) conn.close(); } catch (e) { /* ignore */ }
@@ -11706,11 +11713,11 @@ function netSendFast(m) {
 // Custom rosters travel as data, so your friend doesn't need them saved.
 function netSendLobby() {
   if (NET.role !== 'host' || !NET.open) return;
-  const m = { t: 'lobby', ver: BUILD_ID, me: meId(), side: menu.side, innings: menu.innings, diff: menu.diff, pdiff: menu.pdiff, ump: menu.ump, park: menu.park || '', hostSpec: teamSpec(menuTeam(menu.side ? 'home' : 'away')) };
+  const m = { t: 'lobby', ver: BUILD_ID, me: meId(), side: menu.side, innings: menu.innings, diff: menu.diff, pdiff: menu.pdiff, ump: menu.ump, park: menu.park || '', hostSpec: teamSpec(menuTeam(menu.side ? 'home' : 'away')), hostSp: menuSP(menu.side ? 'home' : 'away') };
   const s = JSON.stringify(m);
   if (s !== NET.lobbySent) { NET.lobbySent = s; netSend(m); }
 }
-function netSendPick() { if (NET.role === 'guest' && NET.open) netSend({ t: 'pick', spec: teamSpec(menuTeam('netTeam')) }); }
+function netSendPick() { if (NET.role === 'guest' && NET.open) netSend({ t: 'pick', spec: teamSpec(menuTeam('netTeam')), sp: menuSP('netTeam') }); }
 function specOK(s) {
   if (!s || typeof s !== 'object') return null;
   if (s.c) { const c = cleanRoster(s.c); return c ? { c } : null; }
@@ -11719,7 +11726,7 @@ function specOK(s) {
 function hostStartOnline() {
   if (!(NET.role === 'host' && NET.open) || onlineBlock()) return;
   const P = onlinePicks();
-  const cfg = { mode: 'online', teams: distinctSpecs(teamSpec(P.teams[0]), teamSpec(P.teams[1])), side: menu.side, innings: menu.innings, diff: menu.diff, pdiff: menu.pdiff, manual: 1, ump: menu.ump, park: menu.park || '', tok: Math.random().toString(36).slice(2, 12) };
+  const cfg = { mode: 'online', teams: distinctSpecs(teamSpec(P.teams[0]), teamSpec(P.teams[1])), starters: P.sp, side: menu.side, innings: menu.innings, diff: menu.diff, pdiff: menu.pdiff, manual: 1, ump: menu.ump, park: menu.park || '', tok: Math.random().toString(36).slice(2, 12) };
   netSend({ t: 'start', cfg });
   startGame(cfg);
 }
@@ -11744,7 +11751,7 @@ function netPong(m) {
 }
 function hostOnMsg(m) {
   if (m.t === 'hello') { NET.lobbySent = ''; netSendLobby(); return; }
-  if (m.t === 'pick') { NET.guestSpec = specOK(m.spec); renderMenu(); return; }
+  if (m.t === 'pick') { NET.guestSpec = specOK(m.spec); NET.guestSp = m.sp | 0; renderMenu(); return; }
   if (m.t === 'in') {
     if (typeof m.q === 'number') { if (m.q <= NET.lastInSeq) return; NET.lastInSeq = m.q; }
     G.remoteIn.x = clamp(+m.x || 0, -1, 1); G.remoteIn.z = clamp(+m.z || 0, -1, 1); NET.remoteInAt = performance.now();
@@ -14354,7 +14361,18 @@ function eraSelect(t, key, mine) {
   const opts = [[club, `${MLB_SEASON} roster`], ...list.slice().reverse().map((k) => [k, `${CLASSIC.get(k)[2]}s ${CLASSIC.get(k)[5]}`])];
   return `<select class="tp-era" data-k="${key}" aria-label="Era" ${mine ? '' : 'disabled'}>${opts.map(([v, l]) => `<option value="${esc(v)}" ${v === t.key ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select>`;
 }
-function teamPickHTML(label, t, key, mine = true) {
+// which team cards get a starting pitcher pick: practice only needs the side that pitches in the drill
+function spShown(key) {
+  const m = menu.mode;
+  if (m === 'practice') { const d = ['bat', 'pitch', 'run', 'field'][menu.drill] || 'bat'; return d === 'pitch' ? key === 'home' : d !== 'field' && key === 'away'; }
+  return ['exhibition', 'lock', 'spectate', 'online'].includes(m);
+}
+function starterSelect(t, key, sp, mine) {
+  if (!t.rotation || !t.rotation.length || !spShown(key)) return '';
+  const opts = t.rotation.map((p, i) => `<option value="${i}" ${i === sp ? 'selected' : ''}>${i + 1}. ${esc(p.name)} (${p.throws}HP) &middot; ${pitcherOvr(p)}</option>`).join('');
+  return `<label class="tp-sp"><small>STARTING PITCHER</small><select class="tp-spsel" data-k="${key}" aria-label="Starting pitcher" ${mine ? '' : 'disabled'}>${opts}</select></label>`;
+}
+function teamPickHTML(label, t, key, mine = true, sp = 0) {
   if (!t) return `<div class="tp-label">${label}</div><div class="tp-row"><div class="badge wait">?</div></div><div class="team-name"><small>WAITING</small>Your friend picks</div>`;
   const tag = t.custom ? `<span class="tp-custom" title="Custom roster">CUSTOM${t.cost > ROSTER_BUDGET ? ' &middot; OVER CAP' : ''}</span>` : '';
   return `<div class="tp-label">${label}</div>
@@ -14362,19 +14380,21 @@ function teamPickHTML(label, t, key, mine = true) {
   <div class="badge" style="background:${t.c1};color:${t.c2};border-color:${t.c2}">${esc(t.id)}</div>
   <button class="arrow" data-k="${key}" data-d="1" aria-label="Next team" ${mine ? '' : 'style="visibility:hidden"'}>&rsaquo;</button></div>
   <div class="team-name"><small>${t.era ? `${t.era}s &middot; ` : ''}${esc(t.city.toUpperCase())}</small>${esc(t.name)}</div>${eraSelect(t, key, mine)}
-  <div class="team-ovr"><span>BAT <b>${t.ovr.bat}</b></span><span>PIT <b>${t.ovr.pit}</b></span><span>DEF <b>${t.ovr.def}</b></span></div>${tag}`;
+  <div class="team-ovr"><span>BAT <b>${t.ovr.bat}</b></span><span>PIT <b>${t.ovr.pit}</b></span><span>DEF <b>${t.ovr.def}</b></span></div>${tag}${starterSelect(t, key, sp, mine)}`;
 }
-function lockOptions(team) {
-  return [...team.lineup.map((h, i) => [`h${i}`, `${h.name} · ${h.pos} · ${i + 1}${['st', 'nd', 'rd'][i] || 'th'} in the order`]), ['p0', `${team.pitchers[0].name} · Starting pitcher`]];
+function lockOptions(team, sp) {
+  return [...team.lineup.map((h, i) => [`h${i}`, `${h.name} · ${h.pos} · ${i + 1}${['st', 'nd', 'rd'][i] || 'th'} in the order`]), ['p0', `${starterOf(team, sp).name} · Starting pitcher`]];
 }
 // online: the two picks shown in the matchup, as [away, home] teams plus which one is mine to change
 function onlinePicks() {
   if (NET.role === 'guest') {
     const L = NET.lobby, mySide = L ? 1 - L.side : 1, mine = menuTeam('netTeam'), theirs = L && L.hostSpec ? teamFromSpec(L.hostSpec) : null;
-    return { teams: mySide ? [theirs, mine] : [mine, theirs], mySide };
+    const sp = [menuSP('netTeam'), spIndex(theirs, L && L.hostSp)];
+    return { teams: mySide ? [theirs, mine] : [mine, theirs], mySide, sp: mySide ? sp.reverse() : sp };
   }
-  const mySide = menu.side, mine = menuTeam(mySide ? 'home' : 'away'), theirs = NET.guestSpec ? teamFromSpec(NET.guestSpec) : null;
-  return { teams: mySide ? [theirs, mine] : [mine, theirs], mySide };
+  const mySide = menu.side, mk = mySide ? 'home' : 'away', mine = menuTeam(mk), theirs = NET.guestSpec ? teamFromSpec(NET.guestSpec) : null;
+  const sp = [menuSP(mk), spIndex(theirs, NET.guestSp)];
+  return { teams: mySide ? [theirs, mine] : [mine, theirs], mySide, sp: mySide ? sp.reverse() : sp };
 }
 function renderMenu() {
   const m = menu.mode, derby = m === 'derby', spec = m === 'spectate', lock = m === 'lock', online = m === 'online', tut = m === 'tutorial', prac = m === 'practice' || tut;
@@ -14391,11 +14411,11 @@ function renderMenu() {
   $('matchup').classList.toggle('hidden', !showTeams);
   if (online && showTeams) {
     const P = onlinePicks();
-    $('pickA').innerHTML = teamPickHTML(P.mySide === 0 ? 'AWAY · YOU' : 'AWAY · FRIEND', P.teams[0], 'away', P.mySide === 0);
-    $('pickH').innerHTML = teamPickHTML(P.mySide === 1 ? 'HOME · YOU' : 'HOME · FRIEND', P.teams[1], 'home', P.mySide === 1);
+    $('pickA').innerHTML = teamPickHTML(P.mySide === 0 ? 'AWAY · YOU' : 'AWAY · FRIEND', P.teams[0], 'away', P.mySide === 0, P.sp[0]);
+    $('pickH').innerHTML = teamPickHTML(P.mySide === 1 ? 'HOME · YOU' : 'HOME · FRIEND', P.teams[1], 'home', P.mySide === 1, P.sp[1]);
   } else if (showTeams) {
-    $('pickA').innerHTML = teamPickHTML(derby ? 'BP PITCHER FROM' : prac ? 'OPPONENT' : 'AWAY', menuTeam('away'), 'away');
-    $('pickH').innerHTML = teamPickHTML(derby || prac || season ? 'YOUR TEAM' : 'HOME', menuTeam('home'), 'home');
+    $('pickA').innerHTML = teamPickHTML(derby ? 'BP PITCHER FROM' : prac ? 'OPPONENT' : 'AWAY', menuTeam('away'), 'away', true, menuSP('away'));
+    $('pickH').innerHTML = teamPickHTML(derby || prac || season ? 'YOUR TEAM' : 'HOME', menuTeam('home'), 'home', true, menuSP('home'));
   }
   $('pickA').classList.toggle('hidden', derby || season); $('vsLabel').classList.toggle('hidden', derby || season);
   $('optSide').classList.toggle('hidden', derby || spec || prac || season || !showTeams);
@@ -14435,8 +14455,8 @@ function renderMenu() {
   sel.innerHTML = menuTeam('home').lineup.map((h, i) => `<option value="${i}">${esc(h.name)} · ${h.pos} · POW ${h.pow}</option>`).join('');
   sel.value = String(menu.batter);
   if (lock) {
-    const team = menuTeam(menu.side === 1 ? 'home' : 'away');
-    $('lockPick').innerHTML = lockOptions(team).map(([v, t]) => `<option value="${v}">${esc(t)}</option>`).join('');
+    const k = menu.side === 1 ? 'home' : 'away', team = menuTeam(k);
+    $('lockPick').innerHTML = lockOptions(team, menuSP(k)).map(([v, t]) => `<option value="${v}">${esc(t)}</option>`).join('');
     $('lockPick').value = menu.lockPick;
     if ($('lockPick').value !== menu.lockPick) { menu.lockPick = 'h3'; $('lockPick').value = 'h3'; }
   }
@@ -14461,10 +14481,15 @@ function onlineBlock() {
   return '';
 }
 function lockName() {
-  const team = menuTeam(menu.side === 1 ? 'home' : 'away');
-  const p = menu.lockPick[0] === 'p' ? team.pitchers[0] : team.lineup[+menu.lockPick.slice(1)] || team.lineup[3];
+  const k = menu.side === 1 ? 'home' : 'away', team = menuTeam(k);
+  const p = menu.lockPick[0] === 'p' ? starterOf(team, menuSP(k)) : team.lineup[+menu.lockPick.slice(1)] || team.lineup[3];
   return lastName(p.name).toUpperCase();
 }
+// the starting pitcher picked for a menu team, as his place in its rotation (menu.sp[k] = [team key, index]);
+// a newly picked team starts its ace
+function menuSP(k) { const t = menuTeam(k), s = menu.sp && menu.sp[k]; return Array.isArray(s) && s[0] === t.key && t.rotation && t.rotation[s[1]] ? s[1] : 0; }
+const spIndex = (t, i) => (t && t.rotation && Number.isInteger(i) && t.rotation[i] ? i : 0);
+function starterOf(t, i) { return t.rotation ? t.rotation[spIndex(t, i)] : t.pitchers[0]; }
 function derbyBatterDefault() { const lu = menuTeam('home').lineup; menu.batter = lu.indexOf(lu.reduce((a, c) => (c.pow > a.pow ? c : a))); }
 function buildMenu() {
   if (menu.home === menu.away) cycleTeam('away', 1, menu.home);
@@ -14482,8 +14507,21 @@ function buildMenu() {
     if (k === 'home') derbyBatterDefault();
     renderMenu();
   });
-  // pick a decade
+  // pick a starting pitcher, or a decade
   $('matchup').addEventListener('change', (e) => {
+    const sp = e.target.closest('.tp-spsel');
+    if (sp) {
+      let k = sp.dataset.k;
+      if (menu.mode === 'online') {
+        const P = onlinePicks();
+        if ((k === 'home' ? 1 : 0) !== P.mySide) return;
+        if (NET.role === 'guest') k = 'netTeam';
+      }
+      const t = menuTeam(k);
+      menu.sp = { ...menu.sp, [k]: [t.key, spIndex(t, +sp.value)] };
+      if (k === 'netTeam') netSendPick();
+      renderMenu(); return;
+    }
     const s = e.target.closest('.tp-era'); if (!s) return;
     const k = s.dataset.k, v = CLASSIC.has(s.value) || TEAMS.some((t) => t.key === s.value) ? s.value : null;
     if (!v) return;
@@ -14531,7 +14569,7 @@ function buildMenu() {
     if (menu.mode === 'tutorial') { tutStart(menu.tutLesson >= 0 ? menu.tutLesson : null); return; }
     if (menu.mode === 'season') { startSeason({ team: menuTeam('home').key, len: SEASON_LENS.includes(menu.seasonLen) ? menu.seasonLen : 30, innings: menu.innings, diff: menu.diff, pdiff: menu.pdiff, ump: menu.ump, manual: menu.manual }); renderMenu(); return; }
     const teams = [teamSpec(menuTeam('away')), teamSpec(menuTeam('home'))];
-    startGame({ mode: menu.mode, teams, drill: ['bat', 'pitch', 'run', 'field'][menu.drill] || 'bat', side: menu.side, innings: menu.innings, diff: menu.diff, pdiff: menu.pdiff, manual: menu.manual, batter: menu.batter, lockPick: menu.lockPick, ump: menu.ump, view: menu.view, lockField: menu.lockField, lockSkip: menu.lockSkip, park: menu.park || '' });
+    startGame({ mode: menu.mode, teams, starters: ['away', 'home'].map((k) => (spShown(k) ? menuSP(k) : 0)), drill: ['bat', 'pitch', 'run', 'field'][menu.drill] || 'bat', side: menu.side, innings: menu.innings, diff: menu.diff, pdiff: menu.pdiff, manual: menu.manual, batter: menu.batter, lockPick: menu.lockPick, ump: menu.ump, view: menu.view, lockField: menu.lockField, lockSkip: menu.lockSkip, park: menu.park || '' });
   });
   const openHelp = () => { $('help').classList.remove('hidden'); };
   $('btnHow').addEventListener('click', openHelp);

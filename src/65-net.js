@@ -18,7 +18,7 @@
 const NET = {
   role: null, peer: null, conn: null, fast: null, fastOK: false, hiT: 0, code: null, open: false, peerOpen: false, dirty: false,
   lastSnap: 0, seq: 0, lastSeq: -1, inSeq: 0, lastInSeq: -1, lastIn: 0, sentIn: '', lobby: null, lobbySent: '', snap: null, crackT: -9,
-  mcache: new Map(), lastAbLen: 0, remoteInAt: 0, off: 0, rtt: 0, pings: [], pingT: 0, guestSpec: null,
+  mcache: new Map(), lastAbLen: 0, remoteInAt: 0, off: 0, rtt: 0, pings: [], pingT: 0, guestSpec: null, guestSp: 0,
   pid: 0, bb: null, ball: null, pclock: { pid: -1, t: 0 }, pred: { m: null, key: null, on: false, v: 0, lastIn: -9, hold: 0 },
   invited: null, pendingInvite: null,
   specs: [], specSnapT: 0, tok: null, waiting: 0, waitHint: 0, pausedForDrop: false, rejoin: null, bye: false, opp: null,
@@ -236,7 +236,7 @@ function netClose() {
   // say goodbye first, so the other side knows it wasn't a dropped connection
   if (open && conn) try { conn.send({ t: 'bye' }); } catch (e) { /* closing */ }
   for (const c of specs) try { c.send({ t: 'bye' }); } catch (e) { /* closing */ }
-  Object.assign(NET, { role: null, peer: null, conn: null, fast: null, fastOK: false, open: false, peerOpen: false, code: null, lobby: null, lobbySent: '', blockShown: '', snap: null, guestSpec: null, bb: null, ball: null, invited: null, pendingInvite: null, specs: [], tok: null, waiting: 0, rejoin: null, bye: false, opp: null, pausedForDrop: false });
+  Object.assign(NET, { role: null, peer: null, conn: null, fast: null, fastOK: false, open: false, peerOpen: false, code: null, lobby: null, lobbySent: '', blockShown: '', snap: null, guestSpec: null, guestSp: 0, bb: null, ball: null, invited: null, pendingInvite: null, specs: [], tok: null, waiting: 0, rejoin: null, bye: false, opp: null, pausedForDrop: false });
   setTimeout(() => {
     try { if (fast) fast.close(); } catch (e) { /* ignore */ }
     try { if (conn) conn.close(); } catch (e) { /* ignore */ }
@@ -269,11 +269,11 @@ function netSendFast(m) {
 // Custom rosters travel as data, so your friend doesn't need them saved.
 function netSendLobby() {
   if (NET.role !== 'host' || !NET.open) return;
-  const m = { t: 'lobby', ver: BUILD_ID, me: meId(), side: menu.side, innings: menu.innings, diff: menu.diff, pdiff: menu.pdiff, ump: menu.ump, park: menu.park || '', hostSpec: teamSpec(menuTeam(menu.side ? 'home' : 'away')) };
+  const m = { t: 'lobby', ver: BUILD_ID, me: meId(), side: menu.side, innings: menu.innings, diff: menu.diff, pdiff: menu.pdiff, ump: menu.ump, park: menu.park || '', hostSpec: teamSpec(menuTeam(menu.side ? 'home' : 'away')), hostSp: menuSP(menu.side ? 'home' : 'away') };
   const s = JSON.stringify(m);
   if (s !== NET.lobbySent) { NET.lobbySent = s; netSend(m); }
 }
-function netSendPick() { if (NET.role === 'guest' && NET.open) netSend({ t: 'pick', spec: teamSpec(menuTeam('netTeam')) }); }
+function netSendPick() { if (NET.role === 'guest' && NET.open) netSend({ t: 'pick', spec: teamSpec(menuTeam('netTeam')), sp: menuSP('netTeam') }); }
 function specOK(s) {
   if (!s || typeof s !== 'object') return null;
   if (s.c) { const c = cleanRoster(s.c); return c ? { c } : null; }
@@ -282,7 +282,7 @@ function specOK(s) {
 function hostStartOnline() {
   if (!(NET.role === 'host' && NET.open) || onlineBlock()) return;
   const P = onlinePicks();
-  const cfg = { mode: 'online', teams: distinctSpecs(teamSpec(P.teams[0]), teamSpec(P.teams[1])), side: menu.side, innings: menu.innings, diff: menu.diff, pdiff: menu.pdiff, manual: 1, ump: menu.ump, park: menu.park || '', tok: Math.random().toString(36).slice(2, 12) };
+  const cfg = { mode: 'online', teams: distinctSpecs(teamSpec(P.teams[0]), teamSpec(P.teams[1])), starters: P.sp, side: menu.side, innings: menu.innings, diff: menu.diff, pdiff: menu.pdiff, manual: 1, ump: menu.ump, park: menu.park || '', tok: Math.random().toString(36).slice(2, 12) };
   netSend({ t: 'start', cfg });
   startGame(cfg);
 }
@@ -307,7 +307,7 @@ function netPong(m) {
 }
 function hostOnMsg(m) {
   if (m.t === 'hello') { NET.lobbySent = ''; netSendLobby(); return; }
-  if (m.t === 'pick') { NET.guestSpec = specOK(m.spec); renderMenu(); return; }
+  if (m.t === 'pick') { NET.guestSpec = specOK(m.spec); NET.guestSp = m.sp | 0; renderMenu(); return; }
   if (m.t === 'in') {
     if (typeof m.q === 'number') { if (m.q <= NET.lastInSeq) return; NET.lastInSeq = m.q; }
     G.remoteIn.x = clamp(+m.x || 0, -1, 1); G.remoteIn.z = clamp(+m.z || 0, -1, 1); NET.remoteInAt = performance.now();

@@ -63,7 +63,9 @@ On a ball to the outfield the free middle infielder goes out to be the relay man
 
 ## Bench and bullpen
 
-Every club carries a 5-man rotation, a 7-man bullpen (closer first) and a 4-man bench, all real players. Press **U** (or the team button next to pause) between pitches to open the Team panel:
+Every club carries a 5-man rotation, a 7-man bullpen (closer first) and a 4-man bench, all real players. Pick who starts on the mound from the **Starting pitcher** menu under each team in the matchup (Play Ball, Player Lock, CPU vs CPU and Online, where each player picks his own; in Practice it's the pitcher you face, or the one you pitch with). It defaults to the ace. A season goes by its rotation instead.
+
+Press **U** (or the team button next to pause) between pitches to open the Team panel:
 
 - **Pinch hit** for the batter before his first pitch.
 - **Pinch run** for anyone on base.
