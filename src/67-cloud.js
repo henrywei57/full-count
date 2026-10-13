@@ -5,11 +5,9 @@
 //
 // Firestore layout (rules in firestore.rules):
 //   users/{uid}                 public profile: name, photo, friend code, lastSeen, online rating (elo...)
-//   users/{uid}/rosters/{id}    your rosters (only you can read them)
 //   users/{uid}/friends/{uid}   your friends list
 //   users/{uid}/inbox/{fromUid} friend requests and game invites sent to you
 //   users/{uid}/games/{id}      your finished games: box scores and stats (62-records.js)
-//   users/{uid}/seasons/current your season in progress (63-season.js)
 //   codes/{code}                friend code -> uid
 // ============================================================================
 
@@ -64,13 +62,7 @@ const Cloud = {
     this.profile = { uid: u.uid, name, photo, code };
     this.syncElo(u.uid, snap.exists() ? snap.data() : null);
     this.beat = setInterval(() => F.setDoc(me, { lastSeen: F.serverTimestamp() }, { merge: true }).catch(() => {}), 60000);
-    // rosters: keep the newest copy of each between this device and the account
-    const rs = await F.getDocs(F.collection(db, 'users', u.uid, 'rosters'));
-    const list = [];
-    rs.forEach((d) => { try { list.push(JSON.parse(d.data().json)); } catch (e) { /* skip a broken one */ } });
-    for (const r of mergeRosters(list)) this.saveRoster(r);
     this.syncGames(u.uid);
-    this.syncSeason(u.uid);
     this.unsub.push(F.onSnapshot(F.collection(db, 'users', u.uid, 'friends'), (qs) => {
       this.friends = qs.docs.map((d) => ({ uid: d.id, ...d.data() }));
       this.watchFriends(); cloudRender();
@@ -119,11 +111,6 @@ const Cloud = {
     const qs = await F.getDocs(F.query(F.collection(db, 'users'), F.orderBy('elo', 'desc'), F.limit(25)));
     return qs.docs.map((d) => ({ uid: d.id, ...d.data() }));
   },
-  saveRoster(d) {
-    if (!this.user) return;
-    const { F, db } = this;
-    F.setDoc(F.doc(db, 'users', this.user.uid, 'rosters', d.id), { json: JSON.stringify(d), updated: d.updated }).catch((e) => this.fail(e));
-  },
   // finished games: the ones in your account and the ones on this device end up in both
   async syncGames(uid) {
     const { F, db } = this;
@@ -136,42 +123,10 @@ const Cloud = {
       for (const g of gamesList()) if (!have.has(g.id)) this.saveGameRec(g);
     } catch (e) { console.warn('[cloud] games', e); }   // older Firestore rules without games: they stay on this device
   },
-  // the season: whichever copy (here or the account) was played last wins
-  async syncSeason(uid) {
-    const { F, db } = this;
-    try {
-      const d = await F.getDoc(F.doc(db, 'users', uid, 'seasons', 'current'));
-      if (this.user?.uid !== uid) return;
-      let s = null;
-      if (d.exists()) try { s = JSON.parse(d.data().json); } catch (e) { /* broken */ }
-      if (s && seasonFromCloud(s)) { if (G.mode === 'menu') renderMenu(); }
-      else if (seasonLoad()) this.saveSeason(seasonLoad());
-    } catch (e) { console.warn('[cloud] season', e); }
-  },
-  saveSeason(s) {
-    if (!this.user) return;
-    clearTimeout(this.seaT);
-    this.seaT = setTimeout(() => {
-      if (!this.user) return;
-      const { F, db } = this;
-      F.setDoc(F.doc(db, 'users', this.user.uid, 'seasons', 'current'), { json: JSON.stringify(s), updated: s.updated || Date.now() }).catch((e) => console.warn('[cloud] season', e));
-    }, 1500);
-  },
-  deleteSeason() {
-    if (!this.user) return;
-    clearTimeout(this.seaT);
-    const { F, db } = this;
-    F.deleteDoc(F.doc(db, 'users', this.user.uid, 'seasons', 'current')).catch((e) => console.warn('[cloud] season', e));
-  },
   saveGameRec(g) {
     if (!this.user) return;
     const { F, db } = this;
     F.setDoc(F.doc(db, 'users', this.user.uid, 'games', g.id), { json: JSON.stringify(g), at: g.at }).catch((e) => console.warn('[cloud] game', e));
-  },
-  deleteRoster(id) {
-    if (!this.user) return;
-    const { F, db } = this;
-    F.deleteDoc(F.doc(db, 'users', this.user.uid, 'rosters', id)).catch((e) => this.fail(e));
   },
   async addFriend(raw) {
     const { F, db } = this, code = String(raw || '').toUpperCase().replace(/[^A-Z0-9]/g, '');

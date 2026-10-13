@@ -61,7 +61,6 @@ function squadTakeOver(oldId, np) {
   s.pid = np.id;
   if (s.sid === G.me) G.lock = np.id;
   NET.dirty = true;
-  chatSys(`${s.name} takes over as ${np.name}.`);
 }
 // what you see before a pitch when you're not batting, pitching or on base
 function squadHint() {
@@ -76,7 +75,7 @@ function squadHint() {
 
 // ------------------------------------------------------------- name tags ----
 // The Show style: a colored tag over every player a person is playing, with his name
-// (YOU over your own) and a speaker when he's talking on voice chat.
+// (YOU over your own).
 const sqTagEls = new Map(), _sqV = new V3();
 function squadTags() {
   const box = $('squadTags');
@@ -92,12 +91,12 @@ function squadTags() {
       if (_sqV.z > 1 || Math.abs(_sqV.x) > 1.05 || Math.abs(_sqV.y) > 1.05) continue;
       let el = sqTagEls.get(s.sid);
       if (!el) { el = document.createElement('div'); box.appendChild(el); sqTagEls.set(s.sid, el); }
-      const me = s.sid === G.me, talk = voiceTalking(s.sid), sig = `${s.name}|${me}|${talk}|${s.cpu}|${s.col}`;
+      const me = s.sid === G.me, sig = `${s.name}|${me}|${s.cpu}|${s.col}`;
       if (el.dataset.sig !== sig) {
         el.dataset.sig = sig;
-        el.className = `sq-tag${me ? ' me' : ''}${talk ? ' talk' : ''}${s.cpu ? ' cpu' : ''}`;
+        el.className = `sq-tag${me ? ' me' : ''}${s.cpu ? ' cpu' : ''}`;
         el.style.setProperty('--sc', s.col);
-        el.innerHTML = `${talk ? '<i class="sq-spk"></i>' : ''}<b>${me ? 'YOU' : esc(s.name)}</b>${s.cpu ? '<small>CPU</small>' : ''}`;
+        el.innerHTML = `<b>${me ? 'YOU' : esc(s.name)}</b>${s.cpu ? '<small>CPU</small>' : ''}`;
       }
       el.style.left = ((_sqV.x + 1) / 2) * W + 'px'; el.style.top = ((1 - _sqV.y) / 2) * H + 'px';
       seen.add(s.sid);
@@ -145,7 +144,7 @@ function renderSquad() {
   const people = room.map((r) => {
     const pl = r.pick && P.teams[r.side] ? pickPlayer(P.teams[r.side], r.pick) : null;
     return `<span class="sq-person${r.sid === me ? ' me' : ''}" style="--sc:${seatCol(r.sid)}"><i></i><b>${esc(r.name)}${r.sid === 0 ? ' <small>HOST</small>' : ''}</b>`
-      + `<small>${pl ? `${r.side ? 'HOME' : 'AWAY'} ${esc(pl.pos === 'SP' || r.pick === 'p0' ? 'SP' : pl.pos)} &middot; ${esc(lastName(pl.name))}` : 'picking&hellip;'}</small>${voicePersonHTML(r)}</span>`;
+      + `<small>${pl ? `${r.side ? 'HOME' : 'AWAY'} ${esc(pl.pos === 'SP' || r.pick === 'p0' ? 'SP' : pl.pos)} &middot; ${esc(lastName(pl.name))}` : 'picking&hellip;'}</small></span>`;
   }).join('');
   el.innerHTML = `<div class="sq-head">PICK YOUR PLAYER<small>Click a spot to play him: the same team as your friends or the other one. The CPU plays everyone nobody picks.</small></div>
     <div class="sq-cols">${col(0)}${col(1)}</div>

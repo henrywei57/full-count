@@ -7,6 +7,7 @@
 const ROLE_POS = { P: [0, MOUND_Z], C: [0, 3.4], '1B': [66, -84], '2B': [33, -148], SS: [-33, -148], '3B': [-66, -86], LF: [-138, -264], CF: [0, -318], RF: [138, -264] };
 const ROLES = ['P', 'C', '1B', '2B', '3B', 'SS', 'LF', 'CF', 'RF'];
 const OF_ROLES = new Set(['LF', 'CF', 'RF']);
+const OF_NEXT = { LF: ['CF'], CF: ['LF', 'RF'], RF: ['CF'] };
 const ROLE_NAMES = { P: 'the pitcher', C: 'the catcher', '1B': 'first', '2B': 'second', '3B': 'third', SS: 'short', LF: 'left', CF: 'center', RF: 'right' };
 const RUN_ACC = 16;
 // time to cover d feet from speed v0 with constant acceleration a up to vmax
@@ -127,7 +128,7 @@ class Play {
     // ballBase: a fielder standing on a bag with the ball, ready to tag whoever arrives
     this.ballBase = null;
     // close plays at the bags (for replay review); a human umpire misses a few of the closest
-    this.calls = []; this.umpErr = !G.drill && G.mode !== 'tutorial' && G.mode !== 'derby';
+    this.calls = []; this.umpErr = !G.drill && G.mode !== 'derby';
     for (const f of this.F) f.reset();
     if (this.kind !== 'hit') { this.basesPlay(o); this.lockRunners(); return; }
     // force situation at contact
@@ -297,12 +298,33 @@ class Play {
   // online 1v1: never the pitcher or catcher. When one of them is playing the ball you get the
   // fielder nearest to where it's going (the throw is still yours: press a base)
   isBattery(f) { return !!f && (f.role === 'P' || f.role === 'C'); }
-  pickUF(f) {
-    if (!this.hf || !this.hf.near || !this.isBattery(f)) return f;
+  // passed: the ball already got by the infield, so the man playing it now is the one you get
+  pickUF(f, passed = false) {
+    if (!this.hf || !this.hf.near) return f;
+    // a ball through the infield: the infielder it comes nearest, so you can get in front of it or dive
+    if (!passed && f && (f.isOF || this.isBattery(f)) && this.kind === 'hit' && this.ball.mode === 'flight' && !this.hr) { const inf = this.infieldMan(); if (inf) return inf; }
+    if (!this.isBattery(f)) return f;
     const p = this.chaser && this.chaser.plan && this.ball.mode === 'flight' ? this.chaser.plan : this.ball.pos;
     let best = null, bd = Infinity;
     for (const g of this.F) { if (this.isBattery(g)) continue; const d = Math.hypot(g.pos.x - p.x, g.pos.z - p.z); if (d < bd) { bd = d; best = g; } }
     return best || f;
+  }
+  // the infielder who can get closest to the ball while it's still in the infield and low enough
+  // to play (null if it's a fly ball over them, or nobody can get near it)
+  infieldMan() {
+    const S = this.bb.S, i0 = Math.min(S.length - 1, Math.floor(this.t / BB_DT));
+    let best = null, bg = 25;
+    for (const g of this.F) {
+      if (g.isOF || this.isBattery(g)) continue;
+      for (let i = i0; i < S.length; i += 3) {
+        const s = S[i];
+        if (s.dead || Math.hypot(s.x, s.z) > 165) break;
+        if (s.y > 9) continue;
+        const gap = Math.hypot(s.x - g.pos.x, s.z - g.pos.z) - g.speed * Math.max(0, s.t - this.t - g.react);
+        if (gap < bg) { bg = gap; best = g; }
+      }
+    }
+    return best;
   }
   assignTasks() {
     const ch = this.chaser, by = (r) => this.F.find((f) => f.role === r);
@@ -320,7 +342,8 @@ class Play {
       const b = [1, 2, 3, 4].find((k) => this.cover[k] === f);
       if (b) { f.task = 'cover'; f.coverBase = b; continue; }
       // on a ball to the outfield, the free middle infielder goes out to be the relay man
-      f.task = f.isOF ? 'backup' : ch && ch.isOF && (f.role === 'SS' || f.role === '2B') ? 'relay' : 'hold';
+      // an outfielder backs up the one next to him on a ball to the outfield, and otherwise stays put
+      f.task = f.isOF ? (ch && ch.isOF && OF_NEXT[ch.role].includes(f.role) ? 'backup' : 'hold') : ch && ch.isOF && (f.role === 'SS' || f.role === '2B') ? 'relay' : 'hold';
     }
   }
   replan() { this.planFielders(this.t); }
@@ -343,7 +366,7 @@ class Play {
       let best = null, bt = Infinity;
       for (const f of this.F) {
         if (busy(f) || (f.task === 'cover' && this.cover[f.coverBase] === f && f.coverBase !== k)) continue;
-        if (f.isOF && k !== 2) continue;   // an outfielder only ever helps out at second
+        if (f.isOF) continue;   // outfielders stay out there: no running in to cover a bag
         const t = runTime(Math.max(0, Math.hypot(bp.x - f.pos.x, bp.z - f.pos.z) - 1.5), f.speed, f.acc) + (f.isOF ? 1.5 : 0) + (f.role === 'C' && k !== 4 ? 1 : 0);
         if (t < bt) { bt = t; best = f; }
       }
@@ -506,7 +529,7 @@ class Play {
         if (c.lock && this.chaser === f && f.plan && b.mode === 'flight' && t > f.plan.t + 0.5) { c.missed = true; this.replan(); }
         // the ball got past you: hand control to the fielder now playing it
         if (b.mode === 'flight' && !c.lock && this.chaser && this.chaser !== f && this.chaser.plan && Math.hypot(this.chaser.pos.x - b.pos.x, this.chaser.pos.z - b.pos.z) < Math.hypot(f.pos.x - b.pos.x, f.pos.z - b.pos.z) - 15) {
-          c.f = this.pickUF(this.chaser); c.manual = false; this.replan();
+          c.f = this.pickUF(this.chaser, true); c.manual = false; this.replan();
         }
         continue;
       }
@@ -696,7 +719,7 @@ class Play {
     const c = this.ctlOf(f), hc = this.hf ? this.ctlFor(f) : null, human = !!c && this.humanHolder(f);
     const qc = human ? c : hc && this.hf.near && this.isBattery(f) ? hc : null;
     if (qc && qc.queuedThrow != null && t >= Math.max(f.quickAt, f.readyAt - 0.12)) {
-      const base = qc.queuedThrow; qc.queuedThrow = null; qc.prompt = false; f.holding = false; this.humanThrow(f, base); tutNote('throw'); return;
+      const base = qc.queuedThrow; qc.queuedThrow = null; qc.prompt = false; f.holding = false; this.humanThrow(f, base); return;
     }
     if (t < f.animHold) return;
     // a human carrying the ball: step on bags and tag runners on the way
@@ -721,7 +744,7 @@ class Play {
     }
     if (t < f.decideAt) return;
     if (hc && this.humanHolder(f)) {
-      if (hc.queuedThrow != null) { const base = hc.queuedThrow; hc.queuedThrow = null; hc.prompt = false; f.holding = false; this.humanThrow(f, base); tutNote('throw'); return; }
+      if (hc.queuedThrow != null) { const base = hc.queuedThrow; hc.queuedThrow = null; hc.prompt = false; f.holding = false; this.humanThrow(f, base); return; }
       if (this.userDef) {
         const anyRunning = this.R.some((r) => r.state === 'run');
         if (hc.lock) {   // playing one player: the throw is yours however long you take

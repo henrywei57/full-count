@@ -108,14 +108,27 @@ button{font:inherit;color:inherit}
 #netPing.good{color:var(--ball)}#netPing.ok{color:var(--gold)}#netPing.bad{color:var(--strike)}
 
 /* ---------- hitting feedback / statcast ---------- */
-#feedback{position:absolute;left:50%;bottom:calc(84px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);width:360px;background:var(--panel);border-radius:4px;padding:10px 14px 12px;opacity:0;transition:opacity .25s}
+#feedback{position:absolute;left:50%;bottom:calc(84px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);width:420px;background:linear-gradient(180deg,rgba(28,36,52,.96),rgba(14,19,30,.96));border:1px solid rgba(255,255,255,.12);border-radius:6px;padding:0 0 10px;opacity:0;transition:opacity .25s;overflow:hidden;box-shadow:0 10px 30px rgba(0,0,0,.45)}
 #feedback.show{opacity:1}
-.fb-top{display:flex;justify-content:space-between;font-family:var(--f-display);font-weight:700;letter-spacing:.08em;font-size:15px}
-.fb-top em{font-style:normal;color:var(--dust);font-weight:600;margin-right:6px}
-.fb-bar{position:relative;height:10px;margin:8px 0 10px;background:linear-gradient(90deg,#c0392b 0,#e67e22 22%,#f1c40f 36%,#2ecc71 46%,#2ecc71 54%,#f1c40f 64%,#e67e22 78%,#c0392b 100%);border-radius:2px;opacity:.85}
-.fb-bar::before,.fb-bar::after{position:absolute;top:13px;font-size:10px;letter-spacing:.14em;color:var(--dust)}
-.fb-bar::before{content:"EARLY";left:0}.fb-bar::after{content:"LATE";right:0}
-.fb-mark{position:absolute;top:-4px;width:4px;height:18px;margin-left:-2px;background:#fff;box-shadow:0 0 6px #fff;border-radius:2px}
+/* swing analysis card: who swung, the timing gauge, where the PCI was against the pitch */
+.sa-head{display:flex;align-items:center;gap:10px;padding:8px 12px;background:rgba(255,255,255,.04);border-bottom:1px solid rgba(255,255,255,.08)}
+.sa-logo{flex:none;width:34px;height:34px;border-radius:50%;display:grid;place-items:center;font-family:var(--f-display);font-weight:800;font-style:italic;font-size:12px;border:2px solid}
+.sa-who{flex:1;min-width:0;display:flex;align-items:baseline;gap:6px;font-family:var(--f-display);white-space:nowrap;overflow:hidden}
+.sa-who b{font-size:15px;font-weight:800}
+.sa-who i{font-style:normal;font-size:12px;color:var(--dust);border-left:1px solid var(--line);padding-left:6px}
+.sa-who span{font-weight:800;font-size:17px;letter-spacing:.03em;text-transform:uppercase;overflow:hidden;text-overflow:ellipsis}
+.sa-rat{display:flex;gap:6px}
+.sa-rat div{width:32px;height:32px;border-radius:50%;background:#0b1220;border:1px solid rgba(255,255,255,.18);display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1}
+.sa-rat b{font-family:var(--f-display);font-size:13px;font-weight:800}
+.sa-rat small{font-size:7px;letter-spacing:.08em;color:var(--dust);margin-top:1px}
+.sa-body{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:rgba(255,255,255,.06)}
+.sa-pane{background:rgba(10,15,25,.7);padding:6px 8px 4px;display:flex;flex-direction:column;align-items:center}
+.sa-title{align-self:stretch;font-family:var(--f-display);font-weight:700;font-size:11px;letter-spacing:.16em;color:var(--dust)}
+.sa-pane svg{width:100%;height:auto;max-height:112px}
+.sa-tlabel{font-family:var(--f-display);font-weight:800;font-size:15px;letter-spacing:.08em;margin-top:-4px}
+.sa-pitch{font-family:var(--f-display);font-weight:700;font-size:13px;letter-spacing:.04em}
+.sa-contact{display:flex;justify-content:center;gap:8px;align-items:baseline;margin-top:8px;font-family:var(--f-display);font-weight:700;letter-spacing:.08em;font-size:15px}
+.sa-contact em{font-style:normal;color:var(--dust);font-weight:600;font-size:12px}
 .fb-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:12px;text-align:center}
 .fb-stats b{display:block;font-family:var(--f-display);font-size:24px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums}
 .fb-stats span{font-size:10px;letter-spacing:.14em;color:var(--dust)}
@@ -185,8 +198,8 @@ button{font:inherit;color:inherit}
 .brand-kicker{font-family:var(--f-display);font-weight:700;letter-spacing:.3em;color:var(--dust);font-size:15px;margin-bottom:8px}
 .brand p{color:var(--dust);font-size:15px;line-height:1.5;max-width:30ch;margin:16px 0 0}
 .modes{display:flex;flex-direction:column;gap:8px;margin-top:22px}
-.modes button{display:flex;justify-content:space-between;align-items:center;text-align:left;padding:13px 16px;border-radius:4px;border:1px solid var(--line);background:var(--panel);cursor:pointer;font-family:var(--f-display);font-weight:700;font-size:21px;letter-spacing:.04em;text-transform:uppercase}
-.modes button small{font-family:var(--f-body);font-size:12px;font-weight:500;color:var(--dust);letter-spacing:0;text-transform:none}
+.modes button{display:flex;justify-content:space-between;align-items:center;text-align:left;padding:13px 16px;border-radius:4px;border:1px solid var(--line);background:var(--panel);cursor:pointer;font-family:var(--f-display);font-weight:700;font-size:21px;letter-spacing:.04em;text-transform:uppercase;gap:12px}
+.modes button small{font-family:var(--f-body);font-size:12px;font-weight:500;color:var(--dust);letter-spacing:0;text-transform:none;text-align:right}
 .modes button.on{background:var(--chalk);color:#081020;border-color:var(--chalk)}
 .modes button.on small{color:#3b4a63}
 .setup{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:20px;display:flex;flex-direction:column;gap:18px;min-width:0}
@@ -324,7 +337,7 @@ button:focus-visible,select:focus-visible{outline:2px solid var(--gold);outline-
 
 /* ---------- stats, box scores, resume ---------- */
 #statsScreen,#boxScreen{align-items:flex-start}
-#boxScreen .card,#statsScreen .card,#seasonScreen .card{background:#09111f}
+#boxScreen .card,#statsScreen .card{background:#09111f}
 .bx-ls{overflow-x:auto;margin:4px 0 10px}
 .bx-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}
 @media (max-width:860px){.bx-grid{grid-template-columns:1fr}}
@@ -391,66 +404,9 @@ button:focus-visible,select:focus-visible{outline:2px solid var(--gold);outline-
 .op-def{color:var(--dust);font-size:12px;text-align:left!important}
 body.cb{--ball:#56B4E9;--strike:#E69F00}
 
-/* ---------- season ---------- */
-#seasonScreen{align-items:flex-start}
-.sea-panel{margin-bottom:10px}
-.sea-head{display:flex;align-items:center;gap:12px;margin-bottom:10px}
-.sea-head>div{display:flex;flex-direction:column;gap:2px}
-.sea-head b{font-family:var(--f-display);font-size:22px;letter-spacing:.04em}
-.sea-head span{color:var(--dust);font-size:13px}
-.sea-next{display:flex;flex-direction:column;gap:3px;padding:10px 12px;border:1px solid var(--line);border-radius:4px;margin-bottom:10px;background:rgba(255,255,255,.03)}
-.sea-next small{font-family:var(--f-display);letter-spacing:.12em;color:var(--gold);font-size:12px}
-.sea-next b{font-size:17px}
-.sea-next span{color:var(--dust);font-size:12px}
-.sea-sp{display:flex;align-items:center;gap:8px;margin-top:6px;flex-wrap:wrap}
-.sea-sp small{font-family:var(--f-display);letter-spacing:.12em;color:var(--dust);font-size:11px}
-.sea-sp select{font-size:12px;padding:4px 8px;max-width:100%}
-.sea-panel .row-actions{margin-bottom:6px;flex-wrap:wrap}
-.tbadge{display:inline-block;min-width:44px;padding:4px 7px;border-radius:3px;border:1px solid;font-family:var(--f-display);font-weight:800;font-size:16px;letter-spacing:.04em;text-align:center}
-.tbadge.sm{min-width:30px;padding:0 4px;font-size:10px;vertical-align:1px}
-.sea-cols{display:grid;grid-template-columns:1fr 1fr;gap:18px}
-@media (max-width:860px){.sea-cols{grid-template-columns:1fr}}
-.sea-boards{display:grid;grid-template-columns:repeat(5,1fr);gap:14px}
-@media (max-width:980px){.sea-boards{grid-template-columns:repeat(2,1fr)}}
-.sea-board h3{font-size:12px!important}
-.sea-ld{display:grid;grid-template-columns:14px 1fr auto auto;gap:6px;font-size:12px;padding:4px 0;border-top:1px solid rgba(255,255,255,.06)}
-.sea-ld span{color:var(--dust)}
-.sea-ld b{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.sea-ld em{color:var(--dust);font-style:normal;font-size:11px}
-.sea-ld i{font-style:normal;font-weight:800}
-.sea-ld.me b{color:var(--gold)}
-.sea-series{display:flex;align-items:center;gap:14px;padding:7px 0;border-top:1px solid rgba(255,255,255,.06);font-size:13px}
-.sea-series em{font-style:normal;color:var(--dust);font-size:11px;width:20px}
-.sea-series span{flex:1;display:flex;align-items:center;gap:6px}
-.sea-series span small{color:var(--dust);width:12px}
-.sea-series span b{margin-left:auto;padding-right:12px;font-size:15px}
-.sea-series .won b{color:var(--gold)}
-.sea-series .lost{opacity:.5}
-.sea-series .me{font-weight:700}
-.sea-champ{display:flex;align-items:center;gap:12px;padding:12px;border:1px solid var(--gold);border-radius:4px;margin:4px 0 10px}
-.sea-champ b{font-family:var(--f-display);font-size:20px}
-.sea-champ span{color:var(--gold);font-family:var(--f-display);letter-spacing:.1em}
 .st-table .gold{color:var(--gold)}
 .st-table tr.sel{background:rgba(90,168,255,.12)}
 
-/* ---------- tutorial ---------- */
-#tutCard{position:fixed;right:16px;top:calc(110px + env(safe-area-inset-top,0px));z-index:6;width:min(330px,calc(100vw - 32px));background:var(--panel);border:1px solid var(--gold);border-radius:6px;padding:12px 14px;display:flex;flex-direction:column;gap:8px;box-shadow:0 10px 30px rgba(0,0,0,.45)}
-#tutCard.big{left:50%;top:50%;right:auto;transform:translate(-50%,-50%);width:min(460px,calc(100vw - 32px));padding:20px 22px;z-index:9}
-#tutCard h2{margin:0;font-family:var(--f-display);font-weight:800;font-style:italic;font-size:40px;line-height:1}
-.tut-head{display:flex;justify-content:space-between;gap:10px;font-family:var(--f-display);font-weight:700;font-size:12px;letter-spacing:.16em;color:var(--gold)}
-.tut-head span:last-child{color:var(--dust)}
-.tut-text{margin:0;font-size:14px;line-height:1.45}
-.tut-text.dim{color:var(--dust);font-size:12.5px}
-.tut-text kbd,.tut-list kbd{font-family:var(--f-display);font-weight:700;padding:0 5px;border-radius:3px;background:rgba(255,255,255,.14)}
-.tut-list{margin:0;padding-left:20px;color:var(--dust);font-size:14px;line-height:1.6}
-.tut-goal{display:flex;justify-content:space-between;align-items:baseline;font-family:var(--f-display);font-weight:700;font-size:15px;letter-spacing:.06em;text-transform:uppercase}
-.tut-goal b{font-size:20px;font-variant-numeric:tabular-nums}
-.tut-goal.done{color:var(--ball)}
-.tut-bar{height:6px;border-radius:3px;background:rgba(255,255,255,.1);overflow:hidden}
-.tut-bar i{display:block;height:100%;background:var(--gold);transition:width .25s}
-.tut-actions{display:flex;gap:8px;flex-wrap:wrap}
-.tut-actions .ghost{padding:7px 12px;font-size:13px}
-.tut-actions .cta{flex:1;font-size:20px;padding:10px 16px}
 .modes .new{font-family:var(--f-display);font-weight:800;font-size:11px;letter-spacing:.14em;padding:2px 7px;border-radius:3px;background:var(--gold);color:#1a1205;margin-left:8px;vertical-align:3px}
 
 /* ---------- runner map + ABS ---------- */
@@ -470,8 +426,6 @@ body.cb{--ball:#56B4E9;--strike:#E69F00}
 #simNext{margin-top:6px;font-size:15px;font-weight:600}
 .sim-foot{margin-top:6px;font-size:12px;color:var(--dust)}
 body.skipping #batterCard,body.skipping #pitcherCard,body.skipping #call,body.skipping #feedback,body.skipping #tracker,body.skipping #pitchInfo,body.skipping #hint,body.skipping #banner,body.skipping #simBtn,body.skipping #throwPrompt,body.skipping #runHelp,body.skipping #runTags,body.skipping #pickHelp{visibility:hidden}
-body.letterbox #tutCard{display:none}
-#hud.tut #hint{display:none}
 #simBtn{position:absolute;left:50%;top:calc(64px + env(safe-area-inset-top,0px));transform:translateX(-50%);pointer-events:auto;padding:6px 14px;border-radius:4px;border:1px solid var(--line);background:var(--panel);font-family:var(--f-display);font-weight:700;font-size:14px;letter-spacing:.1em;cursor:pointer}
 #simBtn:hover{background:var(--panel-hi)}
 #simBtn kbd{font-family:var(--f-display);padding:0 5px;border-radius:3px;background:rgba(255,255,255,.14);margin-left:6px}
@@ -485,7 +439,7 @@ body.letterbox #tutCard{display:none}
 .tp-custom{font-family:var(--f-display);font-weight:700;font-size:11px;letter-spacing:.18em;color:var(--gold)}
 .badge.wait{background:transparent;border-style:dashed;border-color:var(--line);color:var(--dust)}
 .badge.xs{width:40px;height:40px;font-size:14px;border-width:2px;flex:none;box-shadow:none}
-#rosterScreen,#friendsScreen{align-items:flex-start}
+#friendsScreen{align-items:flex-start}
 .rs-wrap{width:min(1180px,100%);margin:auto;background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:18px;display:flex;flex-direction:column;gap:14px}
 .rs-head{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
 .rs-head h2{margin:0;font-family:var(--f-display);font-weight:800;font-style:italic;font-size:36px;letter-spacing:.02em}
@@ -609,7 +563,7 @@ span.chip{cursor:default}
   #tracker{display:none}
   #caption{max-width:calc(100vw - 32px);bottom:auto;top:calc(124px + env(safe-area-inset-top,0px))}
   #meter{left:auto;right:24px}
-  #feedback{width:min(360px,calc(100vw - 32px));bottom:calc(210px + env(safe-area-inset-bottom,0px))}
+  #feedback{width:min(420px,calc(100vw - 32px));bottom:calc(210px + env(safe-area-inset-bottom,0px))}
 }
 @media (max-width:560px){
   #bug{transform:scale(.82);transform-origin:left top}
@@ -647,54 +601,16 @@ span.chip{cursor:default}
 .sq-person>i{width:9px;height:9px;border-radius:50%;background:var(--sc)}
 .sq-person b{font-weight:700}.sq-person b small{font-size:10px;letter-spacing:.1em;color:var(--gold)}
 .sq-person>small{font-size:11px;color:var(--dust)}
-.sq-mic{width:14px;height:14px;background:var(--dust);-webkit-mask:var(--mic) center/contain no-repeat;mask:var(--mic) center/contain no-repeat;cursor:pointer}
-.sq-mic.talk{background:var(--ball)}.sq-mic.blocked{background:var(--strike);opacity:.7}
-:root{--mic:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 14a3 3 0 003-3V5a3 3 0 00-6 0v6a3 3 0 003 3zm5-3a5 5 0 01-10 0H5a7 7 0 006 6.9V21h2v-3.1A7 7 0 0019 11h-2z'/%3E%3C/svg%3E")}
 #squadTags{position:absolute;inset:0;pointer-events:none;overflow:hidden}
 .sq-tag{position:absolute;transform:translate(-50%,-100%);display:flex;align-items:center;gap:4px;padding:2px 8px;margin-top:-7px;border-radius:4px;background:rgba(5,10,20,.8);border:2px solid var(--sc);font-family:var(--f-display);font-weight:800;font-size:13px;letter-spacing:.04em;white-space:nowrap;color:var(--chalk)}
 .sq-tag::after{content:'';position:absolute;left:50%;bottom:-8px;transform:translateX(-50%);border:6px solid transparent;border-top-color:var(--sc);border-bottom:0}
 .sq-tag.me{background:var(--sc);color:#081020}
 .sq-tag.cpu{opacity:.6}
 .sq-tag small{font-size:10px;color:var(--dust)}
-.sq-spk{width:12px;height:12px;background:var(--ball);-webkit-mask:var(--mic) center/contain no-repeat;mask:var(--mic) center/contain no-repeat}
-.sq-tag.me .sq-spk{background:#081020}
-.sq-tag.talk{box-shadow:0 0 0 2px rgba(63,211,138,.55)}
-/* ---------- chat ---------- */
-#chat{position:fixed;left:16px;bottom:calc(178px + env(safe-area-inset-bottom,0px));z-index:6;width:min(360px,calc(100vw - 32px));display:flex;flex-direction:column;gap:4px;pointer-events:none}
-#chatLog{display:flex;flex-direction:column;gap:2px;max-height:132px;overflow-y:auto;scrollbar-width:thin;overscroll-behavior:contain}
-.cm{font-size:13px;line-height:1.3;padding:3px 8px;border-radius:4px;background:rgba(5,10,20,.68);text-shadow:0 1px 2px rgba(0,0,0,.6);overflow-wrap:anywhere;transition:opacity .6s;-webkit-user-select:text;user-select:text}
-.cm b{font-weight:700}.cm b small{font-weight:500;color:var(--dust)}
-.cm.sys{color:var(--dust);font-style:italic}
-.cm.team{border-left:3px solid var(--play)}
-.cm-to{font-family:var(--f-display);font-weight:800;font-size:11px;letter-spacing:.1em;color:var(--play);margin-right:5px}
-.cm.old{opacity:0}
-#chatForm{display:none;gap:6px}
-#chat.open{pointer-events:auto}
-#chat.open #chatForm{display:flex}
-#chat.open #chatLog{background:rgba(5,10,20,.45);border-radius:4px}
-#chatTo{flex:none;padding:6px 9px;border-radius:4px;border:1px solid var(--line);background:var(--panel);font-family:var(--f-display);font-weight:800;font-size:12px;letter-spacing:.1em;cursor:pointer}
-#chatTo.team{color:var(--play);border-color:var(--play)}
-#chatTo:disabled{cursor:default;opacity:.7}
-#chatIn{flex:1;min-width:0;font:inherit;font-size:14px;padding:7px 10px;border-radius:4px;border:1px solid var(--line);background:rgba(5,10,20,.92);color:var(--chalk);-webkit-user-select:text;user-select:text}
-#chatIn:focus{outline:none;border-color:var(--gold)}
-#chat.lobby{position:static;width:auto;z-index:auto}
-#chat.lobby #chatLog{max-height:120px;min-height:0}
-#chat.lobby .cm{background:rgba(255,255,255,.04)}
-#hud.replaying ~ #chat,body.skipping #chat:not(.open){visibility:hidden}
-#topbar button[data-st]{position:relative}
-#btnMic svg{fill:var(--dust)}
-#btnMic[data-st="live"]{border-color:var(--ball)}#btnMic[data-st="live"] svg{fill:var(--ball)}
-#btnMic[data-st="muted"]{border-color:var(--strike)}#btnMic[data-st="muted"] svg{fill:var(--strike)}
-#btnMic[data-st="ptt"] svg{fill:var(--gold)}
-#btnMic[data-st="off"]::after,#btnMic[data-st="muted"]::after{content:'';position:absolute;width:20px;height:2px;background:currentColor;transform:rotate(-45deg);color:var(--dust)}
-#btnMic[data-st="muted"]::after{color:var(--strike)}
 .net-name{display:flex;align-items:center;gap:10px;font-family:var(--f-display);font-weight:700;letter-spacing:.16em;font-size:12px;color:var(--dust);flex:1}
 .net-name input{flex:1;min-width:0;font:inherit;font-family:var(--f-body);font-weight:600;font-size:15px;letter-spacing:0;padding:7px 10px;border-radius:4px;border:1px solid var(--line);background:var(--night);color:var(--chalk);text-transform:none}
-#btnVoiceMic.muted{color:var(--strike);border-color:rgba(255,90,95,.5)}
 @media (max-width:560px){
   .sq-cols{grid-template-columns:1fr}
-  #chat:not(.lobby){bottom:calc(298px + env(safe-area-inset-bottom,0px))}
-  #chatLog{max-height:84px}
   #lockTag{top:calc(108px + env(safe-area-inset-top,0px));padding:3px 10px}
   #lockTag em{display:none}
   #caption{top:calc(146px + env(safe-area-inset-top,0px))}
@@ -725,8 +641,6 @@ span.chip{cursor:default}
   <div id="pitchInfo"><b id="piMph">0<small>MPH</small></b><span id="piType">Fastball</span></div>
   <div id="topbar">
     <span id="netPing" class="hidden"></span>
-    <button id="btnChat" class="hidden" title="Chat (Y)" aria-label="Chat"><svg viewBox="0 0 24 24"><path d="M4 4h16a1 1 0 011 1v11a1 1 0 01-1 1H9l-5 4v-4H4a1 1 0 01-1-1V5a1 1 0 011-1z"/></svg></button>
-    <button id="btnMic" class="hidden" data-st="off" title="Join voice chat" aria-label="Voice chat"><svg viewBox="0 0 24 24"><path d="M12 14a3 3 0 003-3V5a3 3 0 00-6 0v6a3 3 0 003 3zm5-3a5 5 0 01-10 0H5a7 7 0 006 6.9V21h2v-3.1A7 7 0 0019 11h-2z"/></svg></button>
     <button id="btnTeamHud" class="hidden" title="Team: lineup, bench and bullpen (U)" aria-label="Team"><svg viewBox="0 0 24 24"><path d="M9 11a4 4 0 100-8 4 4 0 000 8zm8 0a3 3 0 100-6 3 3 0 000 6zM9 13c-3.3 0-7 1.6-7 4v2h14v-2c0-2.4-3.7-4-7-4zm8 0c-.5 0-1 0-1.6.1 1.1.9 1.6 2 1.6 3.9v2h5v-2c0-2.2-2.6-4-5-4z"/></svg></button>
     <button id="btnMute" title="Sound (M)" aria-label="Toggle sound"><svg viewBox="0 0 24 24"><path id="muteIcon" d="M3 9v6h4l5 5V4L7 9H3zm13.5 3A4.5 4.5 0 0014 8v8a4.5 4.5 0 002.5-4zM14 3.2v2.1a7 7 0 010 13.4v2.1A9 9 0 0014 3.2z"/></svg></button>
     <button id="btnPause" title="Pause (Esc)" aria-label="Pause"><svg viewBox="0 0 24 24"><path d="M6 5h4v14H6zm8 0h4v14h-4z"/></svg></button>
@@ -737,8 +651,12 @@ span.chip{cursor:default}
   <div id="tracker"><div class="t-head">PITCH TRACK</div><canvas id="zoneMini" width="300" height="340"></canvas><div id="trackList"></div></div>
   <div id="meter" class="hidden"><div class="m-track"><i class="m-fill" id="mFill"></i><i class="m-acc" id="mAcc"></i><i class="m-pow hidden" id="mPow"></i><i class="m-cur" id="mCur"></i></div><span class="m-label">METER</span></div>
   <div id="feedback">
-    <div class="fb-top"><span><em>TIMING</em><span id="fbTiming">PERFECT</span></span><span><em>CONTACT</em><span id="fbContact">SOLID</span></span></div>
-    <div class="fb-bar"><i class="fb-mark" id="fbMark"></i></div>
+    <div class="sa-head"><span class="sa-logo" id="saLogo"></span><span class="sa-who"><b id="saNum"></b><i id="saSide"></i><span id="saName"></span></span><span class="sa-rat" id="saRat"></span></div>
+    <div class="sa-body">
+      <div class="sa-pane"><div class="sa-title">SWING TIMING</div><svg id="saGauge" viewBox="0 0 160 92" aria-hidden="true"></svg><div class="sa-tlabel" id="fbTiming"></div></div>
+      <div class="sa-pane"><div class="sa-title">PCI PLACEMENT</div><svg id="saZone" viewBox="0 0 120 112" aria-hidden="true"></svg><div class="sa-pitch" id="saPitch"></div></div>
+    </div>
+    <div class="sa-contact"><em>CONTACT</em><b id="fbContact"></b></div>
     <div class="fb-stats" id="fbStats"><div><b id="fbEV">&ndash;</b><span>EXIT VELO</span></div><div><b id="fbLA">&ndash;</b><span>LAUNCH</span></div><div><b id="fbDist">&ndash;</b><span>DISTANCE</span></div></div>
   </div>
   <div id="throwPrompt" class="hidden">
@@ -788,17 +706,13 @@ span.chip{cursor:default}
         <p>Broadcast-style 3D baseball. Zone hitting, meter pitching, real ball-flight physics.</p>
       </div>
       <div class="modes" id="modes">
-        <button data-mode="tutorial"><span>Tutorial<span class="new hidden" id="tutNew">START HERE</span></span> <small>Learn to hit, pitch, field and run</small></button>
         <button data-mode="exhibition" class="on">Play Ball <small>Exhibition game</small></button>
-        <button data-mode="season">Season <small>A schedule, standings, playoffs</small></button>
         <button data-mode="lock">Player Lock <small>Play as one player</small></button>
         <button data-mode="online">Online <small>1v1, or a squad of up to 10</small></button>
         <button data-mode="derby">Home Run Derby <small>10 outs, swing away</small></button>
-        <button data-mode="practice">Practice <small>Batting, pitching, running, fielding</small></button>
-        <button data-mode="spectate">CPU vs CPU <small>Sit back and watch</small></button>
+        <button data-mode="practice">Practice <small>Drills: bat, pitch, run, field</small></button>
       </div>
       <div class="menu-extra">
-        <button class="ghost" id="btnRosters">Roster Builder<small>Build a team</small></button>
         <button class="ghost" id="btnFriends"><span>Friends<span id="frBadge"></span></span><small id="frSub">Sign in to add friends</small></button>
         <button class="ghost" id="btnStats">Stats<small>Box scores</small></button>
       </div>
@@ -808,7 +722,6 @@ span.chip{cursor:default}
         <div class="resume-txt"><b>GAME IN PROGRESS</b><span id="resumeLabel"></span></div>
         <button class="cta" id="btnResumeGame">RESUME</button><button class="ghost" id="btnDiscardSave">Discard</button>
       </div>
-      <div class="sea-panel hidden" id="seasonPanel"></div>
       <div id="netPanel" class="hidden">
         <h3 id="netTitle">ONLINE 1V1</h3>
         <div class="net-elo" id="netElo"></div>
@@ -818,7 +731,6 @@ span.chip{cursor:default}
         <div class="net-row" id="netJoinRow"><input id="joinCode" maxlength="5" placeholder="CODE" autocomplete="off" spellcheck="false" aria-label="Room code"><button class="ghost" id="btnJoin">Join</button><button class="ghost" id="btnWatch" title="Watch the game as a spectator">Watch</button></div>
         <div id="netShare" class="hidden"><div class="net-or">Send your friend this code</div><div class="net-code" id="netCode"></div><div class="net-row"><button class="ghost" id="btnCopyLink">Copy invite link</button><span class="net-link" id="netLink"></span></div><div id="netFriends"></div></div>
         <div class="net-status" id="netStatus" role="status"></div>
-        <div class="net-row hidden" id="netVoiceRow"><button class="ghost fr-mini" id="btnVoiceJoin">Join voice chat</button><button class="ghost fr-mini hidden" id="btnVoiceMic">Mic on</button><span class="net-or" id="voiceNote"></span></div>
       </div>
       <div class="matchup" id="matchup">
         <div class="team-pick" id="pickA"></div>
@@ -828,10 +740,8 @@ span.chip{cursor:default}
       <div id="squadPanel" class="hidden"></div>
       <div class="opts">
         <div class="opt hidden" id="optNetMode"><span>PLAY</span><div class="seg" data-key="netMode"><button data-v="0" class="on">1v1: your team vs theirs</button><button data-v="1">Squad: up to 10, one player each</button></div></div>
-        <div class="opt hidden" id="optLesson"><span>LESSONS</span><div class="seg" data-key="tutLesson"><button data-v="-1" class="on">All, in order</button><button data-v="0">Hitting</button><button data-v="1">Pitching</button><button data-v="2">Fielding</button><button data-v="3">Baserunning</button><button data-v="4">Pickoffs</button></div></div>
         <div class="opt hidden" id="optDrill"><span>DRILL</span><div class="seg" data-key="drill"><button data-v="0" class="on">Batting</button><button data-v="1">Pitching</button><button data-v="2">Baserunning</button><button data-v="3">Fielding</button></div></div>
         <div class="opt" id="optSide"><span>YOU PLAY AS</span><div class="seg" data-key="side"><button data-v="0">Away</button><button data-v="1" class="on">Home</button></div></div>
-        <div class="opt hidden" id="optSeasonLen"><span>SEASON</span><div class="seg" data-key="seasonLen"><button data-v="12">12 games</button><button data-v="30" class="on">30</button><button data-v="60">60</button><button data-v="162">162</button></div></div>
         <div class="opt" id="optInn"><span>INNINGS</span><div class="seg" data-key="innings"><button data-v="3" class="on">3</button><button data-v="6">6</button><button data-v="9">9</button></div></div>
         <div class="opt" id="optDiff"><span>HITTING</span><div class="seg" data-key="diff"><button data-v="0">Rookie</button><button data-v="1" class="on">Veteran</button><button data-v="2">All-Star</button><button data-v="3">Hall of Fame</button></div></div>
         <div class="opt" id="optPDiff"><span>PITCHING</span><div class="seg" data-key="pdiff"><button data-v="0">Rookie</button><button data-v="1" class="on">Veteran</button><button data-v="2">All-Star</button><button data-v="3">Hall of Fame</button></div></div>
@@ -842,23 +752,9 @@ span.chip{cursor:default}
         <div class="opt hidden" id="optLockField"><span>YOUR ROLE</span><div class="seg" data-key="lockField"><button data-v="1" class="on">Bat &amp; field</button><button data-v="0">Bat only (sim fielding)</button></div></div>
         <div class="opt hidden" id="optLockSkip"><span>NOT INVOLVED</span><div class="seg" data-key="lockSkip"><button data-v="1" class="on">Skip ahead</button><button data-v="0">Watch (fast)</button></div></div>
         <div class="opt hidden" id="optView"><span>CAMERA</span><div class="seg" data-key="view"><button data-v="2" class="on">Third person</button><button data-v="1">First person</button><button data-v="0">Broadcast</button></div></div>
-        <div class="opt" id="optBatCam"><span>BATTING CAM</span><div class="seg" data-key="batCam"><button data-v="0" class="on">Strike Zone</button><button data-v="1">Strike Zone 2</button><button data-v="2">Strike Zone High</button></div></div>
         <div class="opt" id="optThrow"><span>THROWS</span><div class="seg" data-key="manual"><button data-v="1" class="on">Manual</button><button data-v="0">Auto</button></div></div>
       </div>
       <div class="row-actions"><button class="cta" id="btnPlay">PLAY BALL</button><button class="ghost" id="btnHow">Controls</button><button class="ghost" id="btnOptions2">Options</button></div>
-    </div>
-  </div>
-</div>
-
-<div id="rosterScreen" class="screen modal hidden">
-  <div class="rs-wrap">
-    <div class="rs-head"><h2>ROSTER BUILDER</h2><span class="rs-sync" id="rsSync"></span><button class="cta" id="rsClose">DONE</button></div>
-    <div class="rs-body">
-      <aside class="rs-side">
-        <div id="rsList" class="rs-list"></div>
-        <div class="rs-new"><select id="rsTemplate" aria-label="Start the new roster from"></select><button class="ghost" id="rsNew">+ New roster</button></div>
-      </aside>
-      <section id="rsEdit" class="rs-edit"></section>
     </div>
   </div>
 </div>
@@ -872,8 +768,6 @@ span.chip{cursor:default}
   </div>
 </div>
 <div id="toast" class="hidden" role="status"></div>
-<div id="chat" class="hidden"><div id="chatLog" role="log" aria-live="polite"></div><form id="chatForm" autocomplete="off"><button type="button" id="chatTo">ALL</button><input id="chatIn" maxlength="160" placeholder="Say something (Enter to send)" aria-label="Chat message" spellcheck="false"></form></div>
-<div id="tutCard" class="hidden" role="dialog" aria-label="Tutorial"></div>
 
 <div id="teamScreen" class="screen modal hidden">
   <div class="card tm-card">
@@ -891,7 +785,6 @@ span.chip{cursor:default}
       <button class="ghost" id="btnOptions">Options: sound, colors, keys</button>
       <button class="ghost" id="btnVoice">Commentary voice: On</button>
       <button class="ghost" id="btnZone">Strike zone: On</button>
-      <button class="ghost" id="btnBatCam">Batting cam: Strike Zone</button>
       <button class="ghost" id="btnTeam">Team: lineup, bench &amp; bullpen</button>
       <button class="ghost" id="btnBox">Box score</button>
       <button class="ghost" id="btnReplays">Replays &amp; highlights</button>
@@ -941,14 +834,10 @@ span.chip{cursor:default}
         <dt>T / right-click</dt><dd>Player Lock: snap the camera back to following the play</dd>
         <dt>V</dt><dd>Player Lock: cycle third-person, first-person and broadcast cameras</dd>
         <dt>Options</dt><dd>Sound and commentary volume, colorblind-friendly colors and your own keys: from the pause menu or the main menu</dd>
-        <dt>Batting cam</dt><dd>Strike Zone, Strike Zone 2 or Strike Zone High: pick it in the menu or the pause screen</dd>
         <dt>Tab / Back</dt><dd>Player Lock: skip this at-bat (the CPU plays your part, until the ball comes to you or you're on base when it's put in play)</dd>
         <dt>Catcher</dt><dd>Player Lock as the catcher: 1&ndash;5 pick the pitch, the mouse picks the spot, click puts the sign down. Then move the mitt to the ball to frame it; C challenges a ball that should've been a strike.</dd>
         <dt>R</dt><dd>Instant replay after a play. In a replay: Space pauses, &larr; &rarr; skip (a frame when paused), &uarr; &darr; speed, V camera, Esc closes. Every play this game is under Replays in the pause menu.</dd>
         <dt>Enter</dt><dd>Skip ahead</dd>
-        <dt>F</dt><dd>Fast-forward (CPU vs CPU)</dd>
-        <dt>Y</dt><dd>Online: chat (Enter sends; Tab switches between everyone and your team)</dd>
-        <dt>G</dt><dd>Online voice chat: mute / unmute, or hold to talk with push to talk on (Options)</dd>
         <dt>Gamepad</dt><dd>Stick aims, A swing, X power, B contact</dd>
       </dl></div>
     </div>
@@ -997,14 +886,6 @@ span.chip{cursor:default}
   <div class="card tm-card op-card">
     <div class="fr-head"><h2>OPTIONS</h2><span class="tm-sub">Saved on this device</span><button class="ghost" id="opClose">Done</button></div>
     <div id="opBody"></div>
-  </div>
-</div>
-
-<div id="seasonScreen" class="screen modal hidden">
-  <div class="card tm-card">
-    <div class="fr-head"><h2>SEASON</h2><span id="seaSub" class="tm-sub"></span><button class="ghost" id="seaClose">Back</button></div>
-    <div class="seg st-tabs" id="seaTabs"></div>
-    <div id="seaBody"></div>
   </div>
 </div>
 

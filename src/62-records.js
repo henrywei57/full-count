@@ -42,14 +42,13 @@ function gameRecord() {
     v: 1, id: G.gameId, at: Date.now(), mode: G.mode, park: G.parkKey, innings: G.innings, inn: G.inning, half: G.half, done: G.phase === 'final',
     teams: G.teams.map((t) => ({ key: t.key, id: t.id, city: t.city, name: t.name, c1: t.c1, c2: t.c2 })),
     score: G.score.slice(), line: G.line.map((l) => l.slice()), hits: G.hits.slice(), errs: G.errs.slice(), bat, pit, you: mySide(),
-    season: G.season ? G.season.id : null,
     lock: lockPl ? statKey(lockPl) : null,   // Player Lock: your numbers are his
     opp: G.mode === 'online' && !G.coop && !G.squad && NET.role !== 'spec' ? (NET.opp ? { uid: NET.opp.uid, name: NET.opp.name } : { uid: '', name: '' }) : null,
     coop: G.coop ? { with: NET.opp ? NET.opp.name : '' } : null,
     squad: G.squad ? { with: G.squad.filter((s) => s.sid !== G.me).map((s) => s.name) } : null,
   };
 }
-const RECORD_MODES = ['exhibition', 'lock', 'online', 'season'];
+const RECORD_MODES = ['exhibition', 'lock', 'online'];
 // a finished game goes into your records (and your account)
 function recordGame() {
   if (!RECORD_MODES.includes(G.mode) || G.drill || !G.played || G.recorded === G.gameId) return null;
@@ -146,7 +145,7 @@ function openLiveBox() {
 // Exhibition, Player Lock and Season games save themselves before every batter. Quit whenever you
 // like and pick it back up from the main menu; starting another game replaces the save.
 const SAVE_KEY = 'fullcount.save';
-function canSave() { return ['exhibition', 'lock', 'season'].includes(G.mode) && !G.drill && !!G.teams; }
+function canSave() { return ['exhibition', 'lock'].includes(G.mode) && !G.drill && !!G.teams; }
 function autoSave() {
   if (!canSave()) return;
   const id = (p) => (p ? p.id : null);
@@ -158,11 +157,11 @@ function autoSave() {
     stats: [...G.stats], pstats: [...G.pstats], dec: G.dec ? { team: G.dec.team, w: id(G.dec.w), l: id(G.dec.l) } : null, enterLead: G.enterLead, gameId: G.gameId,
   };
   const [a, h] = G.teams;
-  const label = `${a.id} ${G.score[0]}, ${h.id} ${G.score[1]} · ${G.half ? 'Bottom' : 'Top'} ${ordinal(G.inning)} · ${G.mode === 'lock' ? 'Player Lock' : G.mode === 'season' ? 'Season' : 'Exhibition'}`;
+  const label = `${a.id} ${G.score[0]}, ${h.id} ${G.score[1]} · ${G.half ? 'Bottom' : 'Top'} ${ordinal(G.inning)} · ${G.mode === 'lock' ? 'Player Lock' : 'Exhibition'}`;
   try { localStorage.setItem(SAVE_KEY, JSON.stringify({ v: 1, at: Date.now(), cfg: G.cfg, s, label })); } catch (e) { /* storage full or blocked */ }
 }
 function loadSave() {
-  try { const sv = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null'); return sv && sv.v === 1 && sv.cfg && sv.s ? sv : null; } catch (e) { return null; }
+  try { const sv = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null'); return sv && sv.v === 1 && sv.cfg && sv.s && ['exhibition', 'lock'].includes(sv.cfg.mode) ? sv : null; } catch (e) { return null; }
 }
 function clearSave() { try { localStorage.removeItem(SAVE_KEY); } catch (e) { /* blocked */ } }
 // put a saved game back (called by startGame once the teams are built); false if it doesn't fit

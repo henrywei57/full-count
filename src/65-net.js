@@ -24,12 +24,12 @@ const NET = {
   pid: 0, bb: null, ball: null, pclock: { pid: -1, t: 0 }, pred: { m: null, key: null, on: false, v: 0, lastIn: -9, hold: 0 },
   invited: null, pendingInvite: null,
   specs: [], specSnapT: 0, tok: null, waiting: 0, waitHint: 0, pausedForDrop: false, rejoin: null, bye: false, opp: null, oppElo: null,
-  // host: one link per friend in the room { conn, fast, fastOK, hiT, sid, opp, elo, name, tok, q, inp, pos, inAt, pings, rtt, gone, bye, chatT }
+  // host: one link per friend in the room { conn, fast, fastOK, hiT, sid, opp, elo, name, tok, q, inp, pos, inAt, pings, rtt, gone, bye }
   links: [],
-  // who's in the room, kept by the host and sent to everyone: [{ sid, name, side, pick, peer, voice, on }]
+  // who's in the room, kept by the host and sent to everyone: [{ sid, name, side, pick, peer, on }]
   room: [], sid: 0, lastPl: null,
 };
-const SPEC_MSGS = new Set(['start', 'gs', 'ev', 'screen', 'pitch', 'bb', 'pause', 'bye', 'chat']);
+const SPEC_MSGS = new Set(['start', 'gs', 'ev', 'screen', 'pitch', 'bb', 'pause', 'bye']);
 const PEER_PREFIX = 'fullcount26-';
 // how two devices find a way to each other: several public STUN servers, and PeerJS's TURN
 // relays for networks that won't allow a direct connection
@@ -67,7 +67,7 @@ function netHost() {
   NET.code = code;
   netStatus('Opening a room…');
   const peer = (NET.peer = new Peer(PEER_PREFIX + code, PEER_OPTS));
-  NET.room = [{ sid: 0, name: myName(), side: menu.side ? 1 : 0, pick: '', peer: PEER_PREFIX + code, voice: VOICE.on, on: true }];
+  NET.room = [{ sid: 0, name: myName(), side: menu.side ? 1 : 0, pick: '', peer: PEER_PREFIX + code, on: true }];
   peerHooks(peer);
   peer.on('open', () => {
     if (NET.peer !== peer) return;
@@ -80,10 +80,9 @@ function netHost() {
   peer.on('error', (e) => { if (e.type === 'unavailable-id' && NET.peer === peer) { netHost(); return; } netStatus(netErrText(e), 'bad'); });
   renderMenu();
 }
-// every Peer we make: back to the matchmaking server after a blip, and voice calls from the room
+// every Peer we make: back to the matchmaking server after a blip
 function peerHooks(peer) {
   peer.on('disconnected', () => { if (NET.peer === peer && !peer.destroyed) try { peer.reconnect(); } catch (err) { /* already gone */ } });
-  peer.on('call', (call) => { if (NET.peer === peer) voiceIncoming(call); else try { call.close(); } catch (e) { /* gone */ } });
 }
 // watch: join a room as a spectator
 function netJoin(raw, watch = false) {
@@ -112,7 +111,7 @@ function netJoin(raw, watch = false) {
 }
 // who you are, for the head-to-head record (only when you're signed in)
 function meId() { return typeof Cloud !== 'undefined' && Cloud.profile ? { uid: Cloud.profile.uid, name: Cloud.profile.name } : null; }
-// your name in the room and in chat: the one you typed, or your account's
+// your name in the room: the one you typed, or your account's
 // (raw: '' when you haven't got one, so the host can number you)
 function myName(raw = false) { const n = settings.netName || (typeof Cloud !== 'undefined' && Cloud.profile ? Cloud.profile.name : ''); return raw ? cleanName(n, '') : cleanName(n, NET.role === 'host' ? 'Host' : 'Player'); }
 function cleanOpp(x) { return x && typeof x.uid === 'string' && x.uid && x.uid.length <= 128 ? { uid: x.uid, name: String(x.name || 'Player').slice(0, 40) } : null; }
@@ -122,7 +121,7 @@ function netBind(conn) {
   conn.on('open', () => {
     if (NET.conn !== conn) return;
     netAttach(conn);
-    conn.send({ t: 'hello', ver: BUILD_ID, me: meId(), elo: eloMine().r, name: myName(true), vc: VOICE.on ? 1 : 0, tok: NET.tok || undefined, spec: NET.role === 'spec' ? 1 : undefined });
+    conn.send({ t: 'hello', ver: BUILD_ID, me: meId(), elo: eloMine().r, name: myName(true), tok: NET.tok || undefined, spec: NET.role === 'spec' ? 1 : undefined });
     if (NET.rejoin) { NET.rejoin = null; setHint(''); hudBanner('RECONNECTED', 'Back to the game', ''); }
     else netStatus(NET.role === 'spec' ? 'Connected. You\'ll see the game as soon as it starts.' : 'Connected! Pick your team. The host starts the game.', 'good');
     renderMenu(); cloudRender();
@@ -147,7 +146,6 @@ function hostIncoming(conn) {
     if (role === 'guest') { if (L && L.conn === conn) netOnMsg(m, L); return; }
     if (role === 'spec') {
       if (m.t === 'ping') try { conn.send({ t: 'pong', c: m.c, h: performance.now() }); } catch (e) { /* closing */ }
-      else if (m.t === 'chat') chatIn(m, null, conn);
       return;
     }
     if (m.t !== 'hello' || NET.role !== 'host') return;
@@ -166,11 +164,11 @@ function hostIncoming(conn) {
     const lobby = G.mode !== 'online' && (squad ? NET.links.length < SQUAD_MAX - 1 : !NET.links.length);
     if (!back && !lobby) { conn.send({ t: 'full', squad: squad ? 1 : 0, started: G.mode === 'online' ? 1 : 0 }); drop(); return; }
     role = 'guest';
-    if (back) { L = back; L.conn = conn; linkOpen(L); const r = NET.room.find((x) => x.sid === L.sid); if (r) r.voice = !!m.vc; hostRejoined(L); return; }
-    L = { conn, fast: null, fastOK: false, hiT: 0, sid: freeSid(), opp: cleanOpp(m.me), elo: eloNum(m.elo) ?? ELO_START, name: '', tok: null, q: -1, inp: { x: 0, z: 0 }, pos: null, inAt: 0, pings: [], rtt: 0, gone: 0, bye: false, chatT: [] };
+    if (back) { L = back; L.conn = conn; linkOpen(L); hostRejoined(L); return; }
+    L = { conn, fast: null, fastOK: false, hiT: 0, sid: freeSid(), opp: cleanOpp(m.me), elo: eloNum(m.elo) ?? ELO_START, name: '', tok: null, q: -1, inp: { x: 0, z: 0 }, pos: null, inAt: 0, pings: [], rtt: 0, gone: 0, bye: false };
     L.name = cleanName(m.name, `Player ${L.sid + 1}`);
     NET.links.push(L); linkOpen(L);
-    NET.room.push({ sid: L.sid, name: L.name, side: menu.side ? 0 : 1, pick: '', peer: String(conn.peer || '').slice(0, 64), voice: !!m.vc, on: true });
+    NET.room.push({ sid: L.sid, name: L.name, side: menu.side ? 0 : 1, pick: '', peer: String(conn.peer || '').slice(0, 64), on: true });
     linkSend(L, { t: 'welcome', sid: L.sid });
     if (squad) netStatus(`${L.name} joined. ${NET.links.length + 1} in the room.`, 'good');
     else {
@@ -178,7 +176,6 @@ function hostIncoming(conn) {
       const rec = NET.opp ? h2hGet(NET.opp.uid) : null;
       netStatus(`${NET.opp ? NET.opp.name : L.name} (rated ${NET.oppElo}) is here!${rec ? ` You're ${rec.w}-${rec.l} against each other.` : ''} Pick your team and press Start.`, 'good');
     }
-    chatSys(`${L.name} joined the room.`);
     NET.lobbySent = ''; netSendRoom(); cloudRender();
   });
   conn.on('close', () => { if (role === 'guest' && L && L.conn === conn) linkLost(L); });
@@ -207,7 +204,7 @@ function hostRejoined(L) {
   netSendStart(G.cfg, L);
   linkSend(L, netGS());
   netSendRoom();
-  if (G.squad) { chatSys(`${L.name} is back.`); return; }
+  if (G.squad) return;
   NET.waiting = 0;
   hudBanner('RECONNECTED', 'Back to the game', '');
   setHint('');
@@ -266,7 +263,6 @@ function netFastOpen(conn, at) {
 function netLost() {
   if (!NET.open) return;
   NET.open = false; NET.conn = null; NET.fast = null; NET.fastOK = false;
-  voiceStop(true);
   // mid-game and nobody quit on purpose: go back to the host
   const mid = G.mode === 'online' && G.phase !== 'final' && !NET.bye;
   if (mid && (NET.role === 'spec' || (G.cfg && G.cfg.tok))) {
@@ -298,7 +294,6 @@ function linkLost(L) {
   L.conn = null; L.fast = null; L.fastOK = false; L.inp.x = 0; L.inp.z = 0; L.pos = null;
   try { if (fast) fast.close(); } catch (e) { /* gone */ }
   NET.open = NET.links.some((x) => x !== L && !x.gone);
-  voiceDrop(L.sid);
   const mid = G.mode === 'online' && G.phase !== 'final' && !L.bye, r = NET.room.find((x) => x.sid === L.sid), seat = seatBySid(L.sid);
   if (mid) {
     // keep his spot: he can come back with his token
@@ -307,7 +302,6 @@ function linkLost(L) {
     if (G.squad) {
       if (seat) seat.cpu = true;
       NET.dirty = true; netSendRoom();
-      chatSys(`${L.name} lost the connection. The CPU plays for them until they're back.`);
       return;
     }
     NET.waiting = Date.now(); NET.waitHint = 0; NET.pausedForDrop = !G.paused; G.paused = true;
@@ -321,10 +315,8 @@ function linkLost(L) {
   if (G.mode === 'online' && G.squad) {
     if (seat) seat.cpu = true;
     NET.dirty = true; netSendRoom();
-    if (G.phase !== 'final') chatSys(`${L.name} left the game. The CPU plays for them.`);
     return;
   }
-  chatSys(`${L.name} left.`);
   if (G.mode === 'online') {
     G.paused = false; $('pause').classList.add('hidden');
     const won = G.phase !== 'final' ? eloApply(true, 'forfeit') : null;   // they quit: the win is yours
@@ -337,7 +329,6 @@ function linkLost(L) {
 }
 function netClose() {
   const { conn, peer, fast, specs, open, links } = NET;
-  voiceStop(false); chatClear();
   // say goodbye first, so the other side knows it wasn't a dropped connection
   if (open && conn) try { conn.send({ t: 'bye' }); } catch (e) { /* closing */ }
   for (const L of links) linkSend(L, { t: 'bye' });
@@ -352,10 +343,10 @@ function netClose() {
   }, open || specs.length || links.length ? 300 : 0);
 }
 function netSend(m) {
-  if (NET.role === 'spec' && m.t !== 'hello' && m.t !== 'ping' && m.t !== 'chat') return;   // spectators only watch (and chat)
+  if (NET.role === 'spec' && m.t !== 'hello' && m.t !== 'ping') return;   // spectators only watch
   if (NET.role === 'host') { for (const L of NET.links) linkSend(L, m); }
   else if (NET.open && NET.conn) try { NET.conn.send(m); } catch (e) { /* channel closing */ }
-  if (NET.role === 'host' && NET.specs.length && SPEC_MSGS.has(m.t) && !(m.t === 'chat' && m.team)) {
+  if (NET.role === 'host' && NET.specs.length && SPEC_MSGS.has(m.t)) {
     const out = m.t === 'start' ? { ...m, cfg: { ...m.cfg, tok: undefined, me: -1 } } : m;   // tokens stay with the players
     for (const c of NET.specs) try { c.send(out); } catch (e) { /* closing */ }
   }
@@ -382,13 +373,13 @@ function netSendStart(cfg, only = null) {
   for (const L of NET.links) if (!L.gone && (!only || L === only)) linkSend(L, { t: 'start', cfg: { ...cfg, tok: L.tok || undefined, me: L.sid }, rejoin: only ? 1 : undefined });
   if (!only) for (const c of NET.specs) try { c.send({ t: 'start', cfg: { ...cfg, tok: undefined, me: -1 } }); } catch (e) { /* closing */ }
 }
-// who's in the room: names, picks, voice (the host keeps it)
-function netSendRoom() { if (NET.role === 'host') { netSend({ t: 'room', room: NET.room }); voiceSync(); renderMenu(); } }
+// who's in the room: names and picks (the host keeps it)
+function netSendRoom() { if (NET.role === 'host') { netSend({ t: 'room', room: NET.room }); renderMenu(); } }
 function roomOK(list) {
   if (!Array.isArray(list)) return [];
   return list.slice(0, SQUAD_MAX).filter((r) => r && typeof r === 'object').map((r) => ({
     sid: clamp(r.sid | 0, 0, SQUAD_MAX - 1), name: cleanName(r.name), side: r.side ? 1 : 0, pick: PICK_RE.test(r.pick || '') ? r.pick : '',
-    peer: typeof r.peer === 'string' ? r.peer.slice(0, 64) : '', voice: !!r.voice, on: r.on !== false,
+    peer: typeof r.peer === 'string' ? r.peer.slice(0, 64) : '', on: r.on !== false,
   }));
 }
 // ---------------------------------------------------------------- lobby ----
@@ -445,11 +436,9 @@ function hostOnMsg(m, L) {
   if (m.t === 'claim') { if (menu.netMode === 1) hostClaim(L.sid, m.side ? 1 : 0, typeof m.pick === 'string' ? m.pick : ''); return; }
   if (m.t === 'name') {
     const nm = cleanName(m.name, L.name), r = NET.room.find((x) => x.sid === L.sid);
-    if (nm !== L.name && G.mode !== 'online') { chatSys(`${L.name} is now ${nm}.`); L.name = nm; if (r) r.name = nm; netSendRoom(); }
+    if (nm !== L.name && G.mode !== 'online') { L.name = nm; if (r) r.name = nm; netSendRoom(); }
     return;
   }
-  if (m.t === 'chat') { chatIn(m, L); return; }
-  if (m.t === 'vc') { const r = NET.room.find((x) => x.sid === L.sid); if (r && r.voice !== !!m.on) { r.voice = !!m.on; netSendRoom(); } return; }
   if (m.t === 'in') {
     if (typeof m.q === 'number') { if (m.q <= L.q) return; L.q = m.q; }
     L.inp.x = clamp(+m.x || 0, -1, 1); L.inp.z = clamp(+m.z || 0, -1, 1); L.inAt = performance.now();
@@ -512,8 +501,7 @@ function guestOnMsg(m) {
   switch (m.t) {
     case 'ver': netStatus(VERSION_MSG, 'bad'); netClose(); renderMenu(); break;
     case 'welcome': NET.sid = clamp(m.sid | 0, 0, SQUAD_MAX - 1); renderMenu(); break;
-    case 'room': NET.room = roomOK(m.room); voiceSync(); renderMenu(); break;
-    case 'chat': chatShow(m); break;
+    case 'room': NET.room = roomOK(m.room); renderMenu(); break;
     case 'lobby': {
       if (m.ver !== BUILD_ID) { netStatus(VERSION_MSG, 'bad'); netClose(); renderMenu(); break; }
       const first = !NET.lobby, wasSquad = !!(NET.lobby && NET.lobby.squad);
@@ -534,7 +522,7 @@ function guestOnMsg(m) {
       if (m.cfg && typeof m.cfg === 'object') {
         if (NET.role === 'guest' && typeof m.cfg.tok === 'string') NET.tok = m.cfg.tok.slice(0, 20);
         if (NET.role === 'guest') NET.sid = clamp(m.cfg.me | 0, 0, SQUAD_MAX - 1);
-        showScreen(null); closeBox(); closeChat();
+        showScreen(null); closeBox();
         const squad = Array.isArray(m.cfg.squad) ? m.cfg.squad.slice(0, SQUAD_MAX) : null;
         startGame({ ...m.cfg, squad, teams: (m.cfg.teams || []).map((s) => specOK(s) || { b: TEAMS[0].key }), guest: true, spec: NET.role === 'spec', me: NET.role === 'spec' ? -1 : NET.sid });
       }
