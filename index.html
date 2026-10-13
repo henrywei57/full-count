@@ -835,7 +835,6 @@ span.chip{cursor:default}
       <div id="squadPanel" class="hidden"></div>
       <div class="opts">
         <div class="opt hidden" id="optNetMode"><span>PLAY</span><div class="seg" data-key="netMode"><button data-v="0" class="on">1v1: your team vs theirs</button><button data-v="1">Squad: up to 10, one player each</button></div></div>
-        <div class="opt hidden" id="optSquadSkip"><span>NOBODY IN THE PLAY</span><div class="seg" data-key="squadSkip"><button data-v="1" class="on">Skip ahead</button><button data-v="0">Watch (fast)</button><button data-v="2">Real time</button></div></div>
         <div class="opt hidden" id="optLesson"><span>LESSONS</span><div class="seg" data-key="tutLesson"><button data-v="-1" class="on">All, in order</button><button data-v="0">Hitting</button><button data-v="1">Pitching</button><button data-v="2">Fielding</button><button data-v="3">Baserunning</button><button data-v="4">Pickoffs</button></div></div>
         <div class="opt hidden" id="optDrill"><span>DRILL</span><div class="seg" data-key="drill"><button data-v="0" class="on">Batting</button><button data-v="1">Pitching</button><button data-v="2">Baserunning</button><button data-v="3">Fielding</button></div></div>
         <div class="opt" id="optSide"><span>YOU PLAY AS</span><div class="seg" data-key="side"><button data-v="0">Away</button><button data-v="1" class="on">Home</button></div></div>
@@ -1034,7 +1033,7 @@ span.chip{cursor:default}
 <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"}}</script>
 <script type="module">
-const BUILD_ID = '1606333460';
+const BUILD_ID = '2058411400';
 import * as THREE from 'three';
 
 // ============================================================================
@@ -9842,7 +9841,6 @@ function lockPlayFor(pl) {
   if (G.squad) {
     const ids = squadIds();
     G.lockInv = pl.R.some((r) => ids.has(r.pl.id)) || pl.F.some((f) => ids.has(f.pl.id) && (f.role === 'C' || f.role === 'P' || f.task === 'cover'));
-    if (G.squadSkip === 1 && pl.hf && !G.lockInv) pl.cpuDefense();
     pl.lockManual();
     return;
   }
@@ -10382,11 +10380,9 @@ function launch(ev, la, spray, origin, q, byUser) {
     else if ((skipped || G.skipping) && (G.lockInv || running)) { G.beat = 0.6; hudCall('YOUR PLAY', 'play'); }
     pl.lockManual();
   } else if (G.squad && G.play.hf) {
-    // a squad: same idea, for anyone in the field (skipping ahead, a play none of you is in is the CPU's)
+    // a squad plays every pitch: everyone in the field steers his own man on every play
     const pl = G.play;
     G.lockInv = pl.ctl.some((c) => lockFieldInvolved(pl, c.f));
-    if (!G.lockInv && G.squadSkip === 1) { pl.cpuDefense(); pl.planFielders(0); }
-    else if (G.lockInv && G.skipping) G.beat = 0.6;   // a skip just landed you in it: a beat to find the ball
     pl.lockManual();
   }
   if (bb.hr) { excite(1, 6); SND.roar(0.55, 2.5, 4); }
@@ -11878,7 +11874,6 @@ function squadInit(cfg) {
   const me = mySeat();
   G.lock = me ? me.pid : null; G.lockSide = me ? me.side : 1;
   G.view = menu.view ?? 2;   // each device picks its own camera
-  G.squadSkip = cfg.skip ?? 1;   // nobody's in the play: 1 skip ahead, 0 watch it fast, 2 real time
 }
 const mySeat = () => (G.squad ? G.squad.find((s) => s.sid === G.me) || null : null);
 const seatBySid = (sid) => (G.squad ? G.squad.find((s) => s.sid === sid) || null : null);
@@ -11914,20 +11909,6 @@ function squadTakeOver(oldId, np) {
   NET.dirty = true;
   chatSys(`${s.name} takes over as ${np.name}.`);
 }
-// a Play involves one of you: on base, at bat, on the mound, or a ball hit your way
-function squadInvolved() {
-  const ph = G.phase, pl = G.play, live = (ph === 'live' || ph === 'postPlay') && !!pl, ids = squadIds();
-  if (!ids.size) return false;
-  if (!live) return batCtrl() !== 'cpu' || pitchCtrl() !== 'cpu' || (LOCK_PHASES.includes(ph) && (G.baseRunners || []).some((r) => ids.has(r.pl.id)));
-  if (pl.R.some((r) => ids.has(r.pl.id) && (r.state === 'run' || r.state === 'base'))) return true;
-  return !!G.lockInv;
-}
-// game steps per frame: nobody's in it, so skip ahead (or watch it fast)
-function squadFF() {
-  if (G.squadSkip === 2 || G.replay || G.phase === 'final' || squadInvolved()) return 1;
-  if (G.squadSkip === 1) { G.skipping = true; return SKIP_SPEED; }
-  return 4;
-}
 // what you see before a pitch when you're not batting, pitching or on base
 function squadHint() {
   const me = mySeat();
@@ -11937,11 +11918,6 @@ function squadHint() {
   if (idx < 0) return 'Your team is batting';
   const k = (idx - G.order[me.side] + 9) % 9;
   return k === 1 ? 'Your team is batting &middot; you are on deck' : `Your team is batting &middot; you're up ${k} batters from now`;
-}
-function squadSimText() {
-  const me = mySeat();
-  if (!me) return 'Skipping to the next play with one of you in it';
-  return `${G.half === me.side ? 'Your team is batting' : 'Your team is in the field'} &middot; skipping to the next play with one of you in it`;
 }
 
 // ------------------------------------------------------------- name tags ----
@@ -12421,7 +12397,7 @@ function roomOK(list) {
 function netSendLobby() {
   if (NET.role !== 'host' || !NET.open) return;
   const sq = menu.netMode === 1;
-  const m = { t: 'lobby', ver: BUILD_ID, me: meId(), elo: eloMine().r, squad: sq ? 1 : 0, netMode: sq ? 1 : 0, side: menu.side, innings: menu.innings, diff: menu.diff, pdiff: menu.pdiff, ump: menu.ump, park: menu.park || '', squadSkip: menu.squadSkip ?? 1,
+  const m = { t: 'lobby', ver: BUILD_ID, me: meId(), elo: eloMine().r, squad: sq ? 1 : 0, netMode: sq ? 1 : 0, side: menu.side, innings: menu.innings, diff: menu.diff, pdiff: menu.pdiff, ump: menu.ump, park: menu.park || '',
     hostSpec: sq ? null : teamSpec(menuTeam(menu.side ? 'home' : 'away')), hostSp: sq ? 0 : menuSP(menu.side ? 'home' : 'away'), teams: sq ? [teamSpec(menuTeam('away')), teamSpec(menuTeam('home'))] : null };
   const s = JSON.stringify(m);
   if (s !== NET.lobbySent) { NET.lobbySent = s; netSend(m); }
@@ -12437,7 +12413,7 @@ function hostStartOnline() {
   const P = onlinePicks();
   const cfg = { mode: 'online', teams: distinctSpecs(teamSpec(P.teams[0]), teamSpec(P.teams[1])), side: menu.side, innings: menu.innings, diff: menu.diff, pdiff: menu.pdiff, manual: 1, ump: menu.ump, park: menu.park || '' };
   if (P.sp) cfg.starters = P.sp;
-  if (P.squad) { cfg.squad = NET.room.filter((r) => r.pick).map((r) => ({ sid: r.sid, name: r.name, side: r.side, pick: r.pick })); cfg.skip = menu.squadSkip ?? 1; }
+  if (P.squad) { cfg.squad = NET.room.filter((r) => r.pick).map((r) => ({ sid: r.sid, name: r.name, side: r.side, pick: r.pick })); }
   for (const L of NET.links) L.tok = Math.random().toString(36).slice(2, 12);
   netSendStart(cfg);
   startGame(cfg);
@@ -14941,7 +14917,7 @@ function skipText() {
 }
 // the SIMULATING card, with game sound and commentary muted while it's up
 function updateSkipUI() {
-  const on = (G.mode === 'lock' || !!G.squad) && G.skipping && !G.paused;
+  const on = G.mode === 'lock' && G.skipping && !G.paused;
   if (on !== !!updateSkipUI.on) {
     updateSkipUI.on = on;
     $('simVeil').classList.toggle('hidden', !on);
@@ -14951,8 +14927,8 @@ function updateSkipUI() {
     else $('banner').className = '';   // an inning banner the skip raced past
   }
   if (on) {
-    const t = G.squad ? squadSimText() : skipText();
-    if ($('simNext').dataset.t !== t) { $('simNext').dataset.t = t; $('simNext').innerHTML = t; $('simVeil').querySelector('.sim-foot').textContent = G.squad ? 'Plays none of you are part of are skipped' : "Player Lock skips plays you aren't part of"; }
+    const t = skipText();
+    if ($('simNext').dataset.t !== t) { $('simNext').dataset.t = t; $('simNext').innerHTML = t; $('simVeil').querySelector('.sim-foot').textContent = "Player Lock skips plays you aren't part of"; }
   }
 }
 function updateLockUI() {
@@ -15769,7 +15745,7 @@ function togglePause(force, remote) {
 }
 
 // ------------------------------------------------------------------ menus ----
-const menu = { mode: 'exhibition', away: 'NYY', home: 'LAD', park: '', seasonLen: 30, side: 1, innings: 3, diff: 1, pdiff: 1, manual: 1, batter: 3, lockPick: 'h3', ump: 1, view: 2, lockField: 1, lockSkip: 1, batCam: settings.batCam || 0, netTeam: 'LAD', drill: 0, tutLesson: -1, netMode: 0, squadSkip: 1 };
+const menu = { mode: 'exhibition', away: 'NYY', home: 'LAD', park: '', seasonLen: 30, side: 1, innings: 3, diff: 1, pdiff: 1, manual: 1, batter: 3, lockPick: 'h3', ump: 1, view: 2, lockField: 1, lockSkip: 1, batCam: settings.batCam || 0, netTeam: 'LAD', drill: 0, tutLesson: -1, netMode: 0 };
 try { Object.assign(menu, JSON.parse(localStorage.getItem('fullcount.menu') || '{}')); } catch (e) { /* ignore */ }
 menu.batCam = settings.batCam || 0;   // the pause screen can change it too; settings wins
 // teams used to be saved as an index into the built-in list
@@ -15845,7 +15821,6 @@ function renderMenu() {
   $('netPanel').classList.toggle('hidden', !online);
   $('netTitle').textContent = squad ? 'ONLINE SQUAD' : 'ONLINE 1V1';
   $('optNetMode').classList.toggle('hidden', !online || NET.role === 'spec' || (guest && !(NET.open && NET.lobby)));
-  $('optSquadSkip').classList.toggle('hidden', !squad || !showTeams);
   $('netShare').classList.toggle('hidden', !(host && NET.code));
   $('netHostRow').classList.toggle('hidden', online && NET.open);
   $('netOr').classList.toggle('hidden', online && (NET.open || host));
@@ -15883,7 +15858,7 @@ function renderMenu() {
   $('optLockSkip').classList.toggle('hidden', !lock);
   $('optUmp').classList.toggle('hidden', derby || tut || !showTeams);
   $('optPark').classList.toggle('hidden', tut || season || !showTeams);
-  for (const el of ['optSide', 'optInn', 'optDiff', 'optPDiff', 'optUmp', 'optPark', 'optNetMode', 'optSquadSkip']) $(el).style.pointerEvents = guest ? 'none' : '';
+  for (const el of ['optSide', 'optInn', 'optDiff', 'optPDiff', 'optUmp', 'optPark', 'optNetMode']) $(el).style.pointerEvents = guest ? 'none' : '';
   if (showTeams) {
     // the ballpark: the home team's, or any of the others
     const hk = online ? onlinePicks().teams[1] : menuTeam('home'), hp = (hk && PARKS[hk.park || hk.key]) || PARKS.FC;
@@ -16148,7 +16123,7 @@ function lockInvolved() {
 }
 function lockFF() {
   G.skipping = false;
-  if (G.squad && G.mode === 'online') return squadFF();
+  if (G.squad && G.mode === 'online') return 1;   // a squad plays every pitch, in real time
   if (G.mode !== 'lock' || G.replay || G.phase === 'final') return 1;
   if (G.lockSkip) {
     if (!lockInvolved()) { G.skipping = true; return SKIP_SPEED; }

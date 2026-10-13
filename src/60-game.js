@@ -808,7 +808,6 @@ function lockPlayFor(pl) {
   if (G.squad) {
     const ids = squadIds();
     G.lockInv = pl.R.some((r) => ids.has(r.pl.id)) || pl.F.some((f) => ids.has(f.pl.id) && (f.role === 'C' || f.role === 'P' || f.task === 'cover'));
-    if (G.squadSkip === 1 && pl.hf && !G.lockInv) pl.cpuDefense();
     pl.lockManual();
     return;
   }
@@ -1348,11 +1347,9 @@ function launch(ev, la, spray, origin, q, byUser) {
     else if ((skipped || G.skipping) && (G.lockInv || running)) { G.beat = 0.6; hudCall('YOUR PLAY', 'play'); }
     pl.lockManual();
   } else if (G.squad && G.play.hf) {
-    // a squad: same idea, for anyone in the field (skipping ahead, a play none of you is in is the CPU's)
+    // a squad plays every pitch: everyone in the field steers his own man on every play
     const pl = G.play;
     G.lockInv = pl.ctl.some((c) => lockFieldInvolved(pl, c.f));
-    if (!G.lockInv && G.squadSkip === 1) { pl.cpuDefense(); pl.planFielders(0); }
-    else if (G.lockInv && G.skipping) G.beat = 0.6;   // a skip just landed you in it: a beat to find the ball
     pl.lockManual();
   }
   if (bb.hr) { excite(1, 6); SND.roar(0.55, 2.5, 4); }

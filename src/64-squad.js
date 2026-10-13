@@ -28,7 +28,6 @@ function squadInit(cfg) {
   const me = mySeat();
   G.lock = me ? me.pid : null; G.lockSide = me ? me.side : 1;
   G.view = menu.view ?? 2;   // each device picks its own camera
-  G.squadSkip = cfg.skip ?? 1;   // nobody's in the play: 1 skip ahead, 0 watch it fast, 2 real time
 }
 const mySeat = () => (G.squad ? G.squad.find((s) => s.sid === G.me) || null : null);
 const seatBySid = (sid) => (G.squad ? G.squad.find((s) => s.sid === sid) || null : null);
@@ -64,20 +63,6 @@ function squadTakeOver(oldId, np) {
   NET.dirty = true;
   chatSys(`${s.name} takes over as ${np.name}.`);
 }
-// a Play involves one of you: on base, at bat, on the mound, or a ball hit your way
-function squadInvolved() {
-  const ph = G.phase, pl = G.play, live = (ph === 'live' || ph === 'postPlay') && !!pl, ids = squadIds();
-  if (!ids.size) return false;
-  if (!live) return batCtrl() !== 'cpu' || pitchCtrl() !== 'cpu' || (LOCK_PHASES.includes(ph) && (G.baseRunners || []).some((r) => ids.has(r.pl.id)));
-  if (pl.R.some((r) => ids.has(r.pl.id) && (r.state === 'run' || r.state === 'base'))) return true;
-  return !!G.lockInv;
-}
-// game steps per frame: nobody's in it, so skip ahead (or watch it fast)
-function squadFF() {
-  if (G.squadSkip === 2 || G.replay || G.phase === 'final' || squadInvolved()) return 1;
-  if (G.squadSkip === 1) { G.skipping = true; return SKIP_SPEED; }
-  return 4;
-}
 // what you see before a pitch when you're not batting, pitching or on base
 function squadHint() {
   const me = mySeat();
@@ -87,11 +72,6 @@ function squadHint() {
   if (idx < 0) return 'Your team is batting';
   const k = (idx - G.order[me.side] + 9) % 9;
   return k === 1 ? 'Your team is batting &middot; you are on deck' : `Your team is batting &middot; you're up ${k} batters from now`;
-}
-function squadSimText() {
-  const me = mySeat();
-  if (!me) return 'Skipping to the next play with one of you in it';
-  return `${G.half === me.side ? 'Your team is batting' : 'Your team is in the field'} &middot; skipping to the next play with one of you in it`;
 }
 
 // ------------------------------------------------------------- name tags ----
