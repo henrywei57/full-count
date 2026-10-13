@@ -398,7 +398,7 @@ function roomOK(list) {
 function netSendLobby() {
   if (NET.role !== 'host' || !NET.open) return;
   const sq = menu.netMode === 1;
-  const m = { t: 'lobby', ver: BUILD_ID, me: meId(), elo: eloMine().r, squad: sq ? 1 : 0, netMode: sq ? 1 : 0, side: menu.side, innings: menu.innings, diff: menu.diff, pdiff: menu.pdiff, ump: menu.ump, park: menu.park || '', squadSkip: menu.squadSkip ?? 1,
+  const m = { t: 'lobby', ver: BUILD_ID, me: meId(), elo: eloMine().r, squad: sq ? 1 : 0, netMode: sq ? 1 : 0, side: menu.side, innings: menu.innings, diff: menu.diff, pdiff: menu.pdiff, ump: menu.ump, park: menu.park || '',
     hostSpec: sq ? null : teamSpec(menuTeam(menu.side ? 'home' : 'away')), hostSp: sq ? 0 : menuSP(menu.side ? 'home' : 'away'), teams: sq ? [teamSpec(menuTeam('away')), teamSpec(menuTeam('home'))] : null };
   const s = JSON.stringify(m);
   if (s !== NET.lobbySent) { NET.lobbySent = s; netSend(m); }
@@ -414,7 +414,7 @@ function hostStartOnline() {
   const P = onlinePicks();
   const cfg = { mode: 'online', teams: distinctSpecs(teamSpec(P.teams[0]), teamSpec(P.teams[1])), side: menu.side, innings: menu.innings, diff: menu.diff, pdiff: menu.pdiff, manual: 1, ump: menu.ump, park: menu.park || '' };
   if (P.sp) cfg.starters = P.sp;
-  if (P.squad) { cfg.squad = NET.room.filter((r) => r.pick).map((r) => ({ sid: r.sid, name: r.name, side: r.side, pick: r.pick })); cfg.skip = menu.squadSkip ?? 1; }
+  if (P.squad) { cfg.squad = NET.room.filter((r) => r.pick).map((r) => ({ sid: r.sid, name: r.name, side: r.side, pick: r.pick })); }
   for (const L of NET.links) L.tok = Math.random().toString(36).slice(2, 12);
   netSendStart(cfg);
   startGame(cfg);

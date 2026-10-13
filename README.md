@@ -37,7 +37,6 @@ The setup panel on the main menu changes with the mode. This is every option and
 | Lessons | All, in order; Hitting; Pitching; Fielding; Baserunning; Pickoffs | Tutorial |
 | Drill | Batting; Pitching; Baserunning; Fielding | Practice |
 | Play | 1v1 or Squad | Online |
-| Nobody in the play | Skip ahead; Watch (fast); Real time | Online squad |
 | You play as | Away or Home | Play Ball, Player Lock, Online 1v1 |
 | Season | 12, 30, 60 or 162 games | Season setup |
 | Innings | 3, 6 or 9 | Play Ball, Season, Player Lock, Online, CPU vs CPU |
@@ -63,7 +62,7 @@ Pick **Online**, set **Play** to **Squad**, and host. Up to nine friends join wi
 - **Your player only.** Like Player Lock, you bat when he's up, pitch when he's on the mound, field when the ball comes his way and run when he's on base. Everyone does it at the same time on their own device: the shortstop and the center fielder can both be chasing the same ball.
 - **Third-person camera, MLB The Show style.** The camera sits behind your player and turns toward the play: home plate before the pitch, then the ball, the base you're running to or the base you're about to throw to. Hitting uses the strike-zone view, pitching the view from behind the mound. V cycles third person, first person and broadcast, and the mouse or right stick swings the camera around.
 - **Name tags.** Every player a friend is playing has a tag over his head in that friend's color (YOU over your own), with a speaker icon while they're talking. The mini diamond rings them in the same colors.
-- **Nobody in the play.** When none of you is batting, pitching, on base or in the way of the ball, the game skips ahead behind the SIMULATING card. The host can instead have it play fast or in real time (**Nobody in the play**).
+- **Every pitch, in real time.** A squad game is played pitch by pitch at normal speed: nothing is skipped or fast-forwarded, even when none of you is in the play.
 - **The CPU manager** goes to the bullpen and makes pinch-hit and pinch-run moves, but never takes out one of you. A pitcher stays in until he's out of gas, and then his player takes over the reliever. A friend who leaves the mound alone for 30 seconds gets a CPU pitch thrown for him. ABS challenges are up to the batter (a called strike) or the pitcher or catcher (a called ball).
 - **Dropped connection.** If a friend's connection drops, the CPU plays their man and the game goes on. They reconnect on their own and pick up where they left off. Rematch keeps everyone's spots.
 

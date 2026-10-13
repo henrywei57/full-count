@@ -533,7 +533,7 @@ function skipText() {
 }
 // the SIMULATING card, with game sound and commentary muted while it's up
 function updateSkipUI() {
-  const on = (G.mode === 'lock' || !!G.squad) && G.skipping && !G.paused;
+  const on = G.mode === 'lock' && G.skipping && !G.paused;
   if (on !== !!updateSkipUI.on) {
     updateSkipUI.on = on;
     $('simVeil').classList.toggle('hidden', !on);
@@ -543,8 +543,8 @@ function updateSkipUI() {
     else $('banner').className = '';   // an inning banner the skip raced past
   }
   if (on) {
-    const t = G.squad ? squadSimText() : skipText();
-    if ($('simNext').dataset.t !== t) { $('simNext').dataset.t = t; $('simNext').innerHTML = t; $('simVeil').querySelector('.sim-foot').textContent = G.squad ? 'Plays none of you are part of are skipped' : "Player Lock skips plays you aren't part of"; }
+    const t = skipText();
+    if ($('simNext').dataset.t !== t) { $('simNext').dataset.t = t; $('simNext').innerHTML = t; $('simVeil').querySelector('.sim-foot').textContent = "Player Lock skips plays you aren't part of"; }
   }
 }
 function updateLockUI() {
@@ -1361,7 +1361,7 @@ function togglePause(force, remote) {
 }
 
 // ------------------------------------------------------------------ menus ----
-const menu = { mode: 'exhibition', away: 'NYY', home: 'LAD', park: '', seasonLen: 30, side: 1, innings: 3, diff: 1, pdiff: 1, manual: 1, batter: 3, lockPick: 'h3', ump: 1, view: 2, lockField: 1, lockSkip: 1, batCam: settings.batCam || 0, netTeam: 'LAD', drill: 0, tutLesson: -1, netMode: 0, squadSkip: 1 };
+const menu = { mode: 'exhibition', away: 'NYY', home: 'LAD', park: '', seasonLen: 30, side: 1, innings: 3, diff: 1, pdiff: 1, manual: 1, batter: 3, lockPick: 'h3', ump: 1, view: 2, lockField: 1, lockSkip: 1, batCam: settings.batCam || 0, netTeam: 'LAD', drill: 0, tutLesson: -1, netMode: 0 };
 try { Object.assign(menu, JSON.parse(localStorage.getItem('fullcount.menu') || '{}')); } catch (e) { /* ignore */ }
 menu.batCam = settings.batCam || 0;   // the pause screen can change it too; settings wins
 // teams used to be saved as an index into the built-in list
@@ -1437,7 +1437,6 @@ function renderMenu() {
   $('netPanel').classList.toggle('hidden', !online);
   $('netTitle').textContent = squad ? 'ONLINE SQUAD' : 'ONLINE 1V1';
   $('optNetMode').classList.toggle('hidden', !online || NET.role === 'spec' || (guest && !(NET.open && NET.lobby)));
-  $('optSquadSkip').classList.toggle('hidden', !squad || !showTeams);
   $('netShare').classList.toggle('hidden', !(host && NET.code));
   $('netHostRow').classList.toggle('hidden', online && NET.open);
   $('netOr').classList.toggle('hidden', online && (NET.open || host));
@@ -1475,7 +1474,7 @@ function renderMenu() {
   $('optLockSkip').classList.toggle('hidden', !lock);
   $('optUmp').classList.toggle('hidden', derby || tut || !showTeams);
   $('optPark').classList.toggle('hidden', tut || season || !showTeams);
-  for (const el of ['optSide', 'optInn', 'optDiff', 'optPDiff', 'optUmp', 'optPark', 'optNetMode', 'optSquadSkip']) $(el).style.pointerEvents = guest ? 'none' : '';
+  for (const el of ['optSide', 'optInn', 'optDiff', 'optPDiff', 'optUmp', 'optPark', 'optNetMode']) $(el).style.pointerEvents = guest ? 'none' : '';
   if (showTeams) {
     // the ballpark: the home team's, or any of the others
     const hk = online ? onlinePicks().teams[1] : menuTeam('home'), hp = (hk && PARKS[hk.park || hk.key]) || PARKS.FC;
@@ -1740,7 +1739,7 @@ function lockInvolved() {
 }
 function lockFF() {
   G.skipping = false;
-  if (G.squad && G.mode === 'online') return squadFF();
+  if (G.squad && G.mode === 'online') return 1;   // a squad plays every pitch, in real time
   if (G.mode !== 'lock' || G.replay || G.phase === 'final') return 1;
   if (G.lockSkip) {
     if (!lockInvolved()) { G.skipping = true; return SKIP_SPEED; }
