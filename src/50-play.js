@@ -100,7 +100,8 @@ class Runner {
 
 class Play {
   // o.field: null for a CPU defense, else { lock: playerId|null, manual: bool } for a human defense
-  // o.run:   null for CPU baserunning, else { lock: playerId|null } (AI still assists unless told otherwise)
+  // o.run:   null for CPU baserunning, else { lock: playerId|null } (AI still assists unless told otherwise;
+  //          in Player Lock your runner goes only where you send him: see lockRunners)
   // o.kind:  'hit' (a batted ball, o.bb), 'steal' (the catcher has the pitch), 'pick' (pickoff to o.pickBase)
   //          or 'wild' (a pitch got by the catcher: o.bb is the loose ball)
   constructor(o) {
@@ -120,7 +121,7 @@ class Play {
     // close plays at the bags (for replay review); a human umpire misses a few of the closest
     this.calls = []; this.umpErr = !G.drill && G.mode !== 'tutorial' && G.mode !== 'derby';
     for (const f of this.F) f.reset();
-    if (this.kind !== 'hit') { this.basesPlay(o); return; }
+    if (this.kind !== 'hit') { this.basesPlay(o); this.lockRunners(); return; }
     // force situation at contact
     const occ = [true, false, false, false];
     for (const r of this.R) if (!r.isBatter) occ[r.base] = true;
@@ -139,6 +140,19 @@ class Play {
       r.autoRun = this.outs === 2;
       if (r.wait) r.lead = 0;
     }
+    this.lockRunners();
+  }
+  // Player Lock: nobody runs your player for you. As a runner he holds (or keeps going to the
+  // bag he's headed for) until you send him; forced runs and the batter's trip to first still
+  // happen. As a fielder (lockManual) he moves only when you move him.
+  lockRunners() {
+    if (!this.hrun || !this.hrun.lock) return;
+    for (const r of this.R) if (r.pl.id === this.hrun.lock && r.userTarget == null && (r.state === 'run' || r.state === 'base')) r.userTarget = r.state === 'run' ? heading(r) : r.base;
+  }
+  lockManual() {
+    if (!this.hf || !this.hf.lock || !this.uf || this.ufManual) return;
+    this.ufManual = true;
+    if (this.bb && this.ball.mode === 'flight' && !this.hr && !this.dead) this.replan();
   }
   // A steal (the catcher just caught the pitch) or a pickoff (the pitcher throws over).
   // No batted ball and no forces: every out is a tag.
@@ -197,8 +211,9 @@ class Play {
     let best = null;
     for (const f of this.F) {
       f.plan = null;
-      // a fielder the human is steering isn't counted on; the AI plays the ball behind him
-      if (f.excluded || (f.downUntil && f.downUntil > fromT + 0.4) || (f === this.uf && this.ufManual)) continue;
+      // a fielder the human is steering isn't counted on; the AI plays the ball behind him. In
+      // Player Lock a ball that's yours stays yours (the others back you up) until you miss it.
+      if (f.excluded || (f.downUntil && f.downUntil > fromT + 0.4) || (f === this.uf && this.ufManual && (!this.hf.lock || this.ufMissed))) continue;
       const react = fromT === 0 ? f.react : 0.08;
       const start = f.downUntil > fromT ? f.downUntil : fromT;
       let plan = null, divePlan = null;
@@ -292,7 +307,7 @@ class Play {
     if (!this.hf || !this.uf) return;
     const was = this.ufManual;
     if (Math.hypot(x, z) > 0.2) { this.ufManual = true; this.lastInput = this.t; }
-    else if (this.ufManual && this.t - this.lastInput > 0.9 && this.ball.holder !== this.uf) this.ufManual = false;
+    else if (this.ufManual && !this.hf.lock && this.t - this.lastInput > 0.9 && this.ball.holder !== this.uf) this.ufManual = false;
     if (was !== this.ufManual && this.ball.mode === 'flight' && !this.hr && !this.dead) this.replan();
   }
   userSwitch() {
@@ -429,8 +444,11 @@ class Play {
       if (f.throwing) { this.throwRelease(f); f.sync(); continue; }
       if (f === b.holder) { this.holderLogic(f, dt); f.sync(); continue; }
       if (t < f.animHold) { f.sync(); continue; }
+      if (f === this.uf && this.ufManual && this.hf.lock && (this.hr || this.dead)) { this.manualMove(f, dt); f.sync(); continue; }
       if (f === this.uf && this.ufManual && !this.hr && !this.dead) {
         this.manualMove(f, dt); this.tryHumanCatch(f); f.sync();
+        // Player Lock: you didn't get to your ball, so now the others go get it
+        if (this.hf.lock && this.chaser === f && f.plan && b.mode === 'flight' && t > f.plan.t + 0.5) { this.ufMissed = true; this.replan(); }
         // the ball got past you: hand control to the fielder now playing it
         if (b.mode === 'flight' && !this.hf.lock && this.chaser && this.chaser !== f && this.chaser.plan && Math.hypot(this.chaser.pos.x - b.pos.x, this.chaser.pos.z - b.pos.z) < Math.hypot(f.pos.x - b.pos.x, f.pos.z - b.pos.z) - 15) {
           this.uf = this.chaser; this.ufManual = false; this.replan();
@@ -585,7 +603,7 @@ class Play {
         if (r.isBatter || r.state === 'out' || r.state === 'scored') continue;
         // anyone off his base has to get back and tag up before he can advance
         if (r.state === 'run' || r.base !== r.start) {
-          r.leftEarly = true; r.userTarget = null;
+          r.leftEarly = true; r.userTarget = this.hrun && this.hrun.lock === r.pl.id ? r.start : null;
           if (r.state === 'run' && !r.rev) { r.rev = true; r.v = Math.min(r.v, 6); }
           else if (r.state === 'base') { r.state = 'run'; r.rev = true; r.next = r.base; r.base--; r.d = 90; r.v = 0; }
         }
@@ -648,6 +666,10 @@ class Play {
       if (this.queuedThrow != null) { const base = this.queuedThrow; this.queuedThrow = null; this.prompt = false; f.holding = false; this.humanThrow(f, base); tutNote('throw'); return; }
       if (this.userDef) {
         const anyRunning = this.R.some((r) => r.state === 'run');
+        if (this.hf.lock) {
+          if (anyRunning) { this.prompt = true; return; }
+          this.prompt = false; f.holding = true; f.decideAt = t + 0.2; return;
+        }
         if (anyRunning || !f.holding) {
           if (f.promptStart == null) f.promptStart = t;
           this.prompt = true;
@@ -777,6 +799,7 @@ class Play {
     let best = null, bt = 1e9;
     for (const f of this.F) {
       if (f === exclude || f.throwing || (f.downUntil && this.t < f.downUntil)) continue;
+      if (f === this.uf && this.ufManual && this.hf.lock && Math.hypot(bp.x - f.pos.x, bp.z - f.pos.z) > 8) continue;   // Player Lock: only if he's there
       const t = runTime(Math.max(0, Math.hypot(bp.x - f.pos.x, bp.z - f.pos.z) - 2), f.speed, f.acc) - (this.cover && this.cover[base] === f ? 0.25 : 0);
       if (t < bt) { bt = t; best = f; }
     }

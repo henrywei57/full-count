@@ -58,15 +58,35 @@ const FL = { mode: 'track', yaw: 0, pitch: 0 };
 function lookDelta(dx, dy) {
   if (!fpvOn) return;
   if (FL.mode !== 'free') {
+    lookAcc = 0;
     const lx = camRig.look.x - camRig.pos.x, ly = camRig.look.y - camRig.pos.y, lz = camRig.look.z - camRig.pos.z;
     FL.yaw = Math.atan2(lx, lz); FL.pitch = Math.atan2(ly, Math.hypot(lx, lz)); FL.mode = 'free';
   }
   FL.yaw -= dx * 0.0028; FL.pitch = clamp(FL.pitch - dy * 0.0028, -1.3, 1.3);
 }
 function lookRecenter() { FL.mode = 'track'; }
+// Mouse look needs no click: moving the mouse turns the camera (after a few pixels, so a nudge
+// doesn't stop it following the play), and resting it near the left or right edge keeps
+// turning. Clicking still locks the pointer for unlimited turning.
+let mouseIn = false, lookAcc = 0, lookAt = 0;
+function mouseLook(dx, dy) {
+  if (FL.mode !== 'free') {
+    const now = performance.now();
+    if (now - lookAt > 300) lookAcc = 0;
+    lookAt = now; lookAcc += Math.abs(dx) + Math.abs(dy);
+    if (lookAcc < 10) return;
+  }
+  lookDelta(dx, dy);
+}
+function edgeTurn(dt) {
+  if (!fpvOn || G.paused || !mouseIn || lastPointer !== 'mouse' || document.pointerLockElement === canvasEl || userPitches() || catcherAiming()) return;
+  const x = mouseNDC.x, e = 0.85;
+  if (Math.abs(x) > e) lookDelta(Math.sign(x) * Math.min(1, (Math.abs(x) - e) / (1 - e)) * 650 * dt, 0);
+}
 function exitPointerLock() { if (document.pointerLockElement) try { document.exitPointerLock(); } catch (e) { /* not locked */ } }
 function fpvActive() { return G.mode === 'lock' && G.view > 0 && !G.replay && LOCK_PHASES.includes(G.phase); }
 function lockRole() {
+  if (userCatches() && G.phase !== 'live' && G.phase !== 'postPlay') return { role: 'bat' };   // calling and framing: the strike-zone view
   if (G.half === 1 - G.lockSide) {
     const f = G.fielders.find((x) => x.pl.id === G.lock);
     return f ? { role: 'field', m: f.m, f } : { role: 'dugout' };
@@ -91,7 +111,7 @@ function fpvHide(m) {
 function restoreCam() {
   if (G.replay || !LOCK_PHASES.includes(G.phase)) return;   // other phases set their own camera
   if (G.phase === 'live' || G.phase === 'postPlay') playCam();
-  else if (userPitches()) pitchCam(true); else if (userBats()) batCam(true); else cfCam(true);
+  else if (userPitches()) pitchCam(true); else if (userBats() || userCatches()) batCam(true); else cfCam(true);
 }
 function lockCamOff() {
   fpvHide(null); tpUmpGhost = false;
@@ -262,7 +282,8 @@ function hudBatter() {
 }
 function hudPitcher() {
   const p = curPitcher(); if (!p) return;
-  const ps = pstat(p), up = userPitches();
+  const ps = pstat(p), up = userPitches(), calling = !up && G.catchUI.state === 'call' && userCatches();
+  const sel = up ? G.pitchUI.sel : calling ? G.catchUI.sel : -1;
   teamHead($('pitcherCard').querySelector('.plate-head'), p.team);
   $('pHead').textContent = `#${p.num} · ${p.pos === 'SP' ? 'STARTER' : 'RELIEVER'}`;
   $('pHand').textContent = p.throws === 'L' ? 'LHP' : 'RHP';
@@ -271,8 +292,8 @@ function hudPitcher() {
   const st = clamp(1 - ps.pc / pitchLimit(p), 0, 1);
   $('pStam').style.width = st * 100 + '%';
   $('pStam').style.background = st > 0.45 ? 'var(--ball)' : st > 0.2 ? 'var(--gold)' : 'var(--strike)';
-  $('pitcherCard').classList.toggle('cpu', !up);
-  $('pitchList').innerHTML = p.pitches.map((pt, i) => `<div class="pitch-row ${up && i === G.pitchUI.sel ? 'sel' : ''}" data-i="${i}"><span class="key">${i + 1}</span><span class="pname"><i class="dot" style="background:${PITCH_TYPES[pt.type].col}"></i>${PITCH_TYPES[pt.type].name}</span><span class="mph">${Math.round(pt.velo - fatigue(p) * 2.4)} mph</span></div>`).join('');
+  $('pitcherCard').classList.toggle('cpu', !up && !calling);
+  $('pitchList').innerHTML = p.pitches.map((pt, i) => `<div class="pitch-row ${i === sel ? 'sel' : ''}" data-i="${i}"><span class="key">${i + 1}</span><span class="pname"><i class="dot" style="background:${PITCH_TYPES[pt.type].col}"></i>${PITCH_TYPES[pt.type].name}</span><span class="mph">${Math.round(pt.velo - fatigue(p) * 2.4)} mph</span></div>`).join('');
   hudLock();
 }
 function hudLock() {
@@ -483,7 +504,7 @@ function updateThrowGuide() {
 function skipText() {
   if (G.simAB) return 'Skipping to the next batter';
   const fielding = G.half === 1 - G.lockSide;
-  if (fielding && !G.lockFieldSim && G.fielders.some((f) => f.pl.id === G.lock)) return 'In the field: waiting for a ball hit to the outfield or your way';
+  if (fielding && !G.lockFieldSim && G.fielders.some((f) => f.pl.id === G.lock)) return 'In the field: waiting for a ball hit your way';
   const idx = G.lu[G.lockSide].findIndex((p) => p.id === G.lock);
   if (idx < 0) return fielding ? 'Your team is in the field' : 'Your team is batting';
   const k = (idx - G.order[G.lockSide] + 9) % 9;
@@ -834,10 +855,14 @@ const keys = new Set();
 function setMouse(e) { mouseNDC.set((e.clientX / window.innerWidth) * 2 - 1, -(e.clientY / window.innerHeight) * 2 + 1); mouseMoved = true; lastPointer = e.pointerType || 'mouse'; }
 canvasEl.addEventListener('pointermove', (e) => {
   setMouse(e);
+  mouseIn = e.pointerType === 'mouse';
   if (!fpvOn || G.paused) return;
-  const locked = document.pointerLockElement === canvasEl;
-  if (locked || (e.buttons && !userPitches())) lookDelta(e.movementX || 0, e.movementY || 0);
+  if (document.pointerLockElement === canvasEl) { lookDelta(e.movementX || 0, e.movementY || 0); return; }
+  if (userPitches() || catcherAiming()) return;
+  if (e.buttons) lookDelta(e.movementX || 0, e.movementY || 0);
+  else if (e.pointerType === 'mouse') mouseLook(e.movementX || 0, e.movementY || 0);
 });
+canvasEl.addEventListener('pointerleave', () => { mouseIn = false; });
 canvasEl.addEventListener('contextmenu', (e) => e.preventDefault());
 canvasEl.addEventListener('pointerdown', (e) => {
   SND.init(); setMouse(e);
@@ -997,6 +1022,11 @@ function pollGamepad() {
       if (edge(4) || edge(14)) selectPitch((G.pitchUI.sel + n - 1) % n);
       if (edge(5) || edge(15)) selectPitch((G.pitchUI.sel + 1) % n);
       if (edge(0)) primaryAction('normal');
+    } else if (G.phase === 'prePitch' && G.catchUI.state === 'call' && userCatches()) {
+      const n = curPitcher().pitches.length;
+      if (edge(4) || edge(14)) selectPitch((G.catchUI.sel + n - 1) % n);
+      if (edge(5) || edge(15)) selectPitch((G.catchUI.sel + 1) % n);
+      if (edge(0)) primaryAction('normal');
     } else if (G.phase === 'postPitch' && edge(3)) requestChallenge();
     else {
       if (edge(0)) primaryAction('normal'); if (edge(2)) primaryAction('power'); if (edge(1)) primaryAction('contact'); if (edge(3)) primaryAction('bunt');
@@ -1014,13 +1044,15 @@ function pollGamepad() {
 function aimUpdate(dt, snap = false) {
   const ub = userBats() && ['prePitch', 'windup', 'pitch', 'halfIntro', 'wait'].includes(G.phase) && !G.swing;
   const up = userPitches() && G.phase === 'prePitch' && G.pitchUI.state === 'aim';
-  if (!ub && !up) return;
-  const tgt = ub ? G.pci : G.pitchUI.aim;
+  const uc = !ub && !up && catcherAiming(), mittOn = uc && G.catchUI.state === 'called';
+  if (!ub && !up && !uc) return;
+  const tgt = ub ? G.pci : up ? G.pitchUI.aim : mittOn ? G.catchUI.glove : G.catchUI.aim;
   let vx = 0, vy = 0;
   if (keys.has('arrowleft') || keys.has('a')) vx -= 1; if (keys.has('arrowright') || keys.has('d')) vx += 1;
   if (keys.has('arrowup') || keys.has('w')) vy += 1; if (keys.has('arrowdown') || keys.has('s')) vy -= 1;
   if (G.stick) { vx += G.stick.x * 1.3; vy += G.stick.y * 1.3; }
-  if (vx || vy) { tgt.x += vx * dt * 3.2; tgt.y += vy * dt * 3.2; mouseMoved = false; }
+  const kv = mittOn ? 7 : 3.2;   // the mitt has to get there in the time the pitch takes
+  if (vx || vy) { tgt.x += vx * dt * kv; tgt.y += vy * dt * kv; mouseMoved = false; }
   else if (mouseMoved) {
     raycaster.setFromCamera(mouseNDC, camera);
     if (raycaster.ray.intersectPlane(platePlane, _hit)) {
@@ -1029,7 +1061,10 @@ function aimUpdate(dt, snap = false) {
     }
   }
   if (ub) { tgt.x = clamp(tgt.x, -1.7, 1.7); tgt.y = clamp(tgt.y, 0.8, 4.4); const d = pciDims('normal'); pci.position.set(tgt.x, tgt.y, 0); pci.scale.set(d.w, d.h, 1); }
-  else { tgt.x = clamp(tgt.x, -2.2, 2.2); tgt.y = clamp(tgt.y, 0.4, 4.8); reticle.position.set(tgt.x, tgt.y, 0); }
+  else if (mittOn) {
+    tgt.x = clamp(tgt.x, -2.8, 2.8); tgt.y = clamp(tgt.y, 0.2, 5.2); mitt.position.set(tgt.x, tgt.y, 0);
+    G.glove.lerp(_tmpA.set(tgt.x, clamp(tgt.y, 0.6, 4.6), 1.7), 1 - Math.exp(-dt * 20));   // the catcher's real mitt follows yours
+  } else { tgt.x = clamp(tgt.x, -2.2, 2.2); tgt.y = clamp(tgt.y, 0.4, 4.8); reticle.position.set(tgt.x, tgt.y, 0); }
 }
 function primaryAction(kind) {
   if (G.paused) return;
@@ -1039,6 +1074,7 @@ function primaryAction(kind) {
   if (ph === 'prePitch' || ph === 'windup' || ph === 'pitch') {
     if (userBats()) userSwing(kind);
     else if (userPitches() && ph === 'prePitch' && (kind === 'normal' || lastPointer === 'touch')) pitchPress();
+    else if (ph === 'prePitch' && G.catchUI.state === 'call' && userCatches()) callPitch();
     return;
   }
   if (ph === 'live') {
@@ -1054,7 +1090,7 @@ function skip(force) {
   if (G.phase === 'reviewWait') { if (G.review && G.review.who === (force ? 'remote' : 'local')) G.pt = G.dur; return; }
   if (['postPitch', 'postPlay', 'postFoul', 'halfIntro', 'break', 'derbyResult'].includes(G.phase) && (force || G.pt > 0.3)) G.pt = G.dur;
 }
-function toggleZone() { settings.zone = !settings.zone; saveSettings(); zoneGroup.visible = settings.zone && (userBats() || userPitches()) && ['prePitch', 'windup', 'pitch'].includes(G.phase); $('btnZone').textContent = `Strike zone: ${settings.zone ? 'On' : 'Off'}`; }
+function toggleZone() { settings.zone = !settings.zone; saveSettings(); zoneGroup.visible = settings.zone && (userBats() || userPitches() || userCatches()) && ['prePitch', 'windup', 'pitch'].includes(G.phase); $('btnZone').textContent = `Strike zone: ${settings.zone ? 'On' : 'Off'}`; }
 function toggleSound() { SND.init(); SND.setOn(!settings.sound); muteIcon(); }
 function muteIcon() { $('btnMute').style.opacity = settings.sound ? 1 : 0.45; }
 function togglePause(force, remote) {
@@ -1344,7 +1380,7 @@ function toMenu() {
   document.body.classList.remove('letterbox');
   for (const m of MODELS) m.root.visible = false;
   ballMesh.visible = false; ballShadow.visible = false; trailReset();
-  pci.visible = false; reticle.visible = false; zoneGroup.visible = false; pitchMark.visible = false; pitchGuide.visible = false; ctrlRing.visible = false; landMark.visible = false;
+  pci.visible = false; reticle.visible = false; mitt.visible = false; zoneGroup.visible = false; pitchMark.visible = false; pitchGuide.visible = false; ctrlRing.visible = false; landMark.visible = false;
   fpvHide(null); fpvOn = false; exitPointerLock(); $('absCard').classList.add('hidden'); $('simBtn').classList.add('hidden'); runnerHUD(false); $('throwPrompt').classList.add('hidden');
   showScreen('menu');
   renderMenu();
@@ -1411,13 +1447,13 @@ function update(dt) {
   fpvCam(dt);
 }
 // Player Lock: you only play when you're involved - at bat, on base, or when the ball is
-// hit to the outfield or your way. Everything else is skipped behind the SIMULATING card
+// hit your way. Everything else is skipped behind the SIMULATING card
 // (or, with skipping turned off, fast-forwarded on screen).
 const SKIP_SPEED = 40;
 function lockInvolved() {
   if (G.simAB) return false;
   const ph = G.phase, pl = G.play, live = (ph === 'live' || ph === 'postPlay') && !!pl;
-  if (!live) return userBats() || userPitches() || (LOCK_PHASES.includes(ph) && (G.baseRunners || []).some((x) => x.pl.id === G.lock));
+  if (!live) return userBats() || userPitches() || userCatches() || (LOCK_PHASES.includes(ph) && (G.baseRunners || []).some((x) => x.pl.id === G.lock));
   if (pl.R.some((r) => r.pl.id === G.lock && (r.state === 'run' || r.state === 'base'))) return true;
   return G.lockInv && G.half === 1 - G.lockSide;
 }
@@ -1427,14 +1463,15 @@ function lockFF() {
   if (G.lockSkip) {
     if (!lockInvolved()) { G.skipping = true; return SKIP_SPEED; }
     // on base: watch the pitch, but don't wait around between pitches
-    return !userBats() && !userPitches() && (G.phase === 'postPitch' || G.phase === 'postFoul') ? 3 : 1;
+    return !userBats() && !userPitches() && !userCatches() && (G.phase === 'postPitch' || G.phase === 'postFoul') ? 3 : 1;
   }
   if (G.simAB) return 6;
-  if (userBats() || userPitches()) return 1;
+  if (userBats() || userPitches() || userCatches()) return 1;
   const ph = G.phase;
   if (ph === 'live') {
     const pl = G.play; if (!pl) return 1;
-    if (pl.uf && (pl.uf === pl.chaser || pl.uf === pl.ball.holder || pl.prompt || pl.ufManual || pl.uf.task === 'cover')) return 1;
+    // your player is always yours to steer now, so "steering" means you touched the controls lately
+    if (pl.uf && (pl.uf === pl.chaser || pl.uf === pl.ball.holder || pl.prompt || G.lockInv || pl.t - pl.lastInput < 1.5 || pl.uf.task === 'cover')) return 1;
     if (pl.R.some((r) => r.pl.id === G.lock && (r.state === 'run' || r.state === 'base'))) return 1;
     return 3;
   }
@@ -1462,6 +1499,7 @@ function frameStep(dt) {
     } else { const n = G.ff > 1 ? G.ff : 1; for (let i = 0; i < n; i++) update(dt); }
   }
   updateSkipUI();
+  edgeTurn(dt);
   $('btnTeamHud').classList.toggle('hidden', !(G.teams && G.mode !== 'menu' && mySide() >= 0 && G.mode !== 'lock' && G.mode !== 'derby' && !G.drill && G.phase !== 'final'));
   netTick();
   camUpdate(dt);
@@ -1501,7 +1539,7 @@ function boot() {
 }
 // Debug handle: lets a test harness advance the simulation without waiting on animation frames.
 window.__fullcount = {
-  G, TEAMS, settings, NET, keys, BAT_CAMS, Play, Runner, BASES, simBatted, V3, getModel, ballMesh, startPickoff, stealCmd, camTo, setPark, PARKS, fenceDist, fenceH, gameRecord, gamesList, loadSave, openLiveBox, openStats, toMenu, simGame, SIMK, seasonLoad, startSeason, seasonSimNext, seasonSimMany, seasonPlayNext, seasonNextGame, standings, openSeasonHub, renderMenu, menu, TUT, tutStart, rosterCost, teamToDef, cleanRoster, buildCustomTeam, Cloud, cloudRender, inviteToast, get ROSTERS() { return ROSTERS; },
+  G, TEAMS, settings, NET, keys, BAT_CAMS, Play, Runner, BASES, simBatted, umpCallsStrike, inZone, V3, getModel, ballMesh, startPickoff, stealCmd, camTo, setPark, PARKS, fenceDist, fenceH, gameRecord, gamesList, loadSave, openLiveBox, openStats, toMenu, simGame, SIMK, seasonLoad, startSeason, seasonSimNext, seasonSimMany, seasonPlayNext, seasonNextGame, standings, openSeasonHub, renderMenu, menu, TUT, tutStart, rosterCost, teamToDef, cleanRoster, buildCustomTeam, Cloud, cloudRender, inviteToast, get ROSTERS() { return ROSTERS; },
   step(sec, dt = 1 / 60) {
     const n = Math.round(sec / dt);
     for (let i = 0; i < n && !G.paused; i++) { if (isGuest()) guestUpdate(dt); else update(dt); netTick(); }
