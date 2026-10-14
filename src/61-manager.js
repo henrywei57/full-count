@@ -5,16 +5,48 @@
 // A player who comes out of the game can't go back in.
 // ============================================================================
 
-function initGameRoster(ti, starter) {
-  const t = G.teams[ti];
-  G.lu[ti] = t.lineup.slice();
-  G.pos[ti] = Object.fromEntries(t.hitters.map((h) => [h.pos, h]));
-  G.bench[ti] = (t.bench || []).slice();
+// Your lineup card, set before the game: the batting order as [player, position] pairs. Players
+// are named by MLB id (or name) so a card still fits the renamed copy of a team in an online
+// mirror match. Anyone on the roster can start (the bench too); each spot once, each man once.
+const luKey = (h) => String(h.mlbId ?? h.name);
+const cardPool = (t) => [...t.hitters, ...(t.bench || [])];
+const defaultCard = (t) => t.lineup.map((h) => [luKey(h), h.pos]);
+function cardOK(t, card) {
+  if (!t || !Array.isArray(card) || card.length !== 9) return null;
+  const pool = cardPool(t), pos = new Set(), who = new Set();
+  for (const e of card) {
+    if (!Array.isArray(e) || !POS_LIST.includes(e[1]) || pos.has(e[1])) return null;
+    const k = String(e[0]);
+    if (who.has(k) || !pool.some((h) => luKey(h) === k)) return null;
+    pos.add(e[1]); who.add(k);
+  }
+  return card.map((e) => [String(e[0]), e[1]]);
+}
+const cardIsDefault = (t, card) => JSON.stringify(card) === JSON.stringify(defaultCard(t));
+// the spots he plays (anyone can DH)
+function playsList(pl) {
+  if (pl.def) return Object.keys(pl.def);
+  const P = pl.mlbId && POOL_H.get(pl.mlbId);
+  return P ? P.elig : [pl.pos];
+}
+const playsPos = (pl, pos) => pos === 'DH' || pl.pos === pos || playsList(pl).includes(pos);
+
+function initGameRoster(ti, starter, card = null) {
+  const t = G.teams[ti], c = cardOK(t, card), pool = cardPool(t);
+  if (c) {
+    G.lu[ti] = c.map(([k, pos]) => gamePlayer(pool.find((h) => luKey(h) === k), pos));
+    for (const p of G.lu[ti]) PBYID[p.id] = p;
+    G.bench[ti] = pool.filter((h) => !G.lu[ti].some((p) => p.id === h.id));
+  } else {
+    G.lu[ti] = t.lineup.slice();
+    G.bench[ti] = (t.bench || []).slice();
+  }
+  G.pos[ti] = Object.fromEntries(G.lu[ti].map((h) => [h.pos, h]));
   G.bullpen[ti] = (t.bullpen || t.pitchers.slice(1)).slice();
   G.pitcher[ti] = starter || (t.rotation ? t.rotation[0] : t.pitchers[0]);
   G.bullpen[ti] = G.bullpen[ti].filter((p) => p !== G.pitcher[ti]);
   G.pen[ti] = 0; G.gone[ti] = new Set();
-  G.played[ti] = t.lineup.map((h) => ({ pl: h, pos: h.pos }));   // for the box score, in order of appearance
+  G.played[ti] = G.lu[ti].map((h) => ({ pl: h, pos: h.pos }));   // for the box score, in order of appearance
   G.pitched[ti] = [G.pitcher[ti]];
 }
 // the same player at another position: his arm and glove there (a step worse where he doesn't play)
@@ -176,7 +208,7 @@ function renderTeam() {
       + ['con', 'pow', 'eye', 'spd'].map((k) => hit(pl, k)).join('') + `<td class="tm-line">${stat(pl)}</td><td>${btns.join('')}</td></tr>`;
   }).join('');
   const bench = G.bench[ti].map((pl) => {
-    const P2 = !pl.def && pl.mlbId && POOL_H.get(pl.mlbId), plays = pl.def ? Object.keys(pl.def).join(' ') || 'DH' : P2 ? (P2.elig.join(' ') || 'DH') : pl.pos;
+    const plays = playsList(pl).join(' ') || 'DH';
     return `<tr><td class="who"><b>${esc(pl.name)}</b></td><td class="plays">${plays}</td>` + ['con', 'pow', 'eye', 'spd', 'arm', 'fld'].map((k) => hit(pl, k)).join('')
       + `<td>${P ? `<button class="cta fr-mini" data-tmin="${esc(pl.id)}">PUT IN</button>` : ''}</td></tr>`;
   }).join('') || '<tr><td colspan="9" class="tm-empty">Nobody left on the bench.</td></tr>';

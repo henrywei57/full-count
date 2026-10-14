@@ -487,6 +487,7 @@ function meterGrade(gr) {
 }
 function showScreen(id) {
   for (const s of ['menu', 'breakCard', 'final']) $(s).classList.toggle('hidden', s !== id);
+  if (id !== 'menu') closeLineup();   // the game's starting (the host pressed Start)
   if (id === 'final') {
     const online = G.mode === 'online';
     $('btnAgain').textContent = online ? 'REMATCH' : 'PLAY AGAIN';
@@ -1190,6 +1191,7 @@ window.addEventListener('keydown', (e) => {
   const raw = e.key.toLowerCase(), k = raw === 'escape' ? raw : keyAlias(raw);   // your key bindings (69-options.js)
   if (k === 'escape' && !$('friendsScreen').classList.contains('hidden')) { closeFriends(); return; }
   if (k === 'escape' && !$('teamScreen').classList.contains('hidden')) { closeTeam(); return; }
+  if (k === 'escape' && !$('lineupScreen').classList.contains('hidden')) { closeLineup(); return; }
   if (k === 'escape' && !$('boxScreen').classList.contains('hidden')) { closeBox(); return; }
   if (k === 'escape' && !$('statsScreen').classList.contains('hidden')) { closeStats(); return; }
   if (k === 'escape' && !$('optionsScreen').classList.contains('hidden')) { closeOptions(); return; }
@@ -1385,6 +1387,7 @@ function togglePause(force, remote) {
 // ------------------------------------------------------------------ menus ----
 const menu = { mode: 'exhibition', away: 'NYY', home: 'LAD', park: '', side: 1, innings: 3, diff: 1, pdiff: 1, manual: 1, batter: 3, lockPick: 'h3', ump: 1, view: 2, lockField: 1, lockSkip: 1, netTeam: 'LAD', drill: 0, netMode: 0 };
 try { Object.assign(menu, JSON.parse(localStorage.getItem('fullcount.menu') || '{}')); } catch (e) { /* ignore */ }
+if (!menu.lu || typeof menu.lu !== 'object' || Array.isArray(menu.lu)) menu.lu = {};   // your lineup card for each team, by team key
 // teams used to be saved as an index into the built-in list
 for (const k of ['away', 'home', 'netTeam']) if (typeof menu[k] === 'number') menu[k] = (TEAMS[menu[k]] || TEAMS[0]).key;
 // a team the menu remembers may have been deleted since
@@ -1418,6 +1421,82 @@ function starterSelect(t, key, sp, mine) {
   const opts = t.rotation.map((p, i) => `<option value="${i}" ${i === sp ? 'selected' : ''}>${i + 1}. ${esc(p.name)} (${p.throws}HP) &middot; ${pitcherOvr(p)}</option>`).join('');
   return `<label class="tp-sp"><small>STARTING PITCHER</small><select class="tp-spsel" data-k="${key}" aria-label="Starting pitcher" ${mine ? '' : 'disabled'}>${opts}</select></label>`;
 }
+// ---------------------------------------------------------- lineup card ----
+// Before a game against a friend (or the CPU in Play Ball), set your own batting order and who
+// plays where: anyone on the roster can start, bench players included. Saved per team.
+function menuCard(t) { return t ? cardOK(t, menu.lu[t.key]) : null; }
+function luShown(key, mine) {
+  if (!mine) return false;
+  if (menu.mode === 'online') return !squadMode();
+  return menu.mode === 'exhibition' && key === (menu.side ? 'home' : 'away');
+}
+function lineupBtn(t, key, mine) {
+  if (!luShown(key, mine)) return '';
+  const c = menuCard(t), yours = c && !cardIsDefault(t, c);
+  return `<button class="ghost fr-mini tp-lu" data-k="${key}">${yours ? 'Your lineup &middot; edit' : 'Set lineup'}</button>`;
+}
+const LU = { k: null };
+function luTeam() { return LU.k ? menuTeam(LU.k) : null; }
+function openLineup(k) { LU.k = k; $('lineupScreen').classList.remove('hidden'); renderLineup(); }
+function closeLineup() { LU.k = null; $('lineupScreen').classList.add('hidden'); }
+function luSave(card) {
+  const t = luTeam(); if (!t) return;
+  menu.lu = { ...menu.lu };
+  if (cardIsDefault(t, card)) delete menu.lu[t.key]; else menu.lu[t.key] = card;
+  if (LU.k === 'netTeam') netSendPick();
+  renderMenu(); renderLineup();
+}
+function renderLineup() {
+  const t = luTeam(); if (!t) return;
+  const card = menuCard(t) || defaultCard(t), pool = cardPool(t), find = (k) => pool.find((h) => luKey(h) === k);
+  const inLu = new Set(card.map(([k]) => k)), r = (v) => `<td class="rv">${v}</td>`;
+  const rows = card.map(([k, pos], i) => {
+    const pl = find(k), g = gamePlayer(pl, pos), ok = playsPos(pl, pos);
+    const who = pool.map((h) => `<option value="${esc(luKey(h))}"${luKey(h) === k ? ' selected' : ''}>${esc(h.name)}${inLu.has(luKey(h)) ? '' : ' (bench)'}</option>`).join('');
+    const where = POS_LIST.map((p) => `<option${p === pos ? ' selected' : ''}>${p}</option>`).join('');
+    return `<tr><td>${i + 1}</td><td class="lu-mv"><button class="ghost fr-mini" data-lumv="${i}" data-d="-1" ${i ? '' : 'disabled'} aria-label="Bat earlier">&uarr;</button><button class="ghost fr-mini" data-lumv="${i}" data-d="1" ${i < 8 ? '' : 'disabled'} aria-label="Bat later">&darr;</button></td>`
+      + `<td><select class="lu-pos" data-i="${i}" aria-label="Position">${where}</select></td><td class="who"><select class="lu-who" data-i="${i}" aria-label="Player">${who}</select></td><td>${pl.bats}</td>`
+      + ['con', 'pow', 'eye', 'spd'].map((x) => r(pl[x])).join('')
+      + (pos === 'DH' ? r('&ndash;') + r('&ndash;') : r(g.arm) + `<td class="rv${ok ? '' : ' lu-off'}"${ok ? '' : ' title="He doesn\'t play here: his glove is a step worse"'}>${g.fld}${ok ? '' : '*'}</td>`) + '</tr>';
+  }).join('');
+  const bench = pool.filter((h) => !inLu.has(luKey(h))).map((h) => `<tr><td class="who"><b>${esc(h.name)}</b></td><td class="plays">${playsList(h).join(' ') || 'DH'}</td><td>${h.bats}</td>`
+    + ['con', 'pow', 'eye', 'spd', 'arm', 'fld'].map((x) => r(h[x])).join('') + '</tr>').join('') || '<tr><td colspan="9" class="tm-empty">Everyone is in the lineup.</td></tr>';
+  const off = card.filter(([k, pos]) => !playsPos(find(k), pos)).length;
+  $('luSub').textContent = `${t.city} ${t.name}${cardIsDefault(t, card) ? ' · the club\'s lineup' : ' · your lineup'}`;
+  $('luBody').innerHTML = `<p class="fr-note">Use the arrows to change the batting order. Pick a player to put him in (from the bench, or swap him with someone in the lineup), and a position to swap spots.${off ? ` <b class="lu-off">${off} out of position (*)</b>: his glove is a step worse there.` : ''}</p>
+    <h3>BATTING ORDER</h3>
+    <div class="rs-scroll"><table class="rs-table tm-table lu-table"><thead><tr><th>#</th><th></th><th>POS</th><th>PLAYER</th><th>B</th><th>CON</th><th>POW</th><th>EYE</th><th>SPD</th><th>ARM</th><th>FLD</th></tr></thead><tbody>${rows}</tbody></table></div>
+    <h3>BENCH</h3>
+    <div class="rs-scroll"><table class="rs-table tm-table"><thead><tr><th>PLAYER</th><th>PLAYS</th><th>B</th><th>CON</th><th>POW</th><th>EYE</th><th>SPD</th><th>ARM</th><th>FLD</th></tr></thead><tbody>${bench}</tbody></table></div>`;
+}
+function buildLineupUI() {
+  $('luDone').addEventListener('click', closeLineup);
+  $('luReset').addEventListener('click', () => { const t = luTeam(); if (t) luSave(defaultCard(t)); });
+  const cur = () => { const t = luTeam(); return t ? (menuCard(t) || defaultCard(t)).map((e) => e.slice()) : null; };
+  $('luBody').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-lumv]'); if (!b) return;
+    const card = cur(), i = +b.dataset.lumv, j = i + +b.dataset.d;
+    if (!card || j < 0 || j > 8) return;
+    [card[i], card[j]] = [card[j], card[i]];
+    luSave(card);
+  });
+  $('luBody').addEventListener('change', (e) => {
+    const s = e.target.closest('.lu-pos,.lu-who'); if (!s) return;
+    const card = cur(), i = +s.dataset.i; if (!card || !card[i]) return;
+    if (s.classList.contains('lu-pos')) {
+      // a position someone else has: the two of them swap spots
+      const j = card.findIndex((x) => x[1] === s.value);
+      if (j >= 0) card[j][1] = card[i][1];
+      card[i][1] = s.value;
+    } else {
+      // someone else in the lineup: they swap places in the order; a bench player just goes in
+      const j = card.findIndex((x) => x[0] === s.value);
+      if (j >= 0) card[j][0] = card[i][0];
+      card[i][0] = s.value;
+    }
+    luSave(card);
+  });
+}
 function teamPickHTML(label, t, key, mine = true, sp = 0) {
   if (!t) return `<div class="tp-label">${label}</div><div class="tp-row"><div class="badge wait">?</div></div><div class="team-name"><small>WAITING</small>Your friend picks</div>`;
   const tag = '';
@@ -1426,7 +1505,7 @@ function teamPickHTML(label, t, key, mine = true, sp = 0) {
   <div class="badge" style="background:${t.c1};color:${t.c2};border-color:${t.c2}">${esc(t.id)}</div>
   <button class="arrow" data-k="${key}" data-d="1" aria-label="Next team" ${mine ? '' : 'style="visibility:hidden"'}>&rsaquo;</button></div>
   <div class="team-name"><small>${t.era ? `${t.era}s &middot; ` : ''}${esc(t.city.toUpperCase())}</small>${esc(t.name)}</div>${eraSelect(t, key, mine)}
-  <div class="team-ovr"><span>BAT <b>${t.ovr.bat}</b></span><span>PIT <b>${t.ovr.pit}</b></span><span>DEF <b>${t.ovr.def}</b></span></div>${tag}${starterSelect(t, key, sp, mine)}`;
+  <div class="team-ovr"><span>BAT <b>${t.ovr.bat}</b></span><span>PIT <b>${t.ovr.pit}</b></span><span>DEF <b>${t.ovr.def}</b></span></div>${tag}${starterSelect(t, key, sp, mine)}${lineupBtn(t, key, mine)}`;
 }
 function lockOptions(team, sp) {
   return [...team.lineup.map((h, i) => [`h${i}`, `${h.name} · ${h.pos} · ${i + 1}${['st', 'nd', 'rd'][i] || 'th'} in the order`]), ['p0', `${starterOf(team, sp).name} · Starting pitcher`]];
@@ -1554,6 +1633,8 @@ function derbyBatterDefault() { const lu = menuTeam('home').lineup; menu.batter 
 function buildMenu() {
   if (menu.home === menu.away) cycleTeam('away', 1, menu.home);
   $('matchup').addEventListener('click', (e) => {
+    const lu = e.target.closest('.tp-lu');
+    if (lu) { openLineup(menu.mode === 'online' && NET.role === 'guest' ? 'netTeam' : lu.dataset.k); return; }
     const b = e.target.closest('.arrow'); if (!b) return;
     const k = b.dataset.k, d = +b.dataset.d;
     if (menu.mode === 'online') {
@@ -1630,7 +1711,7 @@ function buildMenu() {
     SND.init();
     if (menu.mode === 'online') { hostStartOnline(); return; }
     const teams = [teamSpec(menuTeam('away')), teamSpec(menuTeam('home'))];
-    startGame({ mode: menu.mode, teams, starters: ['away', 'home'].map((k) => (spShown(k) ? menuSP(k) : 0)), drill: ['bat', 'pitch', 'run', 'field'][menu.drill] || 'bat', side: menu.side, innings: menu.innings, diff: menu.diff, pdiff: menu.pdiff, manual: menu.manual, batter: menu.batter, lockPick: menu.lockPick, ump: menu.ump, view: menu.view, lockField: menu.lockField, lockSkip: menu.lockSkip, park: menu.park || '' });
+    startGame({ mode: menu.mode, teams, starters: ['away', 'home'].map((k) => (spShown(k) ? menuSP(k) : 0)), lineups: ['away', 'home'].map((k) => (luShown(k, true) ? menuCard(menuTeam(k)) : null)), drill: ['bat', 'pitch', 'run', 'field'][menu.drill] || 'bat', side: menu.side, innings: menu.innings, diff: menu.diff, pdiff: menu.pdiff, manual: menu.manual, batter: menu.batter, lockPick: menu.lockPick, ump: menu.ump, view: menu.view, lockField: menu.lockField, lockSkip: menu.lockSkip, park: menu.park || '' });
   });
   const openHelp = () => { $('help').classList.remove('hidden'); };
   $('btnHow').addEventListener('click', openHelp);
@@ -1807,6 +1888,7 @@ function boot() {
   makeUmps();
   netInstallHooks();
   buildTeamUI();
+  buildLineupUI();
   buildRecordsUI();
   buildOptionsUI();
   buildMenu();
@@ -1829,7 +1911,7 @@ function boot() {
 // Debug handle: lets a test harness advance the simulation without waiting on animation frames.
 window.__fullcount = {
   G, TEAMS, settings, NET, keys, Play, Runner, BASES, simBatted, umpCallsStrike, inZone, eloApply, eloMine, V3, getModel, ballMesh, startPickoff, stealCmd, camTo, setPark, PARKS, fenceDist, fenceH, gameRecord, gamesList, loadSave, openLiveBox, openStats, toMenu, renderMenu, menu, teamToDef, cleanRoster, buildCustomTeam, Cloud, cloudRender, inviteToast,
-  renderer, scene, camera, MODELS, setAnim, updateModel,
+  renderer, scene, camera, MODELS, setAnim, updateModel, teamSpec, distinctSpecs, defaultCard, cardOK, menuCard,
   step(sec, dt = 1 / 60) {
     const n = Math.round(sec / dt);
     for (let i = 0; i < n && !G.paused; i++) { if (isGuest()) guestUpdate(dt); else update(dt); netTick(); }

@@ -203,10 +203,11 @@ function startGame(cfg) {
   // each side's game roster: batting order, positions, bench and bullpen (61-manager.js)
   G.lu = []; G.pos = []; G.bench = []; G.bullpen = []; G.gone = []; G.played = []; G.pitched = [];
   G.pitcher = [];
-  // cfg.starters: the [away, home] starting pitchers, by player id or by place in the rotation
+  // cfg.starters: the [away, home] starting pitchers, by player id or by place in the rotation;
+  // cfg.lineups: the [away, home] lineup cards (null: the club's own lineup)
   for (let ti = 0; ti < 2; ti++) {
-    const t = G.teams[ti], st = cfg.starters && cfg.starters[t === away ? 0 : 1];
-    initGameRoster(ti, typeof st === 'number' ? t.rotation && t.rotation[st] : typeof st === 'string' ? PBYID[st] : st);
+    const t = G.teams[ti], k = t === away ? 0 : 1, st = cfg.starters && cfg.starters[k];
+    initGameRoster(ti, typeof st === 'number' ? t.rotation && t.rotation[st] : typeof st === 'string' ? PBYID[st] : st, cfg.lineups && cfg.lineups[k]);
   }
   if (cfg.mode === 'lock') {
     const team = G.teams[cfg.side], pick = cfg.lockPick || 'h3';

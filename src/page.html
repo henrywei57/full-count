@@ -321,7 +321,13 @@ button:focus-visible,select:focus-visible{outline:2px solid var(--gold);outline-
 #pracHud span{font-size:10px;letter-spacing:.12em;color:var(--dust);white-space:nowrap}
 
 /* ---------- team panel ---------- */
-#teamScreen{align-items:flex-start}
+#teamScreen,#lineupScreen{align-items:flex-start}
+.tp-lu{margin-top:6px;font-size:12px}
+.lu-table select{font-size:13px;padding:4px 6px;max-width:210px}
+.lu-table td.who{padding-top:3px;padding-bottom:3px}
+.lu-mv{white-space:nowrap}.lu-mv button{padding:2px 8px;margin-right:2px}
+.lu-off{color:var(--strike)}
+#luDone{padding:8px 18px;font-size:16px}
 .tm-card{width:min(960px,100%);margin:auto}
 .tm-card h3{margin:6px 0 0;font-family:var(--f-display);font-weight:700;letter-spacing:.14em;font-size:14px;color:var(--gold)}
 .tm-card h3 small{color:var(--dust);letter-spacing:.02em;font-weight:500;margin-left:8px;font-family:var(--f-body)}
@@ -339,7 +345,7 @@ button:focus-visible,select:focus-visible{outline:2px solid var(--gold);outline-
 
 /* ---------- stats, box scores, resume ---------- */
 #statsScreen,#boxScreen{align-items:flex-start}
-#boxScreen .card,#statsScreen .card{background:#09111f}
+#boxScreen .card,#statsScreen .card,#lineupScreen .card{background:#09111f}
 .bx-ls{overflow-x:auto;margin:4px 0 10px}
 .bx-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}
 @media (max-width:860px){.bx-grid{grid-template-columns:1fr}}
@@ -777,6 +783,13 @@ span.chip{cursor:default}
   <div class="card tm-card">
     <div class="fr-head"><h2>TEAM</h2><span id="tmSub" class="tm-sub"></span><button class="ghost" id="tmClose">Back to the game</button></div>
     <div id="tmBody" class="stack"></div>
+  </div>
+</div>
+
+<div id="lineupScreen" class="screen modal hidden">
+  <div class="card tm-card">
+    <div class="fr-head"><h2>LINEUP</h2><span id="luSub" class="tm-sub"></span><button class="ghost" id="luReset">Reset</button><button class="cta" id="luDone">Done</button></div>
+    <div id="luBody" class="stack"></div>
   </div>
 </div>
 
