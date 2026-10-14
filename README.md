@@ -14,7 +14,7 @@ All 30 MLB clubs with their real current rosters. Every player's ratings come fr
 - **Player Lock** – pick one player. You only play when he's involved: at bat, on base, or when the ball is hit his way (a ball to the outfield is only yours if you're the one playing it). Everything else is skipped behind a SIMULATING card (set Not Involved to Watch to see it fast-forwarded instead), and the skip drops you in the moment the ball comes to you. The AI never moves your player: in the field you run him to the ball and the bag yourself (your teammates back you up, and only go after your ball if you miss it), and on the bases he holds until you send him (forced runs and the batter's dash to first aside). Fielding and baserunning use a third-person camera behind your player, like Road to the Show: it faces home plate before the pitch, then follows the ball, the base you're running to, or the base you're about to throw to. Just move the mouse to look around. First person and broadcast cameras are also available, and V cycles between them. At-bats use the strike-zone view. Set Your Role to Bat only to sim all of your fielding, or press Tab to skip any single at-bat (it still stops if the ball comes to you, or you're on base when it's put in play).
   - **As the catcher** you're in every pitch, from the strike-zone view. **Call it**: the pitcher's idea comes up first; change the pitch (1–5) and the spot (mouse), then click to put the sign down, and he throws it with his own command. **Frame it**: move your mitt (the gold ring) to the ball as it comes in. Get there and a pitch on the edge goes your way; stab at it and a strike on the edge can be called a ball, and one in the dirt can get by you. With the ABS challenge umpire, press **C** to challenge a ball that should've been a strike. Pop-ups near the plate, bunts and dribblers are yours to run down, and base stealers yours to throw out.
 - **Online** – one player hosts and gets a 5-character room code (or invite link); friends join with it. Signed in, you can invite friends straight from your friends list. Works across devices and networks. Two ways to play:
-  - **1v1**: you against one friend, each with your own team and starting pitcher. Every game moves your [Elo rating](#rating). In the field you always control the fielder nearest the ball, never the pitcher or catcher: when one of them plays it, you get the closest fielder to it, and the throw is still yours (press a base).
+  - **1v1**: you against one friend, each with your own team, starting pitcher and lineup. Every game moves your [Elo rating](#rating). In the field you always control the fielder nearest the ball, never the pitcher or catcher: when one of them plays it, you get the closest fielder to it, and the throw is still yours (press a base).
   - **Squad**: you and up to nine friends, each playing one player (see [Online squad](#online-squad)).
 - **Practice** – endless drills with your team against any opponent:
   - **Batting**: live pitching, as many at-bats as you want, with contact rate, hits and average exit velocity tracked.
@@ -40,6 +40,7 @@ The setup panel on the main menu changes with the mode. This is every option and
 | Umpire | Human ump (92%), ABS challenge, Robot ABS | all except Derby |
 | Ballpark | The home team's park, or any MLB or classic park | all |
 | Throws | Manual or Auto | Play Ball, Player Lock, Practice |
+| Lineup | Your batting order and who plays where, bench players included (**Set lineup** under your team) | Play Ball, Online 1v1 |
 | Your player | Any spot in your batting order, or the starting pitcher | Player Lock |
 | Your role | Bat & field, or Bat only (sim fielding) | Player Lock |
 | Not involved | Skip ahead, or Watch (fast) | Player Lock |
@@ -120,6 +121,8 @@ On a ball to the outfield the free middle infielder goes out to be the relay man
 ## Bench and bullpen
 
 Every club carries a 5-man rotation, a 7-man bullpen (closer first) and a 4-man bench, all real players. Pick who starts on the mound from the **Starting pitcher** menu under each team in the matchup (Play Ball, Player Lock and Online, where each player picks his own; in Practice it's the pitcher you face, or the one you pitch with). It defaults to the ace.
+
+**Set lineup** (under your team in Play Ball and Online 1v1) opens your lineup card before the game: move anyone up or down the batting order, put a bench player in, or move a player to another position (whoever had it swaps with him). A player at a spot he doesn't play is marked with a red star: his glove is a step worse there. Your card is saved for each team, and **Reset** goes back to the club's own lineup. Online, your friend's game uses your card too.
 
 Press **U** (or the team button next to pause) between pitches to open the Team panel:
 

@@ -20,7 +20,7 @@
 const NET = {
   role: null, peer: null, conn: null, fast: null, fastOK: false, hiT: 0, code: null, open: false, peerOpen: false, dirty: false,
   lastSnap: 0, seq: 0, lastSeq: -1, inSeq: 0, lastInSeq: -1, lastIn: 0, sentIn: '', lobby: null, lobbySent: '', snap: null, crackT: -9,
-  mcache: new Map(), lastAbLen: 0, remoteInAt: 0, off: 0, rtt: 0, pings: [], pingT: 0, guestSpec: null, guestSp: 0,
+  mcache: new Map(), lastAbLen: 0, remoteInAt: 0, off: 0, rtt: 0, pings: [], pingT: 0, guestSpec: null, guestSp: 0, guestLu: null,
   pid: 0, bb: null, ball: null, pclock: { pid: -1, t: 0 }, pred: { m: null, key: null, on: false, v: 0, lastIn: -9, hold: 0 },
   invited: null, pendingInvite: null,
   specs: [], specSnapT: 0, tok: null, waiting: 0, waitHint: 0, pausedForDrop: false, rejoin: null, bye: false, opp: null, oppElo: null,
@@ -323,7 +323,7 @@ function linkLost(L) {
     hudBanner('DISCONNECTED', 'Your opponent left the game' + (won ? ` · rating ${won.after} (+${won.d})` : ''), '');
     setTimeout(() => { if (G.mode === 'online' && NET.role === 'host' && !NET.open) toMenu(); }, 3500);
   }
-  if (!NET.links.some((x) => !x.gone)) { NET.guestSpec = null; NET.opp = null; NET.oppElo = null; }
+  if (!NET.links.some((x) => !x.gone)) { NET.guestSpec = null; NET.guestLu = null; NET.opp = null; NET.oppElo = null; }
   netStatus(NET.links.length ? `${L.name} left. ${NET.links.length + 1} in the room.` : `${L.name} left. Waiting for someone to join…`, NET.links.length ? 'good' : '');
   NET.lobbySent = ''; netSendRoom(); renderMenu(); cloudRender();
 }
@@ -333,7 +333,7 @@ function netClose() {
   if (open && conn) try { conn.send({ t: 'bye' }); } catch (e) { /* closing */ }
   for (const L of links) linkSend(L, { t: 'bye' });
   for (const c of specs) try { c.send({ t: 'bye' }); } catch (e) { /* closing */ }
-  Object.assign(NET, { role: null, peer: null, conn: null, fast: null, fastOK: false, open: false, peerOpen: false, code: null, lobby: null, lobbySent: '', blockShown: '', snap: null, guestSpec: null, guestSp: 0, bb: null, ball: null, invited: null, pendingInvite: null, specs: [], tok: null, waiting: 0, rejoin: null, bye: false, opp: null, oppElo: null, pausedForDrop: false, links: [], room: [], sid: 0, lastPl: null });
+  Object.assign(NET, { role: null, peer: null, conn: null, fast: null, fastOK: false, open: false, peerOpen: false, code: null, lobby: null, lobbySent: '', blockShown: '', snap: null, guestSpec: null, guestSp: 0, guestLu: null, bb: null, ball: null, invited: null, pendingInvite: null, specs: [], tok: null, waiting: 0, rejoin: null, bye: false, opp: null, oppElo: null, pausedForDrop: false, links: [], room: [], sid: 0, lastPl: null });
   setTimeout(() => {
     try { if (fast) fast.close(); } catch (e) { /* ignore */ }
     try { if (conn) conn.close(); } catch (e) { /* ignore */ }
@@ -394,7 +394,7 @@ function netSendLobby() {
   const s = JSON.stringify(m);
   if (s !== NET.lobbySent) { NET.lobbySent = s; netSend(m); }
 }
-function netSendPick() { if (NET.role === 'guest' && NET.open && !squadMode()) netSend({ t: 'pick', spec: teamSpec(menuTeam('netTeam')), sp: menuSP('netTeam') }); }
+function netSendPick() { if (NET.role === 'guest' && NET.open && !squadMode()) netSend({ t: 'pick', spec: teamSpec(menuTeam('netTeam')), sp: menuSP('netTeam'), lu: menuCard(menuTeam('netTeam')) }); }
 function specOK(s) {
   if (!s || typeof s !== 'object') return null;
   if (s.c) { const c = cleanRoster(s.c); return c ? { c } : null; }
@@ -405,6 +405,7 @@ function hostStartOnline() {
   const P = onlinePicks();
   const cfg = { mode: 'online', teams: distinctSpecs(teamSpec(P.teams[0]), teamSpec(P.teams[1])), side: menu.side, innings: menu.innings, diff: menu.diff, pdiff: menu.pdiff, manual: 1, ump: menu.ump, park: menu.park || '' };
   if (P.sp) cfg.starters = P.sp;
+  if (!P.squad) { const mine = menuCard(P.teams[P.mySide]), theirs = NET.guestLu || null; cfg.lineups = P.mySide ? [theirs, mine] : [mine, theirs]; }
   if (P.squad) { cfg.squad = NET.room.filter((r) => r.pick).map((r) => ({ sid: r.sid, name: r.name, side: r.side, pick: r.pick })); }
   for (const L of NET.links) L.tok = Math.random().toString(36).slice(2, 12);
   netSendStart(cfg);
@@ -432,7 +433,7 @@ function netPong(m, L) {
 }
 function hostOnMsg(m, L) {
   if (m.t === 'hello') { NET.lobbySent = ''; netSendLobby(); netSendRoom(); return; }
-  if (m.t === 'pick') { if (menu.netMode !== 1) { NET.guestSpec = specOK(m.spec); NET.guestSp = m.sp | 0; renderMenu(); } return; }
+  if (m.t === 'pick') { if (menu.netMode !== 1) { NET.guestSpec = specOK(m.spec); NET.guestSp = m.sp | 0; NET.guestLu = Array.isArray(m.lu) ? m.lu.slice(0, 9) : null; renderMenu(); } return; }
   if (m.t === 'claim') { if (menu.netMode === 1) hostClaim(L.sid, m.side ? 1 : 0, typeof m.pick === 'string' ? m.pick : ''); return; }
   if (m.t === 'name') {
     const nm = cleanName(m.name, L.name), r = NET.room.find((x) => x.sid === L.sid);
