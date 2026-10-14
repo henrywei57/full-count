@@ -13,7 +13,7 @@ const G = {
   umps: [], P: null, spec: null, swing: null, cpu: null, play: null, bb: null, cross: null,
   abPitches: [], pitchUI: { state: 'aim', sel: 0, aim: { x: 0, y: 2.5 }, meter: 0, power: 0, acc: 0, t0: 0 },
   catchUI: { state: 'off', sel: 0, aim: { x: 0, y: 2.5 }, glove: { x: 0, y: 2.5 } }, frame: 0, frameD: null,
-  pci: { x: 0, y: 2.5 }, glove: new V3(0, 2.4, 1.7), rec: [], recOn: false, replay: null, derby: null,
+  pci: { x: 0, y: 2.5 }, glove: new V3(0, 2.4, 1.7), gloveShow: new V3(0, 2.3, 1.7), rec: [], recOn: false, replay: null, derby: null,
   abEnd: null, contactT: 0, menuAng: 0,
   ctrl: ['cpu', 'cpu'], lock: null, remoteIn: { x: 0, z: 0 }, remoteTake: false, camFocus: null, localPitch: false,
   parkKey: 'FC', ump: 1, challenges: [2, 2], challengeable: null, challenge: null, cpuChallengeAt: 0, reviews: [1, 1], review: null, view: 0, lockSide: 1, lockSkip: false, skipping: false, lockInv: false, beat: 0,
@@ -132,7 +132,7 @@ function placeForPitch() {
     if (derby && f.role !== 'P' && f.role !== 'C') continue;
     f.m.root.visible = true; f.m.fielding = true;
     if (f.role === 'P') { f.yaw = 0; f.anim('set'); }
-    else if (f.role === 'C') { f.face(0, MOUND_Z); f.anim('catcher', { glove: G.glove }); }
+    else if (f.role === 'C') { f.face(0, MOUND_Z); f.anim('catcher', { glove: G.gloveShow }); }
     else { f.face(0, -20); f.anim('ready'); }
     f.sync();
   }
@@ -480,6 +480,15 @@ function updatePitchUI() {
   meterDraw();
 }
 const _tmpA = new V3(), _tmpB = new V3();
+// Where everyone sees the catcher's mitt. G.glove is where he really sets up (the pitcher's
+// spot, then the ball); against a hitter who's a person he gives nothing away: the mitt stays
+// in the middle of the zone until the pitch is almost on him, then goes and gets it. A CPU
+// hitter can't peek, so there he shows the target.
+const GLOVE_HOME = new V3(0, 2.3, 1.7);
+function catcherGlove(dt) {
+  const hide = batCtrl() !== 'cpu' && (G.phase === 'prePitch' || G.phase === 'windup' || (G.phase === 'pitch' && G.now - G.pitchT0 < (G.tCatch || 0.5) - 0.13));
+  G.gloveShow.lerp(hide ? GLOVE_HOME : G.glove, 1 - Math.exp(-dt * (hide ? 12 : 30)));
+}
 function userPitchSpec(sel, aim, power, acc) {
   const p = curPitcher(), pitch = p.pitches[clamp(sel | 0, 0, p.pitches.length - 1)];
   const ctlF = (1.35 - (p.ctl / 100) * 0.6) * (1 + fatigue(p) * 0.8);

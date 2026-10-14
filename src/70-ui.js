@@ -1724,6 +1724,7 @@ function update(dt) {
     case 'derbyResult': if (G.pt >= G.dur) endDerbyResult(); break;
     case 'final': menuCam(dt * 0.6); break;
   }
+  catcherGlove(dt);
   dressFrame();
   for (const m of MODELS) updateModel(m, G.now);
   if (G.recOn) recFrame();
