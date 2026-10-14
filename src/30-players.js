@@ -359,6 +359,40 @@ function poseDive(p, t) {
   j.shL.rotation.x = -2.9; j.shR.rotation.x = -2.6; j.elL.rotation.x = -0.1; j.elR.rotation.x = -0.2;
   j.hipL.rotation.x = 0.2; j.hipR.rotation.x = -0.1; j.kneeR.rotation.x = 0.6;
 }
+// catching: the glove goes out to the ball (prm.glove, a point in the world) as far as his arm
+// reaches and the bare hand comes over to cover it; he gets down for a low one, stretches for a
+// high one, leans toward one off to the side and watches it all the way in. prm.run: still
+// running (0 when he's set), so a catch on the move keeps his legs going.
+const _vcL = new V3(), _vcT = new V3();
+function poseCatch(p, t, prm) {
+  const j = p.j, Gl = p.lefty ? 'R' : 'L', T = p.lefty ? 'L' : 'R', bs = T === 'L' ? 1 : -1;
+  const at = prm && prm.glove;
+  if (!at) { poseReady(p, t); return; }
+  p.root.updateMatrixWorld(true);
+  const L = p.root.worldToLocal(_vcL.copy(at));   // in his own frame: x to his left, y up, z ahead
+  const h = L.y, flat = Math.hypot(L.x, L.z), run = prm.run || 0;
+  const low = clamp((2.6 - h) / 2.2, 0, 1), high = clamp((h - 5.4) / 2.5, 0, 1);
+  if (run > 0) poseRun(p, p.phase, run);
+  else {
+    j.hips.position.y = lerp(2.95, 2.15, low) + high * 0.1;
+    const hx = -lerp(0.22, 1.0, low), kn = lerp(0.3, 1.55, low);
+    j.hipL.rotation.set(hx, 0, 0.28); j.hipR.rotation.set(hx, 0, -0.28);
+    j.kneeL.rotation.x = kn; j.kneeR.rotation.x = kn;
+    j.ankleL.rotation.set(-(hx + kn), 0, -0.28); j.ankleR.rotation.set(-(hx + kn), 0, 0.28);
+  }
+  j.torso.rotation.x = lerp(0.18, 0.9, low) - high * 0.22;
+  j.torso.rotation.z = clamp(-L.x * 0.07, -0.32, 0.32);
+  j.torso.rotation.y = clamp(Math.atan2(L.x, Math.max(0.6, L.z)) * 0.35, -0.5, 0.5);
+  const eye = j.hips.position.y + 2.5, up = Math.atan2(h - eye, Math.max(0.5, flat));
+  j.neck.rotation.x = clamp(-up - j.torso.rotation.x, -1.0, 0.9);
+  j.neck.rotation.y = clamp(Math.atan2(L.x, Math.max(0.3, L.z)) - j.torso.rotation.y - j.hips.rotation.y, -1.1, 1.1);
+  p.root.updateMatrixWorld(true);
+  aimArm(p, Gl, at, 0.1);
+  // the bare hand beside the glove (or by his chest when it's a backhand way out on the glove side)
+  const k = L.x * -bs > 1.8 ? 0.35 : 0.85, cy = j.hips.position.y + 1.6;
+  _vcT.set(lerp(0, L.x, k) + bs * 0.4, lerp(cy, h, k) - 0.25, lerp(0.5, L.z, k) - 0.2);
+  aimArm(p, T, p.root.localToWorld(_vcT), 0.3);
+}
 // throwing: a stride with the glove-side foot, the arm comes through over the top, and the back
 // leg comes off the ground in the follow-through
 function poseThrow(p, t) {
@@ -523,6 +557,7 @@ function applyPose(p, name, t, prm, phase) {
     case 'ump': poseUmp(p, t, prm); break;
     case 'throw': poseThrow(p, t); break;
     case 'catchHigh': poseCatchHigh(p, t); break;
+    case 'catch': poseCatch(p, t, prm); break;
     case 'gather': poseGather(p, t); break;
     case 'fieldLow': poseFieldLow(j); break;
     case 'dive': poseDive(p, t); break;
