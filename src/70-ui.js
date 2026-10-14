@@ -370,7 +370,7 @@ function showFeedback(c) {
   const fb = $('feedback'), b = G.batter;
   if (b && b.team) {
     const lg = $('saLogo'); lg.textContent = b.team.id; lg.style.background = b.team.c1; lg.style.color = b.team.c2; lg.style.borderColor = b.team.c2;
-    $('saNum').textContent = b.num ?? ''; $('saSide').textContent = G.batSide || b.bats || ''; $('saName').textContent = b.name;
+    $('saNum').textContent = b.num ?? ''; $('saSide').textContent = G.batSide || b.bats || ''; const nm = $('saName'); nm.textContent = String(b.name || '').split(' ').slice(1).join(' ') || b.name || ''; nm.title = b.name || '';
     $('saRat').innerHTML = [['CON', b.con], ['POW', b.pow], ['EYE', b.eye]].map(([l, v]) => `<div><b>${v ?? '–'}</b><small>${l}</small></div>`).join('');
   }
   if (c) {
