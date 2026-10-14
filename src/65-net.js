@@ -594,7 +594,7 @@ function netSnapshot() {
     if (!md.root.visible || !md.key) continue;
     const p = md.root.position;
     let prm = md.prm;
-    if (prm && prm.glove) prm = { glove: [r2(prm.glove.x), r2(prm.glove.y), r2(prm.glove.z)] };
+    if (prm && prm.glove) prm = prm.run ? { glove: [r2(prm.glove.x), r2(prm.glove.y), r2(prm.glove.z)], run: r2(prm.run) } : { glove: [r2(prm.glove.x), r2(prm.glove.y), r2(prm.glove.z)] };
     m.push([md.key, r2(p.x), r2(p.y), r2(p.z), r3(md.root.rotation.y), md.anim, r3(G.now - md.t0), prm, md.fielding ? 1 : 0, md.j.helmet.visible ? 1 : 0, md.batsL ? 1 : 0]);
   }
   const b = ballMesh.position, pl = G.play, remoteField = G.squad ? squadFielders().length > 0 : fieldCtrl() === 'remote';
@@ -691,7 +691,7 @@ function modelByKey(key) {
   return m;
 }
 function netPrm(m, prm) {
-  if (prm && Array.isArray(prm.glove)) { m.gv = m.gv || new V3(); m.gv.set(+prm.glove[0] || 0, +prm.glove[1] || 0, +prm.glove[2] || 0); return { glove: m.gv }; }
+  if (prm && Array.isArray(prm.glove)) { m.gv = m.gv || new V3(); m.gv.set(+prm.glove[0] || 0, +prm.glove[1] || 0, +prm.glove[2] || 0); return { glove: m.gv, run: clamp(+prm.run || 0, 0, 1) }; }
   return prm && typeof prm === 'object' ? prm : null;
 }
 function netApplyGS(s) {

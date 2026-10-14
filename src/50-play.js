@@ -22,6 +22,8 @@ function throwSpeed(f, d) { return f.arm * (d > 150 ? 0.8 : d > 95 ? 0.92 : 0.96
 const heading = (r) => (r.rev ? r.base : r.next);
 // the fielder you control fields anything that comes within this many feet
 const HUMAN_REACH = 7.5;
+const _reach = new V3(), _vb = new V3();
+const gloveHand = (f) => (f.m.lefty ? 'R' : 'L'), throwHand = (f) => (f.m.lefty ? 'L' : 'R');
 
 class Fielder {
   constructor(pl, role, model) {
@@ -39,6 +41,7 @@ class Fielder {
     this.transfer = (0.5 - g) * 0.26;
     this.react = this.baseReact;
     this.acc = this.isOF ? 12.5 : role === 'P' || role === 'C' ? 15 : 21;
+    this.catchPrm = { glove: new V3(), run: 0 };   // where his glove's going when he reaches for a ball
     this.reset();
   }
   reset() {
@@ -58,7 +61,8 @@ class Fielder {
     if (this.snapYaw) { r.y = this.yaw; this.snapYaw = false; } else r.y += angDiff(r.y, this.yaw) * 0.3;
     turnLean(this.m, before, this.v);
   }
-  anim(name, prm) { setAnim(this.m, name, prm); }
+  // noAnim: while he's reaching for a ball his legs still move him, but the pose is the reach
+  anim(name, prm) { if (this.noAnim && name !== 'catch') return; setAnim(this.m, name, prm); }
 }
 
 class Runner {
@@ -496,10 +500,15 @@ class Play {
       if (this.hr && s.hr && !this.hrCalled) { this.hrCalled = true; this.events.push('hrGone'); }
       if (s.b && !this.landedSaid) { this.landedSaid = true; this.events.push('land'); }
     } else if (b.mode === 'held') {
-      handWorld(b.holder.m, b.holder.m.lefty ? 'R' : 'L', b.pos);
+      // in his glove (after a catch it travels the last bit into it), in his throwing hand once he throws
+      const f = b.holder, hand = handWorld(f.m, f.throwing ? throwHand(f) : gloveHand(f), _vb);
+      if (b.blend && this.t < b.blend.t0 + b.blend.T) b.pos.lerpVectors(b.blend.from, hand, smooth((this.t - b.blend.t0) / b.blend.T));
+      else { b.blend = null; b.pos.copy(hand); }
     } else if (b.mode === 'throw') {
       const th = b.thr, u = clamp((this.t - th.t0) / th.T, 0, 1);
       b.pos.lerpVectors(th.from, th.to, u); b.pos.y += Math.sin(u * Math.PI) * th.arc;
+      // the last part of the way it goes into the receiver's glove, wherever he's holding it
+      if (th.recv && !th.err && u > 0.6) b.pos.lerp(handWorld(th.recv.m, gloveHand(th.recv), _vb), smooth((u - 0.6) / 0.4));
       if (u >= 1) this.throwArrived();
     }
   }
@@ -530,7 +539,11 @@ class Play {
       const c = this.ctlOf(f);
       if (c && c.manual && c.lock && (this.hr || this.dead)) { this.manualMove(f, dt, false, c); f.sync(); continue; }
       if (c && c.manual && !this.hr && !this.dead) {
-        this.manualMove(f, dt, false, c); this.tryHumanCatch(f); f.sync();
+        const reach = this.reachTarget(f);
+        f.noAnim = !!reach; this.manualMove(f, dt, false, c); f.noAnim = false;
+        this.tryHumanCatch(f);
+        if (reach && b.holder !== f) this.reachWith(f, reach);
+        f.sync();
         // playing one player: you didn't get to your ball, so now the others go get it
         if (c.lock && this.chaser === f && f.plan && b.mode === 'flight' && t > f.plan.t + 0.5) { c.missed = true; this.replan(); }
         // the ball got past you: hand control to the fielder now playing it
@@ -563,8 +576,10 @@ class Play {
       } else if (f.task === 'hold') {
         tx = f.home.x + (b.pos.x - f.home.x) * 0.08; tz = f.home.z + (b.pos.z - f.home.z) * 0.08; hurry = false;
       }
-      this.moveF(f, tx, tz, dt, hurry);
+      const reach = this.reachTarget(f);
+      f.noAnim = !!reach; this.moveF(f, tx, tz, dt, hurry); f.noAnim = false;
       if (c && b.mode === 'flight') this.tryHumanCatch(f);
+      if (reach && b.holder !== f) this.reachWith(f, reach);
       f.sync();
     }
   }
@@ -585,8 +600,41 @@ class Play {
       const bp = this.ball.pos; const want = Math.atan2(bp.x - f.pos.x, bp.z - f.pos.z);
       f.yaw += angDiff(f.yaw, want) * Math.min(1, dt * 8);
       const s = this.ball.mode === 'flight' ? this.sample() : null;
-      f.anim(s && f.task === 'chase' && !s.b && s.y > 3 ? 'catchHigh' : 'ready');
+      f.anim(s && f.task === 'chase' && !s.b && s.y > 3 && f.plan && f.plan.t - t < 1.2 ? 'catchHigh' : 'ready');
     }
+  }
+  // Reaching for it: as the ball gets to him (a fly, a grounder, a throw) the glove goes out to
+  // meet it, so it ends up in the glove instead of appearing in his hand
+  reachTarget(f) {
+    const b = this.ball, t = this.t;
+    if (b.holder === f) return null;
+    let at = null;
+    if (b.mode === 'flight' && !this.hr && !this.dead && !this.caught) {
+      const S = this.bb.S, c = this.ctlOf(f), manual = !!(c && c.manual);
+      if (!manual && f.plan && f.task === 'chase') {
+        const pl = f.plan, left = pl.t - t;
+        if (left > 0.45 || left < -0.3 || Math.hypot(pl.x - f.pos.x, pl.z - f.pos.z) > 14) return;
+        const s = S[clamp(Math.floor((pl.t - 0.05) / BB_DT), 0, S.length - 1)];   // where it is when he gloves it
+        if (s.dead || s.hr) return;
+        at = _reach.set(s.x, Math.max(0.35, s.y), s.z);
+      } else if (manual) {
+        const s = S[Math.min(S.length - 1, Math.floor((t + 0.15) / BB_DT))];
+        if (s.dead || s.hr || Math.hypot(s.x - f.pos.x, s.z - f.pos.z) > 14 || (s.b ? s.y > 4.5 : s.y > 11)) return;
+        at = _reach.set(s.x, Math.max(0.35, s.y), s.z);
+      }
+    } else if (b.mode === 'throw' && b.thr.recv === f && !b.thr.err && b.thr.t0 + b.thr.T - t < 0.4) {
+      // taking a throw: the glove out in front of him toward it, at the height it's coming in
+      const dx = b.pos.x - f.pos.x, dz = b.pos.z - f.pos.z, d = Math.hypot(dx, dz) || 1;
+      at = _reach.set(f.pos.x + (dx / d) * 2.8, clamp(b.thr.to.y, 1, 6.5), f.pos.z + (dz / d) * 2.8);
+    }
+    return at;
+  }
+  reachWith(f, at) {
+    // no further out than a step and his arm
+    const dx = at.x - f.pos.x, dz = at.z - f.pos.z, d = Math.hypot(dx, dz);
+    if (d > 4.5) { at.x = f.pos.x + (dx / d) * 4.5; at.z = f.pos.z + (dz / d) * 4.5; }
+    f.catchPrm.glove.copy(at); f.catchPrm.run = f.v > 5 ? clamp(f.v / 22, 0.5, 1) : 0;
+    f.anim('catch', f.catchPrm);
   }
   // human-steered movement: the stick sets direction and effort, the field edges hold you in
   manualMove(f, dt, withBall = false, c = this.c0) {
@@ -672,7 +720,16 @@ class Play {
     const b = this.ball;
     b.mode = 'held'; b.holder = f; f.holding = false; f.touched = 0; f.readyAt = this.t + bobble + 0.12;
     if (!this.firstFielder) { this.firstFielder = f; this.firstAir = air; }
-    if (!dove) { f.anim(air ? 'catchHigh' : 'fieldLow'); f.animHold = this.t + 0.3; }
+    // the ball goes the last bit into his glove, and he holds the catch where he made it a moment
+    // (at the ball's own speed, so it doesn't slow down on the way in)
+    const gp = handWorld(f.m, gloveHand(f), _vb), S = this.bb && this.bb.S, i = Math.floor(this.t / BB_DT);
+    const v = S && S[i + 1] ? Math.hypot(S[i + 1].x - S[i].x, S[i + 1].y - S[i].y, S[i + 1].z - S[i].z) / BB_DT : 40;
+    b.blend = { from: b.pos.clone(), t0: this.t, T: clamp(b.pos.distanceTo(gp) / Math.max(30, v), 0.04, 0.14) };
+    if (!dove) {
+      if (f.m.anim === 'catch') animBlend(f.m, 'catch');
+      f.catchPrm = { glove: new V3(b.pos.x, Math.max(0.35, b.pos.y), b.pos.z), run: 0 };
+      f.anim('catch', f.catchPrm); f.animHold = this.t + 0.3;
+    }
     if (!(this.hf && this.hf.near && this.isBattery(f))) for (const c of this.ctl) if (!c.lock) { if (c.f !== f) c.manual = false; c.f = f; }
     if (!this.fairKnown && !air) {
       const r = Math.hypot(b.pos.x, b.pos.z);
@@ -896,7 +953,10 @@ class Play {
     const th = this.ball.thr, base = th.base;
     const recv = th.recv || this.receiverFor(base, th.by);
     this.ball.mode = 'held'; this.ball.holder = recv; recv.holding = false; recv.task = 'hold'; recv.recvAt = null; recv.aimBase = null;
-    recv.anim('catchHigh'); recv.animHold = this.t + 0.22; recv.promptStart = null; recv.readyAt = this.t + (th.err ? 1.1 : 0.1); recv.quickAt = this.t + (th.err ? 1.1 : 0.15);
+    this.ball.blend = null;
+    if (recv.m.anim === 'catch') animBlend(recv.m, 'catch');
+    recv.catchPrm = { glove: this.ball.pos.clone(), run: 0 };
+    recv.anim('catch', recv.catchPrm); recv.animHold = this.t + 0.22; recv.promptStart = null; recv.readyAt = this.t + (th.err ? 1.1 : 0.1); recv.quickAt = this.t + (th.err ? 1.1 : 0.15);
     if (!(this.hf && this.hf.near && this.isBattery(recv))) for (const c of this.ctl) if (!c.lock) { c.f = recv; c.manual = false; }
     SND.pop(0.55);
     if (th.err) { this.error = true; this.events.push('throwError'); recv.decideAt = this.t + 1.1; return; }
